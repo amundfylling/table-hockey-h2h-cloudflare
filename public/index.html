@@ -4,100 +4,227 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Table Hockey H2H</title>
+  <meta name="description" content="Head-to-head comparisons for table hockey matchups." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
-    href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Space+Grotesk:wght@400;500;600&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Manrope:wght@400;500;600;700&display=swap"
     rel="stylesheet"
   />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <div class="background">
-    <div class="orb orb-a"></div>
-    <div class="orb orb-b"></div>
+    <div class="glow glow-one"></div>
+    <div class="glow glow-two"></div>
     <div class="grid"></div>
   </div>
 
-  <header class="hero">
-    <div class="hero-content">
-      <p class="eyebrow">Table Hockey Archives</p>
-      <h1>Head-to-Head Tracker</h1>
-      <p class="lead">
-        Compare every recorded matchup in one place. Built for deep dives, quick rival checks,
-        and that one upset you still remember.
-      </p>
+  <header class="site-header">
+    <div class="brand">
+      <div class="logo">H2H</div>
+      <div>
+        <h1>Table Hockey H2H</h1>
+        <p>Explore every rivalry, stage, and swing in momentum.</p>
+      </div>
     </div>
-    <div class="hero-panel">
-      <div class="search-row">
-        <label>
-          <span>Player A</span>
-          <input id="player-a" list="players-list-a" placeholder="Start typing a name" autocomplete="off" />
-          <datalist id="players-list-a"></datalist>
-        </label>
-        <label>
-          <span>Player B</span>
-          <input id="player-b" list="players-list-b" placeholder="Start typing a name" autocomplete="off" />
-          <datalist id="players-list-b"></datalist>
-        </label>
-      </div>
-      <div class="action-row">
-        <button id="compare-btn" type="button">Compare</button>
-        <p id="status" role="status"></p>
-      </div>
+    <div class="header-actions">
+      <button id="theme-toggle" class="ghost" type="button">Toggle theme</button>
     </div>
   </header>
 
-  <main>
-    <section class="summary" id="summary">
+  <main class="container">
+    <section class="card selection-card">
+      <div class="selection-grid">
+        <div class="player-field" data-player="a">
+          <label for="player-a">Player A</label>
+          <div class="input-shell">
+            <input id="player-a" type="text" autocomplete="off" placeholder="Search player" />
+            <button class="icon-btn" type="button" data-clear="a" aria-label="Clear player A">x</button>
+          </div>
+          <div id="player-a-list" class="typeahead" role="listbox" aria-label="Player A suggestions"></div>
+        </div>
+
+        <button id="swap-btn" class="swap-btn" type="button">Swap</button>
+
+        <div class="player-field" data-player="b">
+          <label for="player-b">Player B</label>
+          <div class="input-shell">
+            <input id="player-b" type="text" autocomplete="off" placeholder="Search player" />
+            <button class="icon-btn" type="button" data-clear="b" aria-label="Clear player B">x</button>
+          </div>
+          <div id="player-b-list" class="typeahead" role="listbox" aria-label="Player B suggestions"></div>
+        </div>
+      </div>
+
+      <div class="selection-actions">
+        <button id="compare-btn" class="primary" type="button">Compare</button>
+        <button id="copy-link-btn" class="ghost" type="button">Copy link</button>
+        <p id="status" class="status" role="status" aria-live="polite"></p>
+      </div>
+
+      <div class="recent">
+        <div class="recent-title">Recent matchups</div>
+        <div id="recent-list" class="recent-list"></div>
+      </div>
+    </section>
+
+    <section class="card stage-card">
+      <div class="tabs" role="tablist" aria-label="Stage filter">
+        <button class="tab is-active" role="tab" aria-selected="true" data-stage="overall">Overall</button>
+        <button class="tab" role="tab" aria-selected="false" data-stage="round-robin">Round-robin</button>
+        <button class="tab" role="tab" aria-selected="false" data-stage="playoff">Playoff</button>
+      </div>
+      <div id="stage-meta" class="stage-meta"></div>
+    </section>
+
+    <section class="summary-section">
       <div class="summary-header">
-        <h2 id="headline">Pick two players to compare</h2>
-        <p id="subhead">Match history, records, and tournament context appear here.</p>
+        <div>
+          <h2 id="headline">Pick two players</h2>
+          <p id="subhead">Matchup stats and filters appear once you compare.</p>
+        </div>
+        <div id="record" class="record"></div>
       </div>
-      <div class="summary-grid" id="summary-grid"></div>
+      <div id="summary-grid" class="summary-grid"></div>
     </section>
 
-    <section class="filters" id="filters">
-      <div class="filter-card">
-        <label for="year-filter">Year</label>
-        <select id="year-filter"></select>
-      </div>
-      <div class="filter-card">
-        <label for="tournament-filter">Tournament</label>
-        <select id="tournament-filter"></select>
-      </div>
-      <div class="filter-card">
-        <label for="stage-filter">Stage</label>
-        <select id="stage-filter"></select>
+    <section class="card viz-card">
+      <div class="viz-grid">
+        <div class="viz-block">
+          <div id="form-title" class="viz-title">Form (last 10)</div>
+          <div id="form-chips" class="form-chips"></div>
+        </div>
+        <div class="viz-block">
+          <div class="viz-title with-info">
+            <span class="viz-title-text">Cumulative record</span>
+            <span class="info-wrap">
+              <button
+                class="info-btn"
+                type="button"
+                aria-label="About cumulative record"
+                aria-describedby="cumulative-info"
+                aria-expanded="false"
+              >
+                i
+              </button>
+              <span id="cumulative-info" class="info-tooltip" role="tooltip">
+                Shows the running balance of wins minus losses. If this is 1, it means that the first selected player has won one more game than Player 2 and vice versa if it is -1.
+              </span>
+            </span>
+          </div>
+          <div id="record-chart" class="chart"></div>
+        </div>
+        <div class="viz-block">
+          <div class="viz-title">Average goals by year</div>
+          <div id="goals-chart" class="chart"></div>
+        </div>
       </div>
     </section>
 
-    <section class="matches" id="matches">
+    <section class="card filters-card">
+      <div class="filters-grid">
+        <div class="filter">
+          <label for="year-filter">Year</label>
+          <select id="year-filter"></select>
+        </div>
+        <div class="filter">
+          <label for="tournament-filter">Tournament</label>
+          <select id="tournament-filter"></select>
+        </div>
+        <div class="filter">
+          <label for="stage-filter">Stage detail</label>
+          <select id="stage-filter"></select>
+        </div>
+        <div class="filter">
+          <label for="sort-filter">Sort</label>
+          <select id="sort-filter">
+            <option value="date-desc">Date (newest)</option>
+            <option value="date-asc">Date (oldest)</option>
+            <option value="tournament">Tournament (A-Z)</option>
+            <option value="diff-desc">Goal diff (largest)</option>
+            <option value="diff-asc">Goal diff (smallest)</option>
+          </select>
+        </div>
+        <div class="filter">
+          <label>Options</label>
+          <div class="toggle-group">
+            <label class="toggle">
+              <input id="ot-toggle" type="checkbox" />
+              <span>Only overtime</span>
+            </label>
+            <label class="toggle">
+              <input id="tight-toggle" type="checkbox" />
+              <span>Only tight games</span>
+            </label>
+          </div>
+        </div>
+        <div class="filter">
+          <label for="search-filter">Search</label>
+          <input id="search-filter" type="search" placeholder="Tournament or stage" />
+        </div>
+        <div class="filter">
+          <label for="page-size">Rows</label>
+          <select id="page-size">
+            <option value="25">25</option>
+            <option value="50" selected>50</option>
+            <option value="100">100</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <section class="card matches-card">
       <div class="matches-header">
-        <h3>Match List</h3>
-        <span id="match-count"></span>
+        <div>
+          <h3>Match list</h3>
+          <p id="match-count" class="muted">0 matches</p>
+        </div>
+        <div class="pagination" id="pagination-top">
+          <button id="prev-page" class="ghost" type="button">Prev</button>
+          <span id="page-info" class="page-info">Page 1 of 1</span>
+          <button id="next-page" class="ghost" type="button">Next</button>
+        </div>
       </div>
       <div class="table-wrap">
         <table id="matches-table">
           <thead>
             <tr>
+              <th></th>
               <th>Date</th>
               <th>Tournament</th>
               <th>Stage</th>
+              <th>Round</th>
               <th>Score</th>
               <th>OT</th>
+              <th>Winner</th>
             </tr>
           </thead>
-          <tbody></tbody>
+          <tbody id="matches-body"></tbody>
         </table>
       </div>
+      <div class="pagination" id="pagination-bottom">
+        <button id="prev-page-bottom" class="ghost" type="button">Prev</button>
+        <span id="page-info-bottom" class="page-info">Page 1 of 1</span>
+        <button id="next-page-bottom" class="ghost" type="button">Next</button>
+      </div>
+    </section>
+
+    <section id="empty-state" class="card empty-state" hidden>
+      <h3>No matches yet</h3>
+      <p>These players have not faced each other in the dataset.</p>
+    </section>
+
+    <section id="error-state" class="card empty-state" hidden>
+      <h3>Something went wrong</h3>
+      <p>We could not load this matchup. Please try again.</p>
     </section>
   </main>
 
-  <footer class="footer">
-    <p>Static, zero-runtime build powered by the Scorpion dataset.</p>
+  <footer class="site-footer">
+    <p>Static build. No servers. Just pure table hockey history.</p>
   </footer>
 
-  <script src="app.js"></script>
+  <script src="app.js" defer></script>
 </body>
 </html>
