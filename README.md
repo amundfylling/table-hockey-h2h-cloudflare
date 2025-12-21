@@ -17,10 +17,11 @@ Raw URLs (overridable via env vars):
 `python scripts/build_h2h.py`:
 - Downloads raw data into `.cache/`.
 - Converts and normalizes types.
+- Filters to players with at least 50 matches.
 - Generates static JSON into `public/data/`:
-  - `players.json`
+  - `players.json` (50+ matches only)
   - `tournaments.json`
-  - `h2h/{id1}/{id2}.json` (chunked manifests if needed)
+  - `h2h/{playerId}.json` (one file per player; opponents nested)
 
 No Parquet/CSV source files are stored in this repo, and generated JSON is a build artifact deployed to Pages.
 

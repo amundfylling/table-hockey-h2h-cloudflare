@@ -3,6 +3,7 @@ const state = {
   playersById: new Map(),
   playersByKey: new Map(),
   pairCache: new Map(),
+  playerFileCache: new Map(),
   activeData: null,
   activeMatches: [],
   activeOrder: null,
@@ -115,22 +116,35 @@ async function fetchChunks(chunks, concurrency = 3) {
   return results.flat();
 }
 
-async function loadPair(id1, id2) {
-  const key = `${id1}-${id2}`;
+async function loadPlayerFile(playerId) {
+  if (state.playerFileCache.has(playerId)) {
+    return state.playerFileCache.get(playerId);
+  }
+  const res = await fetch(`data/h2h/${playerId}.json`);
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    throw new Error("Failed to load player data");
+  }
+  const payload = await res.json();
+  state.playerFileCache.set(playerId, payload);
+  return payload;
+}
+
+async function loadPair(idA, idB) {
+  const key = `${idA}-${idB}`;
   if (state.pairCache.has(key)) {
     return state.pairCache.get(key);
   }
-  const res = await fetch(`data/h2h/${id1}/${id2}.json`);
-  if (res.status === 404) return null;
-  if (!res.ok) {
-    throw new Error("Failed to load match data");
-  }
-  const payload = await res.json();
-  let matches = payload.matches || [];
-  if (payload.chunks) {
-    matches = await fetchChunks(payload.chunks);
-  }
-  const data = { ...payload, matches };
+  const playerData = await loadPlayerFile(idA);
+  if (!playerData) return null;
+  const opponent = playerData.opponents ? playerData.opponents[String(idB)] : null;
+  if (!opponent) return null;
+  const data = {
+    player1: playerData.player,
+    player2: opponent.player,
+    summary: opponent.summary,
+    matches: opponent.matches || [],
+  };
   state.pairCache.set(key, data);
   return data;
 }
@@ -140,23 +154,22 @@ function renderSummary(data) {
   const order = state.activeOrder || {
     playerA: data.player1,
     playerB: data.player2,
-    aIsId1: true,
   };
   const playerA = order.playerA;
   const playerB = order.playerB;
-  const last10 = summary.last_10 || { id1: { wins: 0, losses: 0, draws: 0 }, id2: { wins: 0, losses: 0, draws: 0 } };
-  const last10A = order.aIsId1 ? last10.id1 : last10.id2;
-  const last10B = order.aIsId1 ? last10.id2 : last10.id1;
-  const last10Draws = last10A.draws ?? last10.id1.draws ?? 0;
+  const last10 = summary.last_10 || { wins: 0, losses: 0, draws: 0 };
+  const last10A = last10.wins || 0;
+  const last10B = last10.losses || 0;
+  const last10Draws = last10.draws || 0;
   const tournamentsCount = summary.tournaments ? summary.tournaments.length : 0;
 
   elements.headline.textContent = `${playerA.name} vs ${playerB.name}`;
   elements.subhead.textContent = `${summary.total_matches} matches across ${tournamentsCount} tournaments.`;
 
-  const winsA = order.aIsId1 ? summary.wins_id1 : summary.wins_id2;
-  const winsB = order.aIsId1 ? summary.wins_id2 : summary.wins_id1;
-  const goalsA = order.aIsId1 ? summary.goals_for_id1 : summary.goals_for_id2;
-  const goalsB = order.aIsId1 ? summary.goals_for_id2 : summary.goals_for_id1;
+  const winsA = summary.wins_player;
+  const winsB = summary.wins_opponent;
+  const goalsA = summary.goals_for_player;
+  const goalsB = summary.goals_for_opponent;
   const firstNameA = playerA.name ? playerA.name.trim().split(/\s+/)[0] : "A";
   const firstNameB = playerB.name ? playerB.name.trim().split(/\s+/)[0] : "B";
 
@@ -172,7 +185,7 @@ function renderSummary(data) {
     { label: "Last Meeting", value: summary.last_meeting_date || "-" },
     {
       label: `Last 10 (${firstNameA}/Draw/${firstNameB})`,
-      value: `${last10A.wins}-${last10Draws}-${last10B.wins}`,
+      value: `${last10A}-${last10Draws}-${last10B}`,
     },
   ];
 
@@ -259,12 +272,11 @@ function renderMatches(matches) {
     return;
   }
 
-  const order = state.activeOrder || { aIsId1: true };
   const fragment = document.createDocumentFragment();
   matches.forEach((match) => {
     const row = document.createElement("tr");
-    const goalsA = order.aIsId1 ? match.goals_id1 : match.goals_id2;
-    const goalsB = order.aIsId1 ? match.goals_id2 : match.goals_id1;
+    const goalsA = match.goals_for_player;
+    const goalsB = match.goals_for_opponent;
     const score = `${goalsA}–${goalsB}`;
     row.innerHTML = `
       <td>${match.date || "-"}</td>
@@ -292,15 +304,12 @@ async function handleCompare() {
     return;
   }
 
-  const id1 = Math.min(idA, idB);
-  const id2 = Math.max(idA, idB);
-
   setStatus("Loading match history...");
   elements.summaryGrid.innerHTML = "";
   elements.matchesBody.innerHTML = "";
 
   try {
-    const data = await loadPair(id1, id2);
+    const data = await loadPair(idA, idB);
     if (!data) {
       setStatus("No matches played between these players yet.");
       elements.headline.textContent = "No matches yet";
@@ -315,9 +324,8 @@ async function handleCompare() {
     state.activeOrder = {
       idA,
       idB,
-      aIsId1: data.player1.id === idA,
-      playerA: data.player1.id === idA ? data.player1 : data.player2,
-      playerB: data.player1.id === idA ? data.player2 : data.player1,
+      playerA: state.playersById.get(idA) || data.player1,
+      playerB: state.playersById.get(idB) || data.player2,
     };
 
     renderSummary(data);

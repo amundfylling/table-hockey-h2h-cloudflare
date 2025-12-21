@@ -21,8 +21,6 @@ PUBLIC_DIR = ROOT_DIR / "public"
 DATA_DIR = PUBLIC_DIR / "data"
 H2H_DIR = DATA_DIR / "h2h"
 
-MAX_BYTES = 5 * 1024 * 1024
-
 
 def normalize_search_key(value: Optional[str]) -> str:
     if value is None:
@@ -235,15 +233,32 @@ def _row_to_match(row) -> dict:
     }
 
 
-def build_pairs(matches: pd.DataFrame, player_names: Dict[int, str]) -> None:
+def filter_players(players: Iterable[dict], eligible_ids: set[int]) -> Tuple[Iterable[dict], Dict[int, str]]:
+    filtered = []
+    id_to_name = {}
+    for player in players:
+        if player["id"] in eligible_ids:
+            filtered.append(player)
+            id_to_name[player["id"]] = player["name"]
+    return filtered, id_to_name
+
+
+def build_player_files(matches: pd.DataFrame, player_names: Dict[int, str]) -> None:
     if H2H_DIR.exists():
         shutil.rmtree(H2H_DIR)
     H2H_DIR.mkdir(parents=True, exist_ok=True)
+
+    player_payloads: Dict[int, dict] = {}
+    for pid, name in player_names.items():
+        player_payloads[pid] = {"player": {"id": pid, "name": name}, "opponents": {}}
 
     grouped = matches.groupby(["id1", "id2"], sort=False)
     for (id1, id2), group in grouped:
         id1_int = int(id1)
         id2_int = int(id2)
+
+        if id1_int not in player_payloads or id2_int not in player_payloads:
+            continue
 
         first_row = group.iloc[0]
         name1 = player_names.get(id1_int)
@@ -271,67 +286,49 @@ def build_pairs(matches: pd.DataFrame, player_names: Dict[int, str]) -> None:
         tournaments: Dict[int, str] = {}
         last10 = deque(maxlen=10)
 
-        current_matches = []
-        current_size = 0
-        chunks = []
-        chunk_index = 1
-        chunked = False
-
-        def flush_chunk() -> None:
-            nonlocal current_matches, current_size, chunk_index
-            if not current_matches:
-                return
-            chunk_name = f"{id1_int}/{id2_int}.part{chunk_index}.json"
-            chunk_path = H2H_DIR / chunk_name
-            write_json(chunk_path, {"matches": current_matches})
-            chunks.append(f"h2h/{chunk_name}")
-            chunk_index += 1
-            current_matches = []
-            current_size = 0
+        matches_id1 = []
 
         for row in group.itertuples(index=False):
-            match = _row_to_match(row)
-            match_bytes = len(
-                json.dumps(match, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
-            )
-
-            if not chunked and current_size + match_bytes + 2 > MAX_BYTES:
-                chunked = True
-                flush_chunk()
-
-            if chunked and current_size + match_bytes + 2 > MAX_BYTES:
-                flush_chunk()
-
-            current_matches.append(match)
-            current_size += match_bytes + 1
+            base_match = _row_to_match(row)
+            match_id1 = {
+                "date": base_match["date"],
+                "tournament_id": base_match["tournament_id"],
+                "tournament_name": base_match["tournament_name"],
+                "stage": base_match["stage"],
+                "stage_id": base_match["stage_id"],
+                "stage_sequence": base_match["stage_sequence"],
+                "round_number": base_match["round_number"],
+                "playoff_game_number": base_match["playoff_game_number"],
+                "goals_for_player": base_match["goals_id1"],
+                "goals_for_opponent": base_match["goals_id2"],
+                "overtime": base_match["overtime"],
+            }
+            matches_id1.append(match_id1)
 
             total_matches += 1
-            goals_for_id1 += match["goals_id1"]
-            goals_for_id2 += match["goals_id2"]
+            goals_for_id1 += base_match["goals_id1"]
+            goals_for_id2 += base_match["goals_id2"]
 
-            if match["goals_id1"] > match["goals_id2"]:
+            if base_match["goals_id1"] > base_match["goals_id2"]:
                 wins_id1 += 1
                 last10.append("W")
-            elif match["goals_id1"] < match["goals_id2"]:
+            elif base_match["goals_id1"] < base_match["goals_id2"]:
                 wins_id2 += 1
                 last10.append("L")
             else:
                 draws += 1
                 last10.append("D")
 
-            if match["overtime"]:
+            if base_match["overtime"]:
                 overtime_games += 1
 
-            if match["date"]:
+            if base_match["date"]:
                 if first_meeting_date is None:
-                    first_meeting_date = match["date"]
-                last_meeting_date = match["date"]
+                    first_meeting_date = base_match["date"]
+                last_meeting_date = base_match["date"]
 
-            if match["tournament_id"] is not None:
-                tournaments[match["tournament_id"]] = match["tournament_name"]
-
-        if chunked:
-            flush_chunk()
+            if base_match["tournament_id"] is not None:
+                tournaments[base_match["tournament_id"]] = base_match["tournament_name"]
 
         last10_w = sum(1 for r in last10 if r == "W")
         last10_l = sum(1 for r in last10 if r == "L")
@@ -342,43 +339,56 @@ def build_pairs(matches: pd.DataFrame, player_names: Dict[int, str]) -> None:
         ]
         tournaments_list.sort(key=lambda x: (x["name"].lower(), x["id"]))
 
-        summary = {
+        summary_id1 = {
             "total_matches": total_matches,
-            "wins_id1": wins_id1,
-            "wins_id2": wins_id2,
+            "wins_player": wins_id1,
+            "wins_opponent": wins_id2,
             "draws": draws,
-            "goals_for_id1": goals_for_id1,
-            "goals_for_id2": goals_for_id2,
+            "goals_for_player": goals_for_id1,
+            "goals_for_opponent": goals_for_id2,
             "overtime_games": overtime_games,
             "first_meeting_date": first_meeting_date,
             "last_meeting_date": last_meeting_date,
             "tournaments": tournaments_list,
-            "last_10": {
-                "id1": {"wins": last10_w, "losses": last10_l, "draws": last10_d},
-                "id2": {"wins": last10_l, "losses": last10_w, "draws": last10_d},
-            },
+            "last_10": {"wins": last10_w, "losses": last10_l, "draws": last10_d},
         }
 
-        player1 = {"id": id1_int, "name": name1}
-        player2 = {"id": id2_int, "name": name2}
+        matches_id2 = [
+            {
+                **match,
+                "goals_for_player": match["goals_for_opponent"],
+                "goals_for_opponent": match["goals_for_player"],
+            }
+            for match in matches_id1
+        ]
 
-        pair_path = H2H_DIR / f"{id1_int}/{id2_int}.json"
-        if chunked:
-            manifest = {
-                "player1": player1,
-                "player2": player2,
-                "summary": summary,
-                "chunks": chunks,
-            }
-            write_json(pair_path, manifest)
-        else:
-            payload = {
-                "player1": player1,
-                "player2": player2,
-                "summary": summary,
-                "matches": current_matches,
-            }
-            write_json(pair_path, payload)
+        summary_id2 = {
+            "total_matches": total_matches,
+            "wins_player": wins_id2,
+            "wins_opponent": wins_id1,
+            "draws": draws,
+            "goals_for_player": goals_for_id2,
+            "goals_for_opponent": goals_for_id1,
+            "overtime_games": overtime_games,
+            "first_meeting_date": first_meeting_date,
+            "last_meeting_date": last_meeting_date,
+            "tournaments": tournaments_list,
+            "last_10": {"wins": last10_l, "losses": last10_w, "draws": last10_d},
+        }
+
+        player_payloads[id1_int]["opponents"][str(id2_int)] = {
+            "player": {"id": id2_int, "name": name2},
+            "summary": summary_id1,
+            "matches": matches_id1,
+        }
+        player_payloads[id2_int]["opponents"][str(id1_int)] = {
+            "player": {"id": id1_int, "name": name1},
+            "summary": summary_id2,
+            "matches": matches_id2,
+        }
+
+    for pid, payload in player_payloads.items():
+        write_json(H2H_DIR / f"{pid}.json", payload)
 
 
 def main() -> int:
@@ -424,7 +434,6 @@ def main() -> int:
 
     print("Loading players...")
     players, player_names = load_players(players_path)
-    write_json(DATA_DIR / "players.json", players)
 
     print("Loading tournaments...")
     tournaments = load_tournaments(tournaments_path)
@@ -433,8 +442,21 @@ def main() -> int:
     print("Processing matches...")
     matches = prepare_matches(matches_path)
 
-    print("Building H2H pairs...")
-    build_pairs(matches, player_names)
+    print("Filtering players with 50+ matches...")
+    all_ids = pd.concat([matches["player1_id"], matches["player2_id"]])
+    match_counts = all_ids.value_counts()
+    eligible_ids = set(match_counts[match_counts >= 50].index.astype(int).tolist())
+
+    matches = matches[
+        matches["player1_id"].isin(eligible_ids)
+        & matches["player2_id"].isin(eligible_ids)
+    ]
+
+    players, player_names = filter_players(players, eligible_ids)
+    write_json(DATA_DIR / "players.json", players)
+
+    print("Building H2H player files...")
+    build_player_files(matches, player_names)
 
     print("Build completed.")
     return 0
