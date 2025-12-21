@@ -8,6 +8,10 @@ on:
     - cron: "0 4 * * 0"
   workflow_dispatch:
 
+permissions:
+  contents: read
+  deployments: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
