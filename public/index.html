@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Table Hockey H2H</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Space+Grotesk:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="background">
+    <div class="orb orb-a"></div>
+    <div class="orb orb-b"></div>
+    <div class="grid"></div>
+  </div>
+
+  <header class="hero">
+    <div class="hero-content">
+      <p class="eyebrow">Table Hockey Archives</p>
+      <h1>Head-to-Head Tracker</h1>
+      <p class="lead">
+        Compare every recorded matchup in one place. Built for deep dives, quick rival checks,
+        and that one upset you still remember.
+      </p>
+    </div>
+    <div class="hero-panel">
+      <div class="search-row">
+        <label>
+          <span>Player A</span>
+          <input id="player-a" list="players-list-a" placeholder="Start typing a name" autocomplete="off" />
+          <datalist id="players-list-a"></datalist>
+        </label>
+        <label>
+          <span>Player B</span>
+          <input id="player-b" list="players-list-b" placeholder="Start typing a name" autocomplete="off" />
+          <datalist id="players-list-b"></datalist>
+        </label>
+      </div>
+      <div class="action-row">
+        <button id="compare-btn" type="button">Compare</button>
+        <p id="status" role="status"></p>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="summary" id="summary">
+      <div class="summary-header">
+        <h2 id="headline">Pick two players to compare</h2>
+        <p id="subhead">Match history, records, and tournament context appear here.</p>
+      </div>
+      <div class="summary-grid" id="summary-grid"></div>
+    </section>
+
+    <section class="filters" id="filters">
+      <div class="filter-card">
+        <label for="year-filter">Year</label>
+        <select id="year-filter"></select>
+      </div>
+      <div class="filter-card">
+        <label for="tournament-filter">Tournament</label>
+        <select id="tournament-filter"></select>
+      </div>
+      <div class="filter-card">
+        <label for="stage-filter">Stage</label>
+        <select id="stage-filter"></select>
+      </div>
+    </section>
+
+    <section class="matches" id="matches">
+      <div class="matches-header">
+        <h3>Match List</h3>
+        <span id="match-count"></span>
+      </div>
+      <div class="table-wrap">
+        <table id="matches-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Tournament</th>
+              <th>Stage</th>
+              <th>Score</th>
+              <th>OT</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>Static, zero-runtime build powered by the Scorpion dataset.</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
