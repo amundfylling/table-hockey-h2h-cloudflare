@@ -312,13 +312,32 @@ body[data-theme="dark"] .grid {
 
 .recent-list button {
   border: 1px solid var(--border);
-  background: transparent;
+  background: var(--bg-alt);
   border-radius: 999px;
   padding: 6px 14px;
   cursor: pointer;
   font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+  -webkit-text-fill-color: currentColor;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
+.recent-list button:hover,
+.recent-list button:focus-visible {
+  border-color: rgba(24, 32, 37, 0.24);
+}
+
+body[data-theme="dark"] .recent-list button {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: var(--text);
+}
+
+body[data-theme="dark"] .recent-list button:hover,
+body[data-theme="dark"] .recent-list button:focus-visible {
+  border-color: rgba(255, 255, 255, 0.3);
+}
 .stage-card {
   display: flex;
   align-items: center;
@@ -425,15 +444,38 @@ body[data-theme="dark"] .h2h-scoreboard {
 }
 
 .scoreboard-title {
-  padding: 10px 16px;
-  border-radius: 999px;
-  background: var(--accent);
-  color: #fff;
+  padding: 4px 10px;
+  border-radius: 0;
+  background: transparent;
+  color: var(--accent);
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  font-size: 0.7rem;
   text-align: center;
+  cursor: default;
+  user-select: none;
+  position: relative;
+}
+
+.scoreboard-title::before,
+.scoreboard-title::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 36px;
+  height: 1px;
+  background: var(--border);
+}
+
+.scoreboard-title::before {
+  right: 100%;
+  margin-right: 12px;
+}
+
+.scoreboard-title::after {
+  left: 100%;
+  margin-left: 12px;
 }
 
 .score-rows {
@@ -618,6 +660,11 @@ body[data-theme="dark"] .h2h-scoreboard {
 
   .scoreboard-title {
     justify-self: center;
+  }
+
+  .scoreboard-title::before,
+  .scoreboard-title::after {
+    display: none;
   }
 
   .score-row {
@@ -948,7 +995,8 @@ body[data-theme="dark"] .h2h-scoreboard {
   border-radius: 999px;
   font-size: 0.75rem;
   font-weight: 600;
-  text-transform: uppercase;
+  text-transform: none;
+  white-space: nowrap;
 }
 
 .winner.a {

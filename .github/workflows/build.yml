@@ -52,6 +52,9 @@ jobs:
       - name: Build H2H data
         run: python scripts/build_h2h.py
 
+      - name: Validate H2H data
+        run: python -m unittest -v
+
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/pages-action@v1
         with:

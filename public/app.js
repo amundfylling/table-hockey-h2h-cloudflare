@@ -794,6 +794,13 @@ function formatRound(match) {
   return parts.length ? parts.join(" / ") : "-";
 }
 
+function firstName(value) {
+  if (!value) return "";
+  const trimmed = String(value).trim();
+  if (!trimmed) return "";
+  return trimmed.split(/\s+/)[0];
+}
+
 function formatScore(match) {
   if (!match) return DASH;
   if (!Number.isFinite(match.goals_a) || !Number.isFinite(match.goals_b)) return DASH;
@@ -1322,17 +1329,19 @@ function renderTable(matches) {
     const winnerCell = document.createElement("td");
     const winner = document.createElement("span");
     winner.className = "winner";
+    const nameA = firstName(state.playerA?.name) || "Player A";
+    const nameB = firstName(state.playerB?.name) || "Player B";
     if (match.result === "A") {
       winner.classList.add("a");
-      winner.textContent = "A";
+      winner.textContent = nameA;
       winner.title = state.playerA.name;
     } else if (match.result === "B") {
       winner.classList.add("b");
-      winner.textContent = "B";
+      winner.textContent = nameB;
       winner.title = state.playerB.name;
     } else {
       winner.classList.add("d");
-      winner.textContent = "D";
+      winner.textContent = "Draw";
       winner.title = "Draw";
     }
     winnerCell.appendChild(winner);
