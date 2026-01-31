@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <!-- Table hockey stick/player silhouette -->
+  <circle cx="24" cy="24" r="22" fill="currentColor" opacity="0.1"/>
+  <path d="M16 14v20l4-3V17l-4-3z" fill="currentColor"/>
+  <path d="M32 14v20l-4-3V17l4-3z" fill="currentColor"/>
+  <circle cx="24" cy="24" r="6" fill="currentColor"/>
+  <circle cx="24" cy="24" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <path d="M12 24h6m12 0h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+</svg>

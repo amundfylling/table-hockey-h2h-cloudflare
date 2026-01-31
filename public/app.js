@@ -94,6 +94,14 @@ function parseOvertime(value) {
   return text.includes("ot") || text.includes("over");
 }
 
+function formatDate(dateStr) {
+  if (!dateStr) return "-";
+  const parts = dateStr.split("-");
+  if (parts.length !== 3) return dateStr;
+  const [year, month, day] = parts;
+  return `${day}/${month}/${year}`;
+}
+
 function classifyStage(stage) {
   const text = normalizeText(stage);
   if (!text) return "other";
@@ -1299,7 +1307,8 @@ function renderTable(matches) {
     expCell.appendChild(expBtn);
 
     const dateCell = document.createElement("td");
-    dateCell.textContent = match.date || "-";
+    dateCell.className = "date-cell";
+    dateCell.textContent = formatDate(match.date);
 
     const tournamentCell = document.createElement("td");
     tournamentCell.textContent = match.tournament_name || "-";

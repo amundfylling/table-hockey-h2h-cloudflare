@@ -11,6 +11,7 @@
     href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Manrope:wght@400;500;600;700&display=swap"
     rel="stylesheet"
   />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -22,6 +23,16 @@
 
   <header class="site-header">
     <div class="brand">
+      <div class="logo" aria-hidden="true">
+        <svg viewBox="0 0 48 48" fill="none">
+          <circle cx="24" cy="24" r="22" fill="currentColor" opacity="0.15"/>
+          <path d="M16 14v20l4-3V17l-4-3z" fill="currentColor"/>
+          <path d="M32 14v20l-4-3V17l4-3z" fill="currentColor"/>
+          <circle cx="24" cy="24" r="6" fill="currentColor"/>
+          <circle cx="24" cy="24" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M12 24h6m12 0h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
       <div>
         <h1>Table Hockey H2H</h1>
         <p>Explore every rivalry, stage, and swing in momentum.</p>
@@ -219,6 +230,10 @@
       <p>We could not load this matchup. Please try again.</p>
     </section>
   </main>
+
+  <footer class="site-footer">
+    <p>Data sourced from <a href="https://github.com/amundfylling/Scorpion-Scraper-2.0" target="_blank" rel="noopener">Scorpion Scraper</a></p>
+  </footer>
 
   <script src="app.js" defer></script>
 </body>
