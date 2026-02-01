@@ -69,6 +69,10 @@ const elements = {
   emptyState: document.getElementById("empty-state"),
   errorState: document.getElementById("error-state"),
   themeToggle: document.getElementById("theme-toggle"),
+  filterToggle: document.getElementById("filter-toggle"),
+  filterMenu: document.getElementById("filter-menu"),
+  filterBackdrop: document.getElementById("filter-backdrop"),
+  filterClose: document.getElementById("filter-close"),
 };
 
 function normalizeText(text) {
@@ -1757,6 +1761,30 @@ function initFilters() {
     state.page = 1;
     updateView();
   });
+
+  const toggleFilterMenu = (open) => {
+    if (open) {
+      elements.filterMenu.hidden = false;
+      elements.filterBackdrop.hidden = false;
+      // Slight delay for animation
+      requestAnimationFrame(() => {
+        elements.filterMenu.removeAttribute("hidden");
+        elements.filterBackdrop.style.opacity = "1";
+      });
+    } else {
+      elements.filterMenu.setAttribute("hidden", "");
+      elements.filterBackdrop.style.opacity = "0";
+      setTimeout(() => {
+        elements.filterMenu.hidden = true;
+        elements.filterBackdrop.hidden = true;
+      }, 300);
+    }
+  };
+
+  elements.filterToggle.addEventListener("click", () => toggleFilterMenu(true));
+  elements.filterClose.addEventListener("click", () => toggleFilterMenu(false));
+  elements.filterBackdrop.addEventListener("click", () => toggleFilterMenu(false));
+
   elements.sortFilter.addEventListener("change", () => {
     state.sort = elements.sortFilter.value;
     state.page = 1;

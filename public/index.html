@@ -129,8 +129,41 @@
       </div>
     </section>
 
-    <section class="card filters-card">
-      <div class="filters-grid">
+    <!-- Sticky Filter Toggle Button -->
+    <button id="filter-toggle" class="primary sticky-filter-btn" type="button">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <line x1="4" y1="21" x2="4" y2="14"></line>
+        <line x1="4" y1="10" x2="4" y2="3"></line>
+        <line x1="12" y1="21" x2="12" y2="12"></line>
+        <line x1="12" y1="8" x2="12" y2="3"></line>
+        <line x1="20" y1="21" x2="20" y2="16"></line>
+        <line x1="20" y1="12" x2="20" y2="3"></line>
+        <line x1="1" y1="14" x2="7" y2="14"></line>
+        <line x1="9" y1="8" x2="15" y2="8"></line>
+        <line x1="17" y1="16" x2="23" y2="16"></line>
+      </svg>
+      Filters
+    </button>
+
+    <!-- Filter Menu Sidebar -->
+    <div id="filter-backdrop" class="filter-backdrop" hidden></div>
+    <div id="filter-menu" class="filter-menu" hidden>
+      <div class="filter-header">
+        <h3>Filters</h3>
+        <button id="filter-close" class="ghost icon-btn" type="button">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="filter-content">
+        <div class="filter">
+          <label for="search-filter">Search</label>
+          <input id="search-filter" type="search" placeholder="Tournament or stage" />
+        </div>
         <div class="filter">
           <label for="year-filter">Year</label>
           <select id="year-filter"></select>
@@ -155,7 +188,7 @@
         </div>
         <div class="filter">
           <label>Options</label>
-          <div class="toggle-group">
+          <div class="toggle-group vertical">
             <label class="toggle">
               <input id="ot-toggle" type="checkbox" />
               <span>Only overtime</span>
@@ -166,20 +199,8 @@
             </label>
           </div>
         </div>
-        <div class="filter">
-          <label for="search-filter">Search</label>
-          <input id="search-filter" type="search" placeholder="Tournament or stage" />
-        </div>
-        <div class="filter">
-          <label for="page-size">Rows</label>
-          <select id="page-size">
-            <option value="25">25</option>
-            <option value="50" selected>50</option>
-            <option value="100">100</option>
-          </select>
-        </div>
       </div>
-    </section>
+    </div>
 
     <section class="card matches-card">
       <div class="matches-header">
@@ -187,10 +208,20 @@
           <h3>Match list</h3>
           <p id="match-count" class="muted">0 matches</p>
         </div>
-        <div class="pagination" id="pagination-top">
-          <button id="prev-page" class="ghost" type="button">Prev</button>
-          <span id="page-info" class="page-info">Page 1 of 1</span>
-          <button id="next-page" class="ghost" type="button">Next</button>
+        <div class="header-controls">
+          <div class="rows-selector">
+            <label for="page-size">Rows</label>
+            <select id="page-size">
+              <option value="25">25</option>
+              <option value="50" selected>50</option>
+              <option value="100">100</option>
+            </select>
+          </div>
+          <div class="pagination" id="pagination-top">
+            <button id="prev-page" class="ghost" type="button">Prev</button>
+            <span id="page-info" class="page-info">Page 1 of 1</span>
+            <button id="next-page" class="ghost" type="button">Next</button>
+          </div>
         </div>
       </div>
       <div class="table-wrap">
