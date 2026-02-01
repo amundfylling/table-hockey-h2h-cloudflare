@@ -1311,7 +1311,23 @@ function renderTable(matches) {
     dateCell.textContent = formatDate(match.date);
 
     const tournamentCell = document.createElement("td");
-    tournamentCell.textContent = match.tournament_name || "-";
+    if (match.stage_id) {
+      const link = document.createElement("a");
+      link.href = `https://th.sportscorpion.com/eng/tournament/stage/${match.stage_id}/matches/`;
+      link.target = "_blank";
+      link.className = "table-link";
+      link.innerHTML = `
+        ${match.tournament_name || "-"}
+        <svg class="external-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+          <polyline points="15 3 21 3 21 9"></polyline>
+          <line x1="10" y1="14" x2="21" y2="3"></line>
+        </svg>
+      `;
+      tournamentCell.appendChild(link);
+    } else {
+      tournamentCell.textContent = match.tournament_name || "-";
+    }
 
     const stageCell = document.createElement("td");
     stageCell.textContent = match.stage || "-";
