@@ -1055,10 +1055,11 @@ body[data-theme="dark"] .h2h-scoreboard {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: var(--accent-soft);
+  background: var(--border);
   padding: 4px 10px;
   border-radius: 999px;
   font-weight: 600;
+  color: var(--text-strong);
 }
 
 .badge {
