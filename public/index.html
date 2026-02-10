@@ -48,23 +48,24 @@
     <section class="card selection-card">
       <div class="selection-grid">
         <div class="player-field" data-player="a">
-          <label for="player-a">Player A</label>
+          <label for="player-a">Player 1</label>
           <div class="input-shell">
             <input id="player-a" type="text" autocomplete="off" placeholder="Search player" />
-            <button class="icon-btn" type="button" data-clear="a" aria-label="Clear player A">x</button>
+            <button class="icon-btn" type="button" data-clear="a" aria-label="Clear Player 1">x</button>
           </div>
-          <div id="player-a-list" class="typeahead" role="listbox" aria-label="Player A suggestions"></div>
+          <div id="player-a-list" class="typeahead" role="listbox" aria-label="Player 1 suggestions"></div>
         </div>
 
         <button id="swap-btn" class="swap-btn" type="button">Swap</button>
 
         <div class="player-field" data-player="b">
-          <label for="player-b">Player B</label>
+          <label for="player-b">Player 2</label>
           <div class="input-shell">
-            <input id="player-b" type="text" autocomplete="off" placeholder="Search player" />
-            <button class="icon-btn" type="button" data-clear="b" aria-label="Clear player B">x</button>
+            <input id="player-b" type="text" autocomplete="off" placeholder="Select Player 1 first" disabled />
+            <span id="player-b-loader" class="input-loader" hidden></span>
+            <button class="icon-btn" type="button" data-clear="b" aria-label="Clear Player 2">x</button>
           </div>
-          <div id="player-b-list" class="typeahead" role="listbox" aria-label="Player B suggestions"></div>
+          <div id="player-b-list" class="typeahead" role="listbox" aria-label="Player 2 suggestions"></div>
         </div>
       </div>
 

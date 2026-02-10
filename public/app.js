@@ -15,6 +15,8 @@ const state = {
   filteredMatches: [],
   playerA: null,
   playerB: null,
+  opponentsOfA: new Map(),
+  opponentsLoading: false,
   stageTab: "overall",
   filters: {
     year: "all",
@@ -73,6 +75,7 @@ const elements = {
   filterMenu: document.getElementById("filter-menu"),
   filterBackdrop: document.getElementById("filter-backdrop"),
   filterClose: document.getElementById("filter-close"),
+  playerBLoader: document.getElementById("player-b-loader"),
 };
 
 function normalizeText(text) {
@@ -373,9 +376,85 @@ function buildSuggestions(query) {
   return results;
 }
 
-function setupTypeahead(inputEl, listEl) {
+function buildOpponentSuggestions(query) {
+  if (!state.opponentsOfA.size) return [];
+  const value = normalizeText(query);
+  let results = [];
+
+  for (const [oppId, oppData] of state.opponentsOfA) {
+    const player = getPlayerById(oppId);
+    if (!player || !player.name) continue;
+    if (value.length >= 1) {
+      if (!player.search_key || !player.search_key.includes(value)) continue;
+    }
+    results.push({ ...player, totalMatches: oppData.totalMatches });
+  }
+
+  results.sort((a, b) => b.totalMatches - a.totalMatches);
+  return results.slice(0, 20);
+}
+
+async function loadOpponentsForPlayer(playerId) {
+  state.opponentsOfA = new Map();
+  state.opponentsLoading = true;
+  elements.playerBLoader.hidden = false;
+  elements.playerB.disabled = false;
+  elements.playerB.placeholder = "Loading opponents...";
+
+  try {
+    const groupIds = getAliasGroup(playerId);
+    const opponentMap = new Map();
+
+    for (const gId of groupIds) {
+      const payload = await fetchPlayerPayload(gId);
+      if (!payload || !payload.opponents) continue;
+      for (const [oppIdStr, oppData] of Object.entries(payload.opponents)) {
+        const oppId = Number(oppIdStr);
+        if (!Number.isFinite(oppId)) continue;
+        const totalMatches = oppData.summary?.total_matches || (Array.isArray(oppData.matches) ? oppData.matches.length : 0);
+        const existing = opponentMap.get(oppId);
+        if (existing) {
+          existing.totalMatches += totalMatches;
+        } else {
+          opponentMap.set(oppId, { totalMatches });
+        }
+      }
+    }
+
+    // Expand alias groups for opponents too
+    const expandedMap = new Map();
+    for (const [oppId, data] of opponentMap) {
+      const aliasGroup = getAliasGroup(oppId);
+      const primaryId = aliasGroup[0];
+      const existing = expandedMap.get(primaryId);
+      if (existing) {
+        existing.totalMatches += data.totalMatches;
+      } else {
+        expandedMap.set(primaryId, { ...data });
+      }
+    }
+
+    // Remove self from opponents
+    const selfGroup = getAliasGroup(playerId);
+    for (const selfId of selfGroup) {
+      expandedMap.delete(selfId);
+    }
+
+    state.opponentsOfA = expandedMap;
+    elements.playerB.placeholder = "Search opponent";
+  } catch (err) {
+    console.error("Failed to load opponents:", err);
+    elements.playerB.placeholder = "Search player";
+  } finally {
+    state.opponentsLoading = false;
+    elements.playerBLoader.hidden = true;
+  }
+}
+
+function setupTypeahead(inputEl, listEl, options = {}) {
   let activeIndex = -1;
   let currentItems = [];
+  const isPlayerB = options.forPlayerB || false;
   inputEl.setAttribute("aria-autocomplete", "list");
   inputEl.setAttribute("aria-controls", listEl.id);
   inputEl.setAttribute("aria-expanded", "false");
@@ -395,7 +474,27 @@ function setupTypeahead(inputEl, listEl) {
 
   const renderList = (items) => {
     listEl.innerHTML = "";
+    if (isPlayerB && !state.opponentsOfA.size && !state.opponentsLoading) {
+      if (!resolvePlayerId(elements.playerA)) {
+        const msg = document.createElement("div");
+        msg.className = "empty-message";
+        msg.textContent = "Select Player 1 first";
+        listEl.appendChild(msg);
+        openList();
+        currentItems = [];
+        return;
+      }
+    }
     if (!items.length) {
+      if (isPlayerB && state.opponentsOfA.size && inputEl.value.trim().length > 0) {
+        const msg = document.createElement("div");
+        msg.className = "empty-message";
+        msg.textContent = "No matching opponents";
+        listEl.appendChild(msg);
+        openList();
+        currentItems = [];
+        return;
+      }
       closeList();
       return;
     }
@@ -408,11 +507,18 @@ function setupTypeahead(inputEl, listEl) {
       btn.dataset.index = idx;
       const name = document.createElement("span");
       name.textContent = player.name;
-      const meta = document.createElement("span");
-      meta.className = "muted";
-      meta.textContent = `#${player.id}`;
       btn.appendChild(name);
-      btn.appendChild(meta);
+      if (isPlayerB && player.totalMatches != null) {
+        const count = document.createElement("span");
+        count.className = "game-count";
+        count.textContent = `${player.totalMatches} game${player.totalMatches !== 1 ? "s" : ""}`;
+        btn.appendChild(count);
+      } else {
+        const meta = document.createElement("span");
+        meta.className = "muted";
+        meta.textContent = `#${player.id}`;
+        btn.appendChild(meta);
+      }
       if (idx === activeIndex) {
         btn.classList.add("is-active");
       }
@@ -423,7 +529,12 @@ function setupTypeahead(inputEl, listEl) {
   };
 
   const updateList = () => {
-    const items = buildSuggestions(inputEl.value);
+    let items;
+    if (isPlayerB && state.opponentsOfA.size) {
+      items = buildOpponentSuggestions(inputEl.value);
+    } else {
+      items = buildSuggestions(inputEl.value);
+    }
     activeIndex = -1;
     renderList(items);
   };
@@ -433,6 +544,12 @@ function setupTypeahead(inputEl, listEl) {
   inputEl.addEventListener("input", () => {
     inputEl.dataset.playerId = "";
     debouncedUpdate();
+  });
+
+  inputEl.addEventListener("focus", () => {
+    if (isPlayerB && state.opponentsOfA.size && !inputEl.dataset.playerId) {
+      updateList();
+    }
   });
 
   inputEl.addEventListener("keydown", (event) => {
@@ -453,6 +570,9 @@ function setupTypeahead(inputEl, listEl) {
       if (selected) {
         setInputPlayer(inputEl, selected);
         closeList();
+        if (!isPlayerB) {
+          onPlayerASelected(selected);
+        }
       }
     } else if (event.key === "Escape") {
       closeList();
@@ -472,6 +592,9 @@ function setupTypeahead(inputEl, listEl) {
     if (player) {
       setInputPlayer(inputEl, player);
       closeList();
+      if (!isPlayerB) {
+        onPlayerASelected(player);
+      }
     }
   });
 
@@ -479,7 +602,13 @@ function setupTypeahead(inputEl, listEl) {
     setTimeout(closeList, 150);
   });
 
-  return { closeList, renderList };
+  return { closeList, renderList, updateList };
+}
+
+async function onPlayerASelected(player) {
+  if (!player || !player.id) return;
+  clearInputPlayer(elements.playerB, elements.listB);
+  await loadOpponentsForPlayer(player.id);
 }
 
 async function fetchJson(url) {
@@ -1697,7 +1826,7 @@ function renderTableSkeleton() {
   elements.matchesBody.appendChild(fragment);
 }
 
-function handleSwap() {
+async function handleSwap() {
   const aValue = elements.playerA.value;
   const bValue = elements.playerB.value;
   const aId = elements.playerA.dataset.playerId;
@@ -1707,6 +1836,13 @@ function handleSwap() {
   elements.playerB.value = aValue;
   elements.playerA.dataset.playerId = bId || "";
   elements.playerB.dataset.playerId = aId || "";
+
+  // Reload opponents for the new Player A
+  const newAId = bId ? Number(bId) : null;
+  if (newAId) {
+    elements.playerB.disabled = false;
+    await loadOpponentsForPlayer(newAId);
+  }
 
   if (aValue && bValue) {
     handleCompare();
@@ -1732,7 +1868,7 @@ function handleCopyLink() {
   }
 }
 
-function handleRecentClick(event) {
+async function handleRecentClick(event) {
   const button = event.target.closest("button");
   if (!button) return;
   const p1 = Number(button.dataset.p1);
@@ -1741,6 +1877,8 @@ function handleRecentClick(event) {
   const player1 = getPlayerById(p1) || { id: p1, name: `Player ${p1}` };
   const player2 = getPlayerById(p2) || { id: p2, name: `Player ${p2}` };
   setInputPlayer(elements.playerA, player1);
+  elements.playerB.disabled = false;
+  await loadOpponentsForPlayer(p1);
   setInputPlayer(elements.playerB, player2);
   handleCompare();
 }
@@ -1898,13 +2036,19 @@ async function init() {
   initInfoPopovers();
 
   const typeaheadA = setupTypeahead(elements.playerA, elements.listA);
-  const typeaheadB = setupTypeahead(elements.playerB, elements.listB);
+  const typeaheadB = setupTypeahead(elements.playerB, elements.listB, { forPlayerB: true });
 
   document.querySelectorAll("[data-clear]").forEach((button) => {
     button.addEventListener("click", () => {
       const target = button.dataset.clear === "a" ? elements.playerA : elements.playerB;
       const list = button.dataset.clear === "a" ? elements.listA : elements.listB;
       clearInputPlayer(target, list);
+      if (button.dataset.clear === "a") {
+        clearInputPlayer(elements.playerB, elements.listB);
+        state.opponentsOfA = new Map();
+        elements.playerB.disabled = true;
+        elements.playerB.placeholder = "Select Player 1 first";
+      }
     });
   });
 
@@ -1928,6 +2072,8 @@ async function init() {
     const player1 = getPlayerById(selection.p1) || { id: selection.p1, name: `Player ${selection.p1}` };
     const player2 = getPlayerById(selection.p2) || { id: selection.p2, name: `Player ${selection.p2}` };
     setInputPlayer(elements.playerA, player1);
+    elements.playerB.disabled = false;
+    await loadOpponentsForPlayer(selection.p1);
     setInputPlayer(elements.playerB, player2);
     handleCompare();
   }
