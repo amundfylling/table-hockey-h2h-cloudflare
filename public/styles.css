@@ -354,14 +354,7 @@ body[data-theme="dark"] .card:hover {
   opacity: 0.6;
 }
 
-.swap-btn {
-  border-radius: 999px;
-  padding: 10px 16px;
-  border: 1px dashed var(--border);
-  background: transparent;
-  cursor: pointer;
-  color: var(--muted);
-}
+/* swap-btn styles moved below skeleton section */
 
 .selection-actions {
   display: flex;
@@ -1055,6 +1048,26 @@ body[data-theme="dark"] .h2h-scoreboard {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
+/* Filter Badge */
+.filter-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--accent);
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.filter-badge[hidden] {
+  display: none;
+}
+
 /* Filter Backdrop */
 .filter-backdrop {
   position: fixed;
@@ -1372,6 +1385,73 @@ body[data-theme="dark"] .h2h-scoreboard {
   100% {
     background-position: -200% 0;
   }
+}
+
+/* Theme Toggle Icon */
+.theme-btn {
+  padding: 10px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+}
+
+.theme-icon {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.theme-icon.moon {
+  display: none;
+}
+
+body[data-theme="dark"] .theme-icon.sun {
+  display: none;
+}
+
+body[data-theme="dark"] .theme-icon.moon {
+  display: block;
+}
+
+/* Swap Button */
+.swap-btn {
+  border-radius: 999px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px dashed var(--border);
+  background: transparent;
+  cursor: pointer;
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+  transition: all 0.2s ease;
+}
+
+.swap-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+  transform: rotate(180deg);
+}
+
+/* Filter Header Actions */
+.filter-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-reset-btn {
+  font-size: 0.85rem;
+  padding: 6px 14px;
+}
+
+/* Copy link success state */
+.copy-success {
+  border-color: var(--teal) !important;
+  color: var(--teal) !important;
+  background: var(--teal-soft) !important;
 }
 
 @media (max-width: 900px) {
