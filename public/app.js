@@ -1887,14 +1887,14 @@ function handleCopyLink() {
   updateUrl(idA, idB);
   const link = window.location.href;
   const btn = elements.copyLinkBtn;
-  const originalText = btn.textContent;
   if (navigator.clipboard) {
     navigator.clipboard.writeText(link).then(
       () => {
         btn.textContent = "Copied!";
         btn.classList.add("copy-success");
-        setTimeout(() => {
-          btn.textContent = originalText;
+        clearTimeout(btn._copyTimer);
+        btn._copyTimer = setTimeout(() => {
+          btn.textContent = "Copy link";
           btn.classList.remove("copy-success");
         }, 2000);
       },

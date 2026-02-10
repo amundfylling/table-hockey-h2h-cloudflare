@@ -1057,7 +1057,7 @@ body[data-theme="dark"] .h2h-scoreboard {
   height: 18px;
   padding: 0 5px;
   border-radius: 999px;
-  background: #fff;
+  background: var(--bg);
   color: var(--accent);
   font-size: 0.7rem;
   font-weight: 700;
