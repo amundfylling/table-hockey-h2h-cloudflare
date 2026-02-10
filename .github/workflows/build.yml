@@ -36,14 +36,6 @@ jobs:
           restore-keys: |
             pip-${{ runner.os }}-
 
-      - name: Cache data
-        uses: actions/cache@v4
-        with:
-          path: .cache
-          key: data-${{ runner.os }}-${{ hashFiles('scripts/build_h2h.py') }}-${{ env.MATCHES_PARQUET_URL }}-${{ env.PLAYERS_CSV_URL }}-${{ env.TOURNAMENTS_CSV_URL }}
-          restore-keys: |
-            data-${{ runner.os }}-
-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
