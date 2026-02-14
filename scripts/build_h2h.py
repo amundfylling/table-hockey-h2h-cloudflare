@@ -118,28 +118,12 @@ def load_tournaments(tournaments_path: Path) -> Iterable[dict]:
     return tournaments
 
 
-def prepare_matches(matches_path: Path) -> pd.DataFrame:
-    matches = pd.read_parquet(matches_path, engine="pyarrow")
-    matches = matches.rename(
-        columns={
-            "StageID": "stage_id",
-            "Player1": "player1_name",
-            "Player1ID": "player1_id",
-            "Player2": "player2_name",
-            "Player2ID": "player2_id",
-            "GoalsPlayer1": "goals_player1",
-            "GoalsPlayer2": "goals_player2",
-            "Overtime": "overtime_raw",
-            "Stage": "stage",
-            "RoundNumber": "round_number",
-            "PlayoffGameNumber": "playoff_game_number",
-            "Date": "date_raw",
-            "TournamentName": "tournament_name",
-            "TournamentID": "tournament_id",
-            "StageSequence": "stage_sequence",
-        }
-    )
+EXTRA_MATCHES_URL = (
+    "https://raw.githubusercontent.com/amundfylling/bordshockey.net-scraper/"
+    "refs/heads/main/bordshockey_results.csv"
+)
 
+def process_matches_df(matches: pd.DataFrame) -> pd.DataFrame:
     matches["player1_id"] = pd.to_numeric(matches["player1_id"], errors="coerce")
     matches["player2_id"] = pd.to_numeric(matches["player2_id"], errors="coerce")
     matches = matches.dropna(subset=["player1_id", "player2_id"])
@@ -161,7 +145,9 @@ def prepare_matches(matches_path: Path) -> pd.DataFrame:
     if "playoff_game_number" in matches:
         matches["playoff_game_number"] = to_int(matches["playoff_game_number"])
     else:
-        matches["playoff_game_number"] = pd.Series([pd.NA] * len(matches), index=matches.index)
+        matches["playoff_game_number"] = pd.Series(
+            [pd.NA] * len(matches), index=matches.index
+        )
     if "tournament_id" in matches:
         matches["tournament_id"] = to_int(matches["tournament_id"])
     else:
@@ -201,17 +187,62 @@ def prepare_matches(matches_path: Path) -> pd.DataFrame:
     matches["goals_id1"] = matches["goals_player1"].where(is_p1_id1, matches["goals_player2"])
     matches["goals_id2"] = matches["goals_player2"].where(is_p1_id1, matches["goals_player1"])
 
-    sort_cols = [
-        "id1",
-        "id2",
-        "date_dt",
-        "tournament_id",
-        "stage_sequence",
-        "round_number",
-        "playoff_game_number",
-    ]
-    matches = matches.sort_values(sort_cols, kind="mergesort", na_position="last")
     return matches
+
+
+def read_matches_parquet(matches_path: Path) -> pd.DataFrame:
+    matches = pd.read_parquet(matches_path, engine="pyarrow")
+    matches = matches.rename(
+        columns={
+            "StageID": "stage_id",
+            "Player1": "player1_name",
+            "Player1ID": "player1_id",
+            "Player2": "player2_name",
+            "Player2ID": "player2_id",
+            "GoalsPlayer1": "goals_player1",
+            "GoalsPlayer2": "goals_player2",
+            "Overtime": "overtime_raw",
+            "Stage": "stage",
+            "RoundNumber": "round_number",
+            "PlayoffGameNumber": "playoff_game_number",
+            "Date": "date_raw",
+            "TournamentName": "tournament_name",
+            "TournamentID": "tournament_id",
+            "StageSequence": "stage_sequence",
+        }
+    )
+    return process_matches_df(matches)
+
+
+def read_extra_matches_csv(csv_path: Path) -> pd.DataFrame:
+    matches = pd.read_csv(csv_path)
+    # Map CSV columns to internal schema
+    matches = matches.rename(
+        columns={
+            "StageID": "stage_id",
+            "Player1": "player1_name",
+            "Player1ID": "player1_id",
+            "Player2": "player2_name",
+            "Player2ID": "player2_id",
+            "GoalsPlayer1": "goals_player1",
+            "GoalsPlayer2": "goals_player2",
+            "Overtime": "overtime_raw",
+            "Stage": "stage",
+            "RoundNumber": "round_number",
+            "PlayoffGameNumber": "playoff_game_number",
+            "Date": "date_raw",
+            "TournamentName": "tournament_name",
+            "TournamentID": "tournament_id",
+            "StageSequence": "stage_sequence",
+        }
+    )
+    # Ensure missing IDs are NaN so they get dropped or handled correctly
+    if "stage_id" not in matches:
+        matches["stage_id"] = pd.NA
+    if "tournament_id" not in matches:
+        matches["tournament_id"] = pd.NA
+
+    return process_matches_df(matches)
 
 
 def _row_to_match(row) -> dict:
@@ -400,6 +431,7 @@ def main() -> int:
     tournaments_url = os.environ.get("TOURNAMENTS_CSV_URL", dl.DEFAULT_TOURNAMENTS_URL)
 
     matches_path = CACHE_DIR / "scraped_matches.parquet"
+    extra_matches_path = CACHE_DIR / "extra_matches.csv"
     players_path = CACHE_DIR / "players_data.csv"
     tournaments_path = CACHE_DIR / "tournament_data.csv"
 
@@ -409,6 +441,15 @@ def main() -> int:
         matches_path,
         etag_path=CACHE_DIR / "scraped_matches.etag",
         last_modified_path=CACHE_DIR / "scraped_matches.last_modified",
+        retries=5,
+        backoff=1.5,
+        timeout=120,
+    )
+    dl.download(
+        EXTRA_MATCHES_URL,
+        extra_matches_path,
+        etag_path=CACHE_DIR / "extra_matches.etag",
+        last_modified_path=CACHE_DIR / "extra_matches.last_modified",
         retries=5,
         backoff=1.5,
         timeout=120,
@@ -440,7 +481,21 @@ def main() -> int:
     write_json(DATA_DIR / "tournaments.json", tournaments)
 
     print("Processing matches...")
-    matches = prepare_matches(matches_path)
+    matches_main = read_matches_parquet(matches_path)
+    matches_extra = read_extra_matches_csv(extra_matches_path)
+
+    matches = pd.concat([matches_main, matches_extra], ignore_index=True)
+
+    sort_cols = [
+        "id1",
+        "id2",
+        "date_dt",
+        "tournament_id",
+        "stage_sequence",
+        "round_number",
+        "playoff_game_number",
+    ]
+    matches = matches.sort_values(sort_cols, kind="mergesort", na_position="last")
 
     print("Filtering players with 50+ matches...")
     all_ids = pd.concat([matches["player1_id"], matches["player2_id"]])
