@@ -19,7 +19,8 @@ const state = {
   opponentsLoading: false,
   stageTab: "overall",
   filters: {
-    year: "all",
+    yearFrom: "all",
+    yearTo: "all",
     tournament: "all",
     stage: "all",
     search: "",
@@ -52,7 +53,8 @@ const elements = {
   formChips: document.getElementById("form-chips"),
   recordChart: document.getElementById("record-chart"),
   goalsChart: document.getElementById("goals-chart"),
-  yearFilter: document.getElementById("year-filter"),
+  yearFromFilter: document.getElementById("year-from-filter"),
+  yearToFilter: document.getElementById("year-to-filter"),
   tournamentFilter: document.getElementById("tournament-filter"),
   stageFilter: document.getElementById("stage-filter"),
   sortFilter: document.getElementById("sort-filter"),
@@ -1571,7 +1573,8 @@ function applyFilters(matches) {
   const filters = state.filters;
   const search = normalizeText(filters.search);
   return matches.filter((match) => {
-    if (filters.year !== "all" && match.year !== filters.year) return false;
+    if (filters.yearFrom !== "all" && match.year < filters.yearFrom) return false;
+    if (filters.yearTo !== "all" && match.year > filters.yearTo) return false;
     if (filters.tournament !== "all" && match.tournament_key !== filters.tournament) return false;
     if (filters.stage !== "all" && match.stage !== filters.stage) return false;
     if (filters.otOnly && !match.overtime) return false;
@@ -1641,7 +1644,9 @@ function refreshFilterOptions(matches) {
     if (match.stage) stages.add(match.stage);
   });
 
-  const yearOptions = ["all", ...Array.from(years).sort()];
+  const sortedYears = Array.from(years).sort();
+  const yearFromOptions = ["all", ...sortedYears];
+  const yearToOptions = ["all", ...sortedYears];
   const tournamentOptions = ["all", ...Array.from(tournaments.keys()).sort((a, b) => {
     const nameA = tournaments.get(a) || "";
     const nameB = tournaments.get(b) || "";
@@ -1649,7 +1654,8 @@ function refreshFilterOptions(matches) {
   })];
   const stageOptions = ["all", ...Array.from(stages).sort()];
 
-  populateSelect(elements.yearFilter, yearOptions, "All years");
+  populateSelect(elements.yearFromFilter, yearFromOptions, "Earliest");
+  populateSelect(elements.yearToFilter, yearToOptions, "Latest");
   populateSelect(elements.tournamentFilter, tournamentOptions, "All tournaments", tournaments);
   populateSelect(elements.stageFilter, stageOptions, "All stages");
 }
@@ -1703,6 +1709,23 @@ function updateView() {
   updatePagination(state.filteredMatches.length);
 }
 
+function resetFilters() {
+  state.filters.yearFrom = "all";
+  state.filters.yearTo = "all";
+  state.filters.tournament = "all";
+  state.filters.stage = "all";
+  state.filters.search = "";
+  state.filters.otOnly = false;
+  state.filters.tightOnly = false;
+  elements.yearFromFilter.value = "all";
+  elements.yearToFilter.value = "all";
+  elements.tournamentFilter.value = "all";
+  elements.stageFilter.value = "all";
+  elements.searchFilter.value = "";
+  elements.otToggle.checked = false;
+  elements.tightToggle.checked = false;
+}
+
 function setStageTab(stage) {
   state.stageTab = stage;
   elements.tabs.forEach((tab) => {
@@ -1710,18 +1733,6 @@ function setStageTab(stage) {
     tab.classList.toggle("is-active", isActive);
     tab.setAttribute("aria-selected", isActive ? "true" : "false");
   });
-  state.filters.year = "all";
-  state.filters.tournament = "all";
-  state.filters.stage = "all";
-  state.filters.search = "";
-  state.filters.otOnly = false;
-  state.filters.tightOnly = false;
-  elements.yearFilter.value = "all";
-  elements.tournamentFilter.value = "all";
-  elements.stageFilter.value = "all";
-  elements.searchFilter.value = "";
-  elements.otToggle.checked = false;
-  elements.tightToggle.checked = false;
   refreshFilterOptions(applyStageTab(state.baseMatches, stage));
   state.page = 1;
   updateView();
@@ -1777,6 +1788,7 @@ async function handleCompare() {
     safeStorageSet(STORAGE_KEYS.last, { p1: idA, p2: idB });
     addRecent(idA, idB, state.playerA.name, state.playerB.name);
     updateStageMeta();
+    resetFilters();
     setStageTab("overall");
     setLoading(false);
     setStatus("");
@@ -1884,8 +1896,21 @@ async function handleRecentClick(event) {
 }
 
 function initFilters() {
-  elements.yearFilter.addEventListener("change", () => {
-    state.filters.year = elements.yearFilter.value;
+  elements.yearFromFilter.addEventListener("change", () => {
+    state.filters.yearFrom = elements.yearFromFilter.value;
+    if (state.filters.yearFrom !== "all" && state.filters.yearTo !== "all" && state.filters.yearFrom > state.filters.yearTo) {
+      state.filters.yearTo = state.filters.yearFrom;
+      elements.yearToFilter.value = state.filters.yearTo;
+    }
+    state.page = 1;
+    updateView();
+  });
+  elements.yearToFilter.addEventListener("change", () => {
+    state.filters.yearTo = elements.yearToFilter.value;
+    if (state.filters.yearFrom !== "all" && state.filters.yearTo !== "all" && state.filters.yearTo < state.filters.yearFrom) {
+      state.filters.yearFrom = state.filters.yearTo;
+      elements.yearFromFilter.value = state.filters.yearFrom;
+    }
     state.page = 1;
     updateView();
   });

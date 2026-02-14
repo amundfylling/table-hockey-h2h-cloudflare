@@ -1179,6 +1179,23 @@ body[data-theme="dark"] .h2h-scoreboard {
   gap: 8px;
 }
 
+.period-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.period-row select {
+  flex: 1;
+  min-width: 0;
+}
+
+.period-separator {
+  color: var(--muted);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
 .filter label {
   font-size: 0.85rem;
   color: var(--muted);
