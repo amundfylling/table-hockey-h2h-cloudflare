@@ -77,6 +77,8 @@ const elements = {
   filterMenu: document.getElementById("filter-menu"),
   filterBackdrop: document.getElementById("filter-backdrop"),
   filterClose: document.getElementById("filter-close"),
+  filterReset: document.getElementById("filter-reset"),
+  filterBadge: document.getElementById("filter-badge"),
   playerBLoader: document.getElementById("player-b-loader"),
 };
 
@@ -528,6 +530,10 @@ function setupTypeahead(inputEl, listEl, options = {}) {
     });
     listEl.appendChild(fragment);
     openList();
+    const activeBtn = listEl.querySelector(".is-active");
+    if (activeBtn) {
+      activeBtn.scrollIntoView({ block: "nearest" });
+    }
   };
 
   const updateList = () => {
@@ -1685,6 +1691,27 @@ function updateStageMeta() {
   elements.stageMeta.textContent = `Overall ${total}, Round-robin ${rr}, Playoff ${po}`;
 }
 
+function countActiveFilters() {
+  let count = 0;
+  if (state.filters.year !== "all") count += 1;
+  if (state.filters.tournament !== "all") count += 1;
+  if (state.filters.stage !== "all") count += 1;
+  if (state.filters.search) count += 1;
+  if (state.filters.otOnly) count += 1;
+  if (state.filters.tightOnly) count += 1;
+  return count;
+}
+
+function updateFilterBadge() {
+  const count = countActiveFilters();
+  if (count > 0) {
+    elements.filterBadge.textContent = count;
+    elements.filterBadge.hidden = false;
+  } else {
+    elements.filterBadge.hidden = true;
+  }
+}
+
 function updateView() {
   if (!state.baseMatches.length) {
     renderSummary([]);
@@ -1707,6 +1734,7 @@ function updateView() {
   renderCharts(state.filteredMatches);
   renderTable(state.filteredMatches);
   updatePagination(state.filteredMatches.length);
+  updateFilterBadge();
 }
 
 function resetFilters() {
@@ -1870,9 +1898,18 @@ function handleCopyLink() {
   }
   updateUrl(idA, idB);
   const link = window.location.href;
+  const btn = elements.copyLinkBtn;
   if (navigator.clipboard) {
     navigator.clipboard.writeText(link).then(
-      () => setStatus("Link copied."),
+      () => {
+        btn.textContent = "Copied!";
+        btn.classList.add("copy-success");
+        clearTimeout(btn._copyTimer);
+        btn._copyTimer = setTimeout(() => {
+          btn.textContent = "Copy link";
+          btn.classList.remove("copy-success");
+        }, 2000);
+      },
       () => setStatus("Copy failed.")
     );
   } else {
@@ -1948,6 +1985,23 @@ function initFilters() {
   elements.filterClose.addEventListener("click", () => toggleFilterMenu(false));
   elements.filterBackdrop.addEventListener("click", () => toggleFilterMenu(false));
 
+  elements.filterReset.addEventListener("click", () => {
+    state.filters.year = "all";
+    state.filters.tournament = "all";
+    state.filters.stage = "all";
+    state.filters.search = "";
+    state.filters.otOnly = false;
+    state.filters.tightOnly = false;
+    elements.yearFilter.value = "all";
+    elements.tournamentFilter.value = "all";
+    elements.stageFilter.value = "all";
+    elements.searchFilter.value = "";
+    elements.otToggle.checked = false;
+    elements.tightToggle.checked = false;
+    state.page = 1;
+    updateView();
+  });
+
   elements.sortFilter.addEventListener("change", () => {
     state.sort = elements.sortFilter.value;
     state.page = 1;
@@ -1979,10 +2033,17 @@ function initFilters() {
 }
 
 function initPagination() {
+  const scrollToTable = () => {
+    const matchesCard = document.querySelector(".matches-card");
+    if (matchesCard) {
+      matchesCard.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
   const goPrev = () => {
     if (state.page > 1) {
       state.page -= 1;
       updateView();
+      scrollToTable();
     }
   };
   const goNext = () => {
@@ -1990,6 +2051,7 @@ function initPagination() {
     if (state.page < totalPages) {
       state.page += 1;
       updateView();
+      scrollToTable();
     }
   };
   elements.prevPage.addEventListener("click", goPrev);
