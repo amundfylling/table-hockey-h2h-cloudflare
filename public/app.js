@@ -26,11 +26,13 @@ const state = {
     search: "",
     otOnly: false,
     tightOnly: false,
+    bestOf: [],
   },
   sort: "date-desc",
   perPage: 50,
   page: 1,
   loading: false,
+  playoffMode: "series",
 };
 
 const elements = {
@@ -44,6 +46,8 @@ const elements = {
   status: document.getElementById("status"),
   recentList: document.getElementById("recent-list"),
   tabs: document.querySelectorAll(".tab"),
+  playoffModeToggle: document.getElementById("playoff-mode-toggle"),
+  modeButtons: document.querySelectorAll(".mode-btn"),
   stageMeta: document.getElementById("stage-meta"),
   headline: document.getElementById("headline"),
   subhead: document.getElementById("subhead"),
@@ -51,12 +55,16 @@ const elements = {
   summaryGrid: document.getElementById("summary-grid"),
   formTitle: document.getElementById("form-title"),
   formChips: document.getElementById("form-chips"),
+  recordChartTitle: document.getElementById("record-chart-title"),
   recordChart: document.getElementById("record-chart"),
+  goalsChartTitle: document.getElementById("goals-chart-title"),
   goalsChart: document.getElementById("goals-chart"),
   yearFromFilter: document.getElementById("year-from-filter"),
   yearToFilter: document.getElementById("year-to-filter"),
   tournamentFilter: document.getElementById("tournament-filter"),
   stageFilter: document.getElementById("stage-filter"),
+  bestOfFilter: document.getElementById("best-of-filter"),
+  bestOfOptions: document.getElementById("best-of-options"),
   sortFilter: document.getElementById("sort-filter"),
   otToggle: document.getElementById("ot-toggle"),
   tightToggle: document.getElementById("tight-toggle"),
@@ -74,10 +82,13 @@ const elements = {
   errorState: document.getElementById("error-state"),
   themeToggle: document.getElementById("theme-toggle"),
   filterToggle: document.getElementById("filter-toggle"),
+  filterCount: document.getElementById("filter-count"),
   filterMenu: document.getElementById("filter-menu"),
   filterBackdrop: document.getElementById("filter-backdrop"),
   filterClose: document.getElementById("filter-close"),
+  clearFiltersBtn: document.getElementById("clear-filters-btn"),
   playerBLoader: document.getElementById("player-b-loader"),
+  matchesHeadRow: document.getElementById("matches-head-row"),
 };
 
 function normalizeText(text) {
@@ -111,6 +122,13 @@ function formatDate(dateStr) {
   return `${day}/${month}/${year}`;
 }
 
+function formatDateRange(start, end) {
+  const first = formatDate(start);
+  const last = formatDate(end);
+  if (first === last || last === "-") return first;
+  return `${first} - ${last}`;
+}
+
 function classifyStage(stage) {
   const text = normalizeText(stage);
   if (!text) return "other";
@@ -131,6 +149,14 @@ function classifyStage(stage) {
     return "round-robin";
   }
   return "other";
+}
+
+function getStatsMode() {
+  return state.stageTab === "playoff" ? state.playoffMode : "games";
+}
+
+function isSeriesMode() {
+  return getStatsMode() === "series";
 }
 
 function safeStorageGet(key, fallback) {
@@ -157,10 +183,11 @@ function setStatus(message) {
 
 function updateFormTitle() {
   if (!elements.formTitle) return;
+  const label = isSeriesMode() ? "Series form" : "Game form";
   if (state.playerA && state.playerA.name) {
-    elements.formTitle.textContent = `Form (last 10 - ${state.playerA.name})`;
+    elements.formTitle.textContent = `${label} (last 10 - ${state.playerA.name})`;
   } else {
-    elements.formTitle.textContent = "Form (last 10)";
+    elements.formTitle.textContent = `${label} (last 10)`;
   }
 }
 
@@ -912,6 +939,176 @@ function computeSummary(matches) {
   return summary;
 }
 
+function getSeriesGroupKey(match) {
+  return [
+    match.tournament_key || `date:${match.date || ""}`,
+    match.stage_id ?? "",
+    match.stage_sequence ?? "",
+    normalizeText(match.stage || ""),
+    match.round_number ?? "",
+  ].join("|");
+}
+
+function buildPlayoffSeries(matches) {
+  const groups = new Map();
+  matches
+    .filter((match) => match.stage_type === "playoff")
+    .forEach((match) => {
+      const key = getSeriesGroupKey(match);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(match);
+    });
+
+  return Array.from(groups.values())
+    .map(createSeriesFromMatches)
+    .sort((a, b) => a.ts - b.ts || (a.stage_sequence ?? 0) - (b.stage_sequence ?? 0));
+}
+
+function annotatePlayoffGamesWithSeries(matches) {
+  const seriesItems = buildPlayoffSeries(matches);
+  const seriesByMatch = new Map();
+  seriesItems.forEach((series) => {
+    series.games.forEach((match) => {
+      seriesByMatch.set(buildMatchKey(match), series.best_of);
+    });
+  });
+  return matches.map((match) => ({
+    ...match,
+    series_best_of: seriesByMatch.get(buildMatchKey(match)) || null,
+  }));
+}
+
+function createSeriesFromMatches(matches) {
+  const ordered = [...matches].sort((a, b) => {
+    const seqA = a.stage_sequence ?? 0;
+    const seqB = b.stage_sequence ?? 0;
+    const roundA = a.round_number ?? 0;
+    const roundB = b.round_number ?? 0;
+    const gameA = a.playoff_game_number ?? 0;
+    const gameB = b.playoff_game_number ?? 0;
+    return a.ts - b.ts || seqA - seqB || roundA - roundB || gameA - gameB;
+  });
+  const first = ordered[0] || {};
+  const last = ordered[ordered.length - 1] || first;
+  const summary = {
+    gameWinsA: 0,
+    gameWinsB: 0,
+    gameDraws: 0,
+    goalsA: 0,
+    goalsB: 0,
+    overtimeGames: 0,
+  };
+
+  ordered.forEach((match) => {
+    summary.goalsA += match.goals_a;
+    summary.goalsB += match.goals_b;
+    if (match.result === "A") summary.gameWinsA += 1;
+    if (match.result === "B") summary.gameWinsB += 1;
+    if (match.result === "D") summary.gameDraws += 1;
+    if (match.overtime) summary.overtimeGames += 1;
+  });
+
+  const result =
+    summary.gameWinsA > summary.gameWinsB
+      ? "A"
+      : summary.gameWinsB > summary.gameWinsA
+        ? "B"
+        : "D";
+  const maxWins = Math.max(summary.gameWinsA, summary.gameWinsB);
+  const bestOf =
+    result !== "D" && maxWins > 0
+      ? maxWins * 2 - 1
+      : ordered.length > 1
+        ? ordered.length + (ordered.length % 2 === 0 ? 1 : 0)
+        : 1;
+  const gameDiff = summary.gameWinsA - summary.gameWinsB;
+
+  return {
+    type: "series",
+    date: first.date || "",
+    end_date: last.date || first.date || "",
+    ts: first.ts || 0,
+    year: first.year || "",
+    tournament_name: first.tournament_name || "",
+    tournament_id: first.tournament_id ?? null,
+    tournament_key: first.tournament_key || "",
+    stage: first.stage || "",
+    stage_type: "playoff",
+    stage_id: first.stage_id ?? null,
+    stage_sequence: first.stage_sequence ?? null,
+    round_number: first.round_number ?? null,
+    playoff_game_number: null,
+    games: ordered,
+    total_games: ordered.length,
+    game_wins_a: summary.gameWinsA,
+    game_wins_b: summary.gameWinsB,
+    game_draws: summary.gameDraws,
+    goals_a: summary.goalsA,
+    goals_b: summary.goalsB,
+    overtime_games: summary.overtimeGames,
+    overtime: summary.overtimeGames > 0,
+    result,
+    goal_diff: gameDiff,
+    goal_abs: Math.abs(gameDiff),
+    best_of: bestOf,
+  };
+}
+
+function computeSeriesSummary(seriesItems) {
+  const summary = {
+    total: seriesItems.length,
+    winsA: 0,
+    winsB: 0,
+    draws: 0,
+    gameWinsA: 0,
+    gameWinsB: 0,
+    gameDraws: 0,
+    goalsA: 0,
+    goalsB: 0,
+    totalGames: 0,
+    overtimeGames: 0,
+    largestWin: null,
+    largestLoss: null,
+    tournaments: new Set(),
+  };
+
+  seriesItems.forEach((series) => {
+    if (series.result === "A") summary.winsA += 1;
+    if (series.result === "B") summary.winsB += 1;
+    if (series.result === "D") summary.draws += 1;
+    summary.gameWinsA += series.game_wins_a || 0;
+    summary.gameWinsB += series.game_wins_b || 0;
+    summary.gameDraws += series.game_draws || 0;
+    summary.goalsA += series.goals_a || 0;
+    summary.goalsB += series.goals_b || 0;
+    summary.totalGames += series.total_games || 0;
+    summary.overtimeGames += series.overtime_games || 0;
+    if (series.tournament_key) summary.tournaments.add(series.tournament_key);
+
+    if (series.result === "A") {
+      if (
+        !summary.largestWin ||
+        series.goal_abs > summary.largestWin.goal_abs ||
+        (series.goal_abs === summary.largestWin.goal_abs &&
+          Math.abs(series.goals_a - series.goals_b) > Math.abs(summary.largestWin.goals_a - summary.largestWin.goals_b))
+      ) {
+        summary.largestWin = series;
+      }
+    } else if (series.result === "B") {
+      if (
+        !summary.largestLoss ||
+        series.goal_abs > summary.largestLoss.goal_abs ||
+        (series.goal_abs === summary.largestLoss.goal_abs &&
+          Math.abs(series.goals_a - series.goals_b) > Math.abs(summary.largestLoss.goals_a - summary.largestLoss.goals_b))
+      ) {
+        summary.largestLoss = series;
+      }
+    }
+  });
+
+  return summary;
+}
+
 function formatPercent(value) {
   if (!Number.isFinite(value)) return "0%";
   return `${value.toFixed(1)}%`;
@@ -937,6 +1134,16 @@ function formatRound(match) {
   return parts.length ? parts.join(" / ") : "-";
 }
 
+function formatSeriesLength(series) {
+  if (!series || !series.best_of || series.best_of <= 1) return "Single game";
+  return `Best of ${series.best_of}`;
+}
+
+function formatSeriesScore(series) {
+  if (!series) return DASH;
+  return `${series.game_wins_a}-${series.game_wins_b}`;
+}
+
 function firstName(value) {
   if (!value) return "";
   const trimmed = String(value).trim();
@@ -960,7 +1167,7 @@ function createScoreHeader() {
 
   const title = document.createElement("div");
   title.className = "scoreboard-title";
-  title.textContent = "Head to Head";
+  title.textContent = isSeriesMode() ? "Playoff Series" : "Head to Head";
 
   const right = document.createElement("div");
   right.className = "scoreboard-player scoreboard-player--b";
@@ -1090,7 +1297,32 @@ function createHighlightColumn(name, side, winInfo) {
   return column;
 }
 
-function renderSummary(matches) {
+function getSeriesHighlightInfo(series, side) {
+  if (!series) {
+    return { score: DASH, date: DASH, opponent: DASH, tournament: DASH };
+  }
+  const score =
+    side === "b"
+      ? `${series.game_wins_b}-${series.game_wins_a}`
+      : `${series.game_wins_a}-${series.game_wins_b}`;
+  const goalScore = side === "b" ? `${series.goals_b}-${series.goals_a}` : `${series.goals_a}-${series.goals_b}`;
+  return {
+    score,
+    date: formatDateRange(series.date, series.end_date),
+    opponent: side === "b" ? state.playerA?.name : state.playerB?.name,
+    tournament: `${series.tournament_name || DASH} | ${formatSeriesLength(series)} | goals ${goalScore}`,
+  };
+}
+
+function renderSummary(items) {
+  if (isSeriesMode()) {
+    renderSeriesSummary(items);
+    return;
+  }
+  renderGameSummary(items);
+}
+
+function renderGameSummary(matches) {
   updateFormTitle();
   if (!state.playerA || !state.playerB) return;
   const summary = computeSummary(matches);
@@ -1149,6 +1381,70 @@ function renderSummary(matches) {
   elements.summaryGrid.appendChild(scoreboard);
 }
 
+function renderSeriesSummary(seriesItems) {
+  updateFormTitle();
+  if (!state.playerA || !state.playerB) return;
+  const summary = computeSeriesSummary(seriesItems);
+  const total = summary.total || 0;
+  const winPct = total ? (summary.winsA / total) * 100 : 0;
+  const lossPct = total ? (summary.winsB / total) * 100 : 0;
+  const avgGoalsA = total ? summary.goalsA / total : 0;
+  const avgGoalsB = total ? summary.goalsB / total : 0;
+
+  elements.headline.textContent = `${state.playerA.name} vs ${state.playerB.name}`;
+  elements.subhead.textContent = total
+    ? `${total} playoff series, ${summary.totalGames} games across ${summary.tournaments.size} tournaments.`
+    : "No playoff series for this filter.";
+
+  elements.record.innerHTML = `
+    <div class="muted">Series record</div>
+    <div><strong>${summary.winsA}-${summary.draws}-${summary.winsB}</strong></div>
+    <div class="muted">${formatPercent(winPct)} series wins</div>
+  `;
+
+  elements.summaryGrid.innerHTML = "";
+  const scoreboard = document.createElement("div");
+  scoreboard.className = "h2h-scoreboard";
+
+  scoreboard.appendChild(createScoreHeader());
+
+  const rows = document.createElement("div");
+  rows.className = "score-rows";
+  rows.appendChild(
+    createScoreRow("Series wins", summary.winsA, summary.winsB, {
+      leftDisplay: `${summary.winsA} (${formatPercent(winPct)})`,
+      rightDisplay: `${summary.winsB} (${formatPercent(lossPct)})`,
+      totalOverride: summary.winsA + summary.winsB + summary.draws,
+      note: `Tied series ${summary.draws}`,
+    })
+  );
+  rows.appendChild(
+    createScoreRow("Games won in series", summary.gameWinsA, summary.gameWinsB, {
+      note: `Drawn games ${summary.gameDraws}`,
+    })
+  );
+  rows.appendChild(createScoreRow("Total goals in series", summary.goalsA, summary.goalsB));
+  rows.appendChild(
+    createScoreRow("Avg goals / series", avgGoalsA, avgGoalsB, {
+      leftDisplay: avgGoalsA.toFixed(1),
+      rightDisplay: avgGoalsB.toFixed(1),
+    })
+  );
+  scoreboard.appendChild(rows);
+
+  const highlights = document.createElement("div");
+  highlights.className = "scoreboard-highlights";
+  highlights.appendChild(
+    createHighlightColumn(state.playerA.name, "a", getSeriesHighlightInfo(summary.largestWin, "a"))
+  );
+  highlights.appendChild(
+    createHighlightColumn(state.playerB.name, "b", getSeriesHighlightInfo(summary.largestLoss, "b"))
+  );
+  scoreboard.appendChild(highlights);
+
+  elements.summaryGrid.appendChild(scoreboard);
+}
+
 function renderForm(matches) {
   elements.formChips.innerHTML = "";
   if (!matches.length) {
@@ -1162,7 +1458,11 @@ function renderForm(matches) {
     chip.className = "chip";
     const tournament = match.tournament_name || "Unknown tournament";
     const stage = match.stage ? ` | ${match.stage}` : "";
-    chip.title = `${match.date || "Unknown date"} | ${state.playerA.name} ${match.goals_a}-${match.goals_b} ${state.playerB.name} | ${tournament}${stage}`;
+    if (match.type === "series") {
+      chip.title = `${formatDateRange(match.date, match.end_date)} | ${state.playerA.name} ${formatSeriesScore(match)} ${state.playerB.name} | ${formatSeriesLength(match)} | ${tournament}${stage}`;
+    } else {
+      chip.title = `${match.date || "Unknown date"} | ${state.playerA.name} ${match.goals_a}-${match.goals_b} ${state.playerB.name} | ${tournament}${stage}`;
+    }
     if (match.result === "A") {
       chip.textContent = "W";
       chip.classList.add("win");
@@ -1275,9 +1575,13 @@ function renderRecordChart(matches) {
     const xLocal = (xPos / width) * rect.width + (rect.left - containerRect.left);
     const yLocal = (yPos / height) * rect.height + (rect.top - containerRect.top);
     const recordValue = cumulative > 0 ? `+${cumulative}` : `${cumulative}`;
+    const scoreLine =
+      match.type === "series"
+        ? `${state.playerA.name} ${formatSeriesScore(match)} ${state.playerB.name} (${match.goals_a}-${match.goals_b} goals)`
+        : `${state.playerA.name} ${match.goals_a}-${match.goals_b} ${state.playerB.name}`;
     const html = `
-      <div class="tooltip-title">${match.date || "Unknown date"}</div>
-      <div class="tooltip-row">${state.playerA.name} ${match.goals_a}-${match.goals_b} ${state.playerB.name}</div>
+      <div class="tooltip-title">${match.type === "series" ? formatDateRange(match.date, match.end_date) : match.date || "Unknown date"}</div>
+      <div class="tooltip-row">${scoreLine}</div>
       <div class="tooltip-row">Record: ${recordValue}</div>
     `;
     showChartTooltip(container, tooltip, html, xLocal, yLocal);
@@ -1408,11 +1712,56 @@ function renderGoalsChart(matches) {
 }
 
 function renderCharts(matches) {
+  if (elements.recordChartTitle) {
+    const title = elements.recordChartTitle.querySelector(".viz-title-text");
+    if (title) title.textContent = isSeriesMode() ? "Cumulative series record" : "Cumulative record";
+  }
+  if (elements.goalsChartTitle) {
+    elements.goalsChartTitle.textContent = isSeriesMode()
+      ? "Average series goals by year"
+      : "Average goals by year";
+  }
   renderRecordChart(matches);
   renderGoalsChart(matches);
 }
 
 function renderTable(matches) {
+  renderTableHeaders();
+  if (isSeriesMode()) {
+    renderSeriesTable(matches);
+    return;
+  }
+  renderGameTable(matches);
+}
+
+function renderTableHeaders() {
+  if (!elements.matchesHeadRow) return;
+  if (isSeriesMode()) {
+    elements.matchesHeadRow.innerHTML = `
+      <th></th>
+      <th>Date</th>
+      <th>Tournament</th>
+      <th>Stage</th>
+      <th>Series</th>
+      <th>Games</th>
+      <th>Goals</th>
+      <th>Winner</th>
+    `;
+    return;
+  }
+  elements.matchesHeadRow.innerHTML = `
+    <th></th>
+    <th>Date</th>
+    <th>Tournament</th>
+    <th>Stage</th>
+    <th>Round</th>
+    <th>Score</th>
+    <th>OT</th>
+    <th>Winner</th>
+  `;
+}
+
+function renderGameTable(matches) {
   elements.matchesBody.innerHTML = "";
   if (!matches.length) {
     const row = document.createElement("tr");
@@ -1548,6 +1897,226 @@ function renderTable(matches) {
   elements.matchCount.textContent = `Showing ${start + 1}-${end} of ${matches.length} matches`;
 }
 
+function renderSeriesTable(seriesItems) {
+  elements.matchesBody.innerHTML = "";
+  if (!seriesItems.length) {
+    const row = document.createElement("tr");
+    const cell = document.createElement("td");
+    cell.colSpan = 8;
+    cell.textContent = "No playoff series for these filters.";
+    row.appendChild(cell);
+    elements.matchesBody.appendChild(row);
+    elements.matchCount.textContent = "0 series";
+    return;
+  }
+
+  const start = (state.page - 1) * state.perPage;
+  const pageSeries = seriesItems.slice(start, start + state.perPage);
+  const fragment = document.createDocumentFragment();
+
+  pageSeries.forEach((series, index) => {
+    const rowId = `series-${start + index}`;
+    const row = document.createElement("tr");
+
+    const expCell = document.createElement("td");
+    const expBtn = document.createElement("button");
+    expBtn.type = "button";
+    expBtn.className = "expand-btn";
+    expBtn.dataset.row = rowId;
+    expBtn.textContent = "+";
+    expCell.appendChild(expBtn);
+
+    const dateCell = document.createElement("td");
+    dateCell.className = "date-cell";
+    dateCell.textContent = formatDateRange(series.date, series.end_date);
+
+    const tournamentCell = document.createElement("td");
+    if (series.stage_id) {
+      const link = document.createElement("a");
+      link.href = `https://th.sportscorpion.com/eng/tournament/stage/${series.stage_id}/matches/`;
+      link.target = "_blank";
+      link.className = "table-link";
+      link.innerHTML = `
+        ${series.tournament_name || "-"}
+        <svg class="external-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+          <polyline points="15 3 21 3 21 9"></polyline>
+          <line x1="10" y1="14" x2="21" y2="3"></line>
+        </svg>
+      `;
+      tournamentCell.appendChild(link);
+    } else {
+      tournamentCell.textContent = series.tournament_name || "-";
+    }
+
+    const stageCell = document.createElement("td");
+    stageCell.textContent = series.stage || "-";
+
+    const seriesCell = document.createElement("td");
+    seriesCell.textContent = formatSeriesLength(series);
+
+    const gamesCell = document.createElement("td");
+    const gamesSpan = document.createElement("span");
+    gamesSpan.className = "match-score";
+    gamesSpan.textContent = formatSeriesScore(series);
+    gamesCell.appendChild(gamesSpan);
+
+    const goalsCell = document.createElement("td");
+    goalsCell.textContent = `${series.goals_a} - ${series.goals_b}`;
+
+    const winnerCell = document.createElement("td");
+    const winner = document.createElement("span");
+    winner.className = "winner";
+    const nameA = firstName(state.playerA?.name) || "Player A";
+    const nameB = firstName(state.playerB?.name) || "Player B";
+    if (series.result === "A") {
+      winner.classList.add("a");
+      winner.textContent = nameA;
+      winner.title = state.playerA.name;
+    } else if (series.result === "B") {
+      winner.classList.add("b");
+      winner.textContent = nameB;
+      winner.title = state.playerB.name;
+    } else {
+      winner.classList.add("d");
+      winner.textContent = "Tied";
+      winner.title = "Tied series";
+    }
+    winnerCell.appendChild(winner);
+
+    row.appendChild(expCell);
+    row.appendChild(dateCell);
+    row.appendChild(tournamentCell);
+    row.appendChild(stageCell);
+    row.appendChild(seriesCell);
+    row.appendChild(gamesCell);
+    row.appendChild(goalsCell);
+    row.appendChild(winnerCell);
+
+    const detailRow = document.createElement("tr");
+    detailRow.id = `detail-${rowId}`;
+    detailRow.className = "detail-row";
+    detailRow.hidden = true;
+    const detailCell = document.createElement("td");
+    detailCell.colSpan = 8;
+    detailCell.appendChild(createSeriesDetailPanel(series));
+    detailRow.appendChild(detailCell);
+
+    fragment.appendChild(row);
+    fragment.appendChild(detailRow);
+  });
+
+  elements.matchesBody.appendChild(fragment);
+
+  const end = Math.min(start + state.perPage, seriesItems.length);
+  elements.matchCount.textContent = `Showing ${start + 1}-${end} of ${seriesItems.length} series`;
+}
+
+function createSeriesDetailPanel(series) {
+  const panel = document.createElement("div");
+  panel.className = "series-detail-panel";
+
+  const header = document.createElement("div");
+  header.className = "series-detail-head";
+
+  const titleWrap = document.createElement("div");
+  const title = document.createElement("h4");
+  title.textContent = "Series games";
+  const meta = document.createElement("p");
+  meta.textContent = `${formatDateRange(series.date, series.end_date)} | ${formatSeriesLength(series)} | ${series.stage || "Playoff"}`;
+  titleWrap.appendChild(title);
+  titleWrap.appendChild(meta);
+
+  const summary = document.createElement("div");
+  summary.className = "series-detail-summary";
+  const score = document.createElement("strong");
+  score.textContent = formatSeriesScore(series);
+  const goals = document.createElement("span");
+  goals.textContent = `${series.goals_a}-${series.goals_b} goals`;
+  summary.appendChild(score);
+  summary.appendChild(goals);
+
+  header.appendChild(titleWrap);
+  header.appendChild(summary);
+  panel.appendChild(header);
+
+  const list = document.createElement("div");
+  list.className = "series-games-list";
+  let runningA = 0;
+  let runningB = 0;
+  series.games.forEach((game) => {
+    if (game.result === "A") runningA += 1;
+    if (game.result === "B") runningB += 1;
+    list.appendChild(createSeriesGameRow(game, runningA, runningB));
+  });
+  panel.appendChild(list);
+  return panel;
+}
+
+function createSeriesGameRow(game, runningA, runningB) {
+  const item = document.createElement("div");
+  const resultClass = game.result === "A" ? "a" : game.result === "B" ? "b" : "d";
+  item.className = `series-game series-game--${resultClass}`;
+
+  const marker = document.createElement("div");
+  marker.className = "series-game-marker";
+  marker.textContent = game.playoff_game_number != null ? String(game.playoff_game_number) : "-";
+
+  const main = document.createElement("div");
+  main.className = "series-game-main";
+
+  const scoreline = document.createElement("div");
+  scoreline.className = "series-game-scoreline";
+  const playerA = document.createElement("span");
+  playerA.className = `series-game-player ${game.result === "A" ? "is-winner" : ""}`;
+  playerA.textContent = state.playerA?.name || "Player A";
+  const result = document.createElement("span");
+  result.className = "series-game-result";
+  const score = document.createElement("span");
+  score.className = "series-game-score";
+  score.textContent = `${game.goals_a}-${game.goals_b}`;
+  result.appendChild(score);
+  if (game.overtime) {
+    const ot = document.createElement("span");
+    ot.className = "badge series-game-ot";
+    ot.textContent = "OT";
+    result.appendChild(ot);
+  }
+  const playerB = document.createElement("span");
+  playerB.className = `series-game-player ${game.result === "B" ? "is-winner" : ""}`;
+  playerB.textContent = state.playerB?.name || "Player B";
+  scoreline.appendChild(playerA);
+  scoreline.appendChild(result);
+  scoreline.appendChild(playerB);
+
+  main.appendChild(scoreline);
+
+  const side = document.createElement("div");
+  side.className = "series-game-side";
+  const winner = document.createElement("span");
+  winner.className = `winner ${resultClass}`;
+  if (game.result === "A") {
+    winner.textContent = firstName(state.playerA?.name) || "Player A";
+    winner.title = state.playerA?.name || "Player A";
+  } else if (game.result === "B") {
+    winner.textContent = firstName(state.playerB?.name) || "Player B";
+    winner.title = state.playerB?.name || "Player B";
+  } else {
+    winner.textContent = "Draw";
+    winner.title = "Draw";
+  }
+  const running = document.createElement("span");
+  running.className = "series-game-running";
+  running.textContent = `${runningA}-${runningB} series`;
+  side.appendChild(winner);
+  side.appendChild(running);
+
+  item.appendChild(marker);
+  item.appendChild(main);
+  item.appendChild(side);
+  return item;
+}
+
 function updatePagination(total) {
   const totalPages = Math.max(1, Math.ceil(total / state.perPage));
   if (state.page > totalPages) state.page = totalPages;
@@ -1572,11 +2141,16 @@ function applyStageTab(matches, stageTab) {
 function applyFilters(matches) {
   const filters = state.filters;
   const search = normalizeText(filters.search);
+  const bestOfFilters = new Set(filters.bestOf || []);
   return matches.filter((match) => {
     if (filters.yearFrom !== "all" && match.year < filters.yearFrom) return false;
     if (filters.yearTo !== "all" && match.year > filters.yearTo) return false;
     if (filters.tournament !== "all" && match.tournament_key !== filters.tournament) return false;
     if (filters.stage !== "all" && match.stage !== filters.stage) return false;
+    if (state.stageTab === "playoff" && bestOfFilters.size) {
+      const bestOf = match.best_of ?? match.series_best_of;
+      if (!bestOfFilters.has(String(bestOf))) return false;
+    }
     if (filters.otOnly && !match.overtime) return false;
     if (filters.tightOnly && match.goal_abs > 1) return false;
     if (search) {
@@ -1635,6 +2209,7 @@ function refreshFilterOptions(matches) {
   const years = new Set();
   const tournaments = new Map();
   const stages = new Set();
+  const bestOfValues = new Set();
 
   matches.forEach((match) => {
     if (match.year) years.add(match.year);
@@ -1642,6 +2217,8 @@ function refreshFilterOptions(matches) {
       tournaments.set(match.tournament_key, match.tournament_name || "Unknown tournament");
     }
     if (match.stage) stages.add(match.stage);
+    const bestOf = match.best_of ?? match.series_best_of;
+    if (state.stageTab === "playoff" && bestOf) bestOfValues.add(String(bestOf));
   });
 
   const sortedYears = Array.from(years).sort();
@@ -1658,6 +2235,49 @@ function refreshFilterOptions(matches) {
   populateSelect(elements.yearToFilter, yearToOptions, "Latest");
   populateSelect(elements.tournamentFilter, tournamentOptions, "All tournaments", tournaments);
   populateSelect(elements.stageFilter, stageOptions, "All stages");
+  populateBestOfOptions(Array.from(bestOfValues).sort((a, b) => Number(a) - Number(b)));
+  syncFiltersFromControls();
+}
+
+function populateBestOfOptions(values) {
+  if (!elements.bestOfFilter || !elements.bestOfOptions) return;
+  const visible = state.stageTab === "playoff" && values.length > 0;
+  elements.bestOfFilter.hidden = !visible;
+  elements.bestOfOptions.innerHTML = "";
+  if (!visible) {
+    state.filters.bestOf = [];
+    return;
+  }
+
+  state.filters.bestOf = state.filters.bestOf.filter((value) => values.includes(value));
+  const fragment = document.createDocumentFragment();
+  values.forEach((value) => {
+    const label = document.createElement("label");
+    label.className = "toggle best-of-toggle";
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.value = value;
+    input.checked = state.filters.bestOf.includes(value);
+    const text = document.createElement("span");
+    text.textContent = value === "1" ? "Single game" : `Best of ${value}`;
+    label.appendChild(input);
+    label.appendChild(text);
+    fragment.appendChild(label);
+  });
+  elements.bestOfOptions.appendChild(fragment);
+}
+
+function syncFiltersFromControls() {
+  state.filters.yearFrom = elements.yearFromFilter.value;
+  state.filters.yearTo = elements.yearToFilter.value;
+  state.filters.tournament = elements.tournamentFilter.value;
+  state.filters.stage = elements.stageFilter.value;
+  if (elements.bestOfOptions) {
+    state.filters.bestOf = Array.from(
+      elements.bestOfOptions.querySelectorAll("input:checked"),
+      (input) => input.value
+    );
+  }
 }
 
 function populateSelect(selectEl, values, label, labelsMap) {
@@ -1681,12 +2301,70 @@ function populateSelect(selectEl, values, label, labelsMap) {
 function updateStageMeta() {
   const total = state.baseMatches.length;
   const rr = state.baseMatches.filter((match) => match.stage_type === "round-robin").length;
-  const po = state.baseMatches.filter((match) => match.stage_type === "playoff").length;
-  elements.stageMeta.textContent = `Overall ${total}, Round-robin ${rr}, Playoff ${po}`;
+  const playoffMatches = state.baseMatches.filter((match) => match.stage_type === "playoff");
+  const po = playoffMatches.length;
+  const series = buildPlayoffSeries(playoffMatches).length;
+  elements.stageMeta.textContent = `Overall ${total}, Round-robin ${rr}, Playoff ${po} games / ${series} series`;
+}
+
+function updateModeControls() {
+  const inPlayoff = state.stageTab === "playoff";
+  if (elements.playoffModeToggle) {
+    elements.playoffModeToggle.hidden = !inPlayoff;
+  }
+  elements.modeButtons.forEach((button) => {
+    const isActive = button.dataset.mode === state.playoffMode;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-pressed", isActive ? "true" : "false");
+  });
+  document.body.dataset.statsMode = getStatsMode();
+  const diffDesc = elements.sortFilter.querySelector('option[value="diff-desc"]');
+  const diffAsc = elements.sortFilter.querySelector('option[value="diff-asc"]');
+  if (diffDesc && diffAsc) {
+    if (isSeriesMode()) {
+      diffDesc.textContent = "Series margin (largest)";
+      diffAsc.textContent = "Series margin (smallest)";
+    } else {
+      diffDesc.textContent = "Goal diff (largest)";
+      diffAsc.textContent = "Goal diff (smallest)";
+    }
+  }
+}
+
+function getActiveItems() {
+  const stageMatches = applyStageTab(state.baseMatches, state.stageTab);
+  if (state.stageTab === "playoff" && state.playoffMode === "series") {
+    return buildPlayoffSeries(stageMatches);
+  }
+  if (state.stageTab === "playoff") {
+    return annotatePlayoffGamesWithSeries(stageMatches);
+  }
+  return stageMatches;
+}
+
+function getActiveFilterCount() {
+  let count = 0;
+  if (state.filters.yearFrom !== "all" || state.filters.yearTo !== "all") count += 1;
+  if (state.filters.tournament !== "all") count += 1;
+  if (state.filters.stage !== "all") count += 1;
+  if (state.filters.search.trim()) count += 1;
+  if (state.filters.otOnly) count += 1;
+  if (state.filters.tightOnly) count += 1;
+  if (state.stageTab === "playoff" && state.filters.bestOf.length) count += 1;
+  return count;
+}
+
+function updateFilterCount() {
+  if (!elements.filterCount) return;
+  const count = getActiveFilterCount();
+  elements.filterCount.hidden = count === 0;
+  elements.filterCount.textContent = count ? String(count) : "";
 }
 
 function updateView() {
   if (!state.baseMatches.length) {
+    updateModeControls();
+    updateFilterCount();
     renderSummary([]);
     renderForm([]);
     renderCharts([]);
@@ -1695,7 +2373,8 @@ function updateView() {
     return;
   }
 
-  state.stageMatches = applyStageTab(state.baseMatches, state.stageTab);
+  updateModeControls();
+  state.stageMatches = getActiveItems();
   const filtered = applyFilters(state.stageMatches);
   state.filteredMatches = sortMatches(filtered);
   const totalPages = Math.max(1, Math.ceil(state.filteredMatches.length / state.perPage));
@@ -1707,6 +2386,7 @@ function updateView() {
   renderCharts(state.filteredMatches);
   renderTable(state.filteredMatches);
   updatePagination(state.filteredMatches.length);
+  updateFilterCount();
 }
 
 function resetFilters() {
@@ -1717,6 +2397,7 @@ function resetFilters() {
   state.filters.search = "";
   state.filters.otOnly = false;
   state.filters.tightOnly = false;
+  state.filters.bestOf = [];
   elements.yearFromFilter.value = "all";
   elements.yearToFilter.value = "all";
   elements.tournamentFilter.value = "all";
@@ -1724,16 +2405,27 @@ function resetFilters() {
   elements.searchFilter.value = "";
   elements.otToggle.checked = false;
   elements.tightToggle.checked = false;
+  if (elements.bestOfOptions) {
+    elements.bestOfOptions.querySelectorAll("input").forEach((input) => {
+      input.checked = false;
+    });
+  }
+  updateFilterCount();
 }
 
 function setStageTab(stage) {
+  const previousStage = state.stageTab;
   state.stageTab = stage;
+  if (stage === "playoff" && previousStage !== "playoff") {
+    state.playoffMode = "series";
+  }
   elements.tabs.forEach((tab) => {
     const isActive = tab.dataset.stage === stage;
     tab.classList.toggle("is-active", isActive);
     tab.setAttribute("aria-selected", isActive ? "true" : "false");
   });
-  refreshFilterOptions(applyStageTab(state.baseMatches, stage));
+  updateModeControls();
+  refreshFilterOptions(getActiveItems());
   state.page = 1;
   updateView();
 }
@@ -1839,6 +2531,7 @@ function renderTableSkeleton() {
 }
 
 async function handleSwap() {
+  animateSwapButton();
   const aValue = elements.playerA.value;
   const bValue = elements.playerB.value;
   const aId = elements.playerA.dataset.playerId;
@@ -1859,6 +2552,13 @@ async function handleSwap() {
   if (aValue && bValue) {
     handleCompare();
   }
+}
+
+function animateSwapButton() {
+  if (!elements.swapBtn) return;
+  elements.swapBtn.classList.remove("is-spinning");
+  void elements.swapBtn.offsetWidth;
+  elements.swapBtn.classList.add("is-spinning");
 }
 
 function handleCopyLink() {
@@ -1924,6 +2624,16 @@ function initFilters() {
     state.page = 1;
     updateView();
   });
+  if (elements.bestOfOptions) {
+    elements.bestOfOptions.addEventListener("change", () => {
+      state.filters.bestOf = Array.from(
+        elements.bestOfOptions.querySelectorAll("input:checked"),
+        (input) => input.value
+      );
+      state.page = 1;
+      updateView();
+    });
+  }
 
   const toggleFilterMenu = (open) => {
     if (open) {
@@ -1947,6 +2657,13 @@ function initFilters() {
   elements.filterToggle.addEventListener("click", () => toggleFilterMenu(true));
   elements.filterClose.addEventListener("click", () => toggleFilterMenu(false));
   elements.filterBackdrop.addEventListener("click", () => toggleFilterMenu(false));
+  if (elements.clearFiltersBtn) {
+    elements.clearFiltersBtn.addEventListener("click", () => {
+      resetFilters();
+      state.page = 1;
+      updateView();
+    });
+  }
 
   elements.sortFilter.addEventListener("change", () => {
     state.sort = elements.sortFilter.value;
@@ -2002,6 +2719,17 @@ function initTabs() {
   elements.tabs.forEach((tab) => {
     tab.addEventListener("click", () => {
       setStageTab(tab.dataset.stage);
+    });
+  });
+}
+
+function initModeToggle() {
+  elements.modeButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      state.playoffMode = button.dataset.mode || "series";
+      refreshFilterOptions(getActiveItems());
+      state.page = 1;
+      updateView();
     });
   });
 }
@@ -2085,6 +2813,7 @@ async function init() {
   initFilters();
   initPagination();
   initTabs();
+  initModeToggle();
   initTableDetails();
 
   await loadPlayers();

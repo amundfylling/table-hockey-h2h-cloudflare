@@ -429,6 +429,12 @@ def main() -> int:
     matches_url = os.environ.get("MATCHES_PARQUET_URL", dl.DEFAULT_MATCHES_URL)
     players_url = os.environ.get("PLAYERS_CSV_URL", dl.DEFAULT_PLAYERS_URL)
     tournaments_url = os.environ.get("TOURNAMENTS_CSV_URL", dl.DEFAULT_TOURNAMENTS_URL)
+    try:
+        min_matches = int(os.environ.get("MIN_MATCHES", "50"))
+    except ValueError as exc:
+        raise ValueError("MIN_MATCHES must be an integer.") from exc
+    if min_matches < 1:
+        raise ValueError("MIN_MATCHES must be at least 1.")
 
     matches_path = CACHE_DIR / "scraped_matches.parquet"
     extra_matches_path = CACHE_DIR / "extra_matches.csv"
@@ -497,10 +503,10 @@ def main() -> int:
     ]
     matches = matches.sort_values(sort_cols, kind="mergesort", na_position="last")
 
-    print("Filtering players with 50+ matches...")
+    print(f"Filtering players with {min_matches}+ matches...")
     all_ids = pd.concat([matches["player1_id"], matches["player2_id"]])
     match_counts = all_ids.value_counts()
-    eligible_ids = set(match_counts[match_counts >= 50].index.astype(int).tolist())
+    eligible_ids = set(match_counts[match_counts >= min_matches].index.astype(int).tolist())
 
     matches = matches[
         matches["player1_id"].isin(eligible_ids)

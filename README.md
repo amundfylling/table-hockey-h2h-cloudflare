@@ -5,9 +5,11 @@ Static, zero-runtime head-to-head comparisons for table hockey matchups. The sit
 ## Data source
 
 Source of truth lives in the external repo:
+
 - https://github.com/amundfylling/Scorpion-Scraper-2.0
 
 Raw URLs (overridable via env vars):
+
 - `MATCHES_PARQUET_URL`: `https://raw.githubusercontent.com/amundfylling/Scorpion-Scraper-2.0/main/data/scraped_matches.parquet`
 - `PLAYERS_CSV_URL`: `https://raw.githubusercontent.com/amundfylling/Scorpion-Scraper-2.0/main/data/players_data.csv`
 - `TOURNAMENTS_CSV_URL`: `https://raw.githubusercontent.com/amundfylling/Scorpion-Scraper-2.0/main/data/tournament_data.csv`
@@ -15,9 +17,10 @@ Raw URLs (overridable via env vars):
 ## Build-time slicing
 
 `python scripts/build_h2h.py`:
+
 - Downloads raw data into `.cache/`.
 - Converts and normalizes types.
-- Filters to players with at least 50 matches.
+- Filters to players with at least `MIN_MATCHES` matches (`50` by default).
 - Generates static JSON into `public/data/`:
   - `players.json` (50+ matches only)
   - `tournaments.json`
@@ -28,18 +31,25 @@ No Parquet/CSV source files are stored in this repo, and generated JSON is a bui
 ## Local run
 
 ```bash
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
 pip install pandas pyarrow requests
-python scripts/build_h2h.py
+python3 scripts/build_h2h.py
 python -m http.server --directory public 8000
 ```
 
 Open `http://localhost:8000`.
 
+For a smaller local H2H build, raise the match threshold:
+
+```bash
+MIN_MATCHES=1000 python3 scripts/build_h2h.py
+```
+
 ## Cloudflare Pages deployment
 
 Required GitHub Secrets:
+
 - `CLOUDFLARE_API_TOKEN`
 - `CLOUDFLARE_ACCOUNT_ID`
 - `CLOUDFLARE_PROJECT_NAME`

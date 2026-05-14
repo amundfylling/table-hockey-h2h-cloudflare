@@ -10,6 +10,7 @@ DATA_DIR = ROOT_DIR / "public" / "data"
 H2H_DIR = DATA_DIR / "h2h"
 PLAYERS_PATH = DATA_DIR / "players.json"
 MATCHES_PATH = ROOT_DIR / ".cache" / "scraped_matches.parquet"
+EXTRA_MATCHES_PATH = ROOT_DIR / ".cache" / "extra_matches.csv"
 
 
 def load_player_totals(player_ids):
@@ -77,13 +78,16 @@ class TestH2HCounts(unittest.TestCase):
                 extra = f"\n...and {len(self.internal_errors) - 20} more."
             self.fail(f"Found match count issues:\n{preview}{extra}")
 
-    def test_counts_match_source_parquet(self):
+    def test_counts_match_source_data(self):
         if not MATCHES_PATH.exists():
             self.skipTest("No cached matches parquet found; skipping source count check.")
 
         matches = pd.read_parquet(
             MATCHES_PATH, engine="pyarrow", columns=["Player1ID", "Player2ID"]
         )
+        if EXTRA_MATCHES_PATH.exists():
+            extra_matches = pd.read_csv(EXTRA_MATCHES_PATH, usecols=["Player1ID", "Player2ID"])
+            matches = pd.concat([matches, extra_matches], ignore_index=True)
         matches = matches.rename(
             columns={"Player1ID": "player1_id", "Player2ID": "player2_id"}
         )
@@ -98,6 +102,10 @@ class TestH2HCounts(unittest.TestCase):
             matches["player1_id"].isin(eligible) & matches["player2_id"].isin(eligible)
         ]
         counts = pd.concat([matches["player1_id"], matches["player2_id"]]).value_counts()
+        self_match_counts = matches[matches["player1_id"] == matches["player2_id"]][
+            "player1_id"
+        ].value_counts()
+        counts = counts.subtract(self_match_counts, fill_value=0)
         expected_counts = {int(pid): int(count) for pid, count in counts.items()}
 
         mismatches = []
