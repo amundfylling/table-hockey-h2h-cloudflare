@@ -1017,7 +1017,7 @@ function createSeriesFromMatches(matches) {
   const maxWins = Math.max(summary.gameWinsA, summary.gameWinsB);
   const bestOf =
     result !== "D" && maxWins > 0
-      ? maxWins * 2 - 1
+      ? Math.max(maxWins * 2 - 1, ordered.length + (ordered.length % 2 === 0 ? 1 : 0))
       : ordered.length > 1
         ? ordered.length + (ordered.length % 2 === 0 ? 1 : 0)
         : 1;
