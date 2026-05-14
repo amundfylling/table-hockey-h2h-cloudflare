@@ -2040,6 +2040,12 @@ function createSeriesDetailPanel(series) {
   header.appendChild(summary);
   panel.appendChild(header);
 
+  // Header row with player names shown once
+  const namesHeader = document.createElement("div");
+  namesHeader.className = "series-games-header";
+  namesHeader.textContent = `${state.playerA?.name || "Player A"} vs ${state.playerB?.name || "Player B"}`;
+  panel.appendChild(namesHeader);
+
   const list = document.createElement("div");
   list.className = "series-games-list";
   let runningA = 0;
@@ -2062,34 +2068,15 @@ function createSeriesGameRow(game, runningA, runningB) {
   marker.className = "series-game-marker";
   marker.textContent = game.playoff_game_number != null ? String(game.playoff_game_number) : "-";
 
-  const main = document.createElement("div");
-  main.className = "series-game-main";
-
-  const scoreline = document.createElement("div");
-  scoreline.className = "series-game-scoreline";
-  const playerA = document.createElement("span");
-  playerA.className = `series-game-player ${game.result === "A" ? "is-winner" : ""}`;
-  playerA.textContent = state.playerA?.name || "Player A";
-  const result = document.createElement("span");
-  result.className = "series-game-result";
   const score = document.createElement("span");
   score.className = "series-game-score";
   score.textContent = `${game.goals_a}-${game.goals_b}`;
-  result.appendChild(score);
-  if (game.overtime) {
-    const ot = document.createElement("span");
-    ot.className = "badge series-game-ot";
-    ot.textContent = "OT";
-    result.appendChild(ot);
-  }
-  const playerB = document.createElement("span");
-  playerB.className = `series-game-player ${game.result === "B" ? "is-winner" : ""}`;
-  playerB.textContent = state.playerB?.name || "Player B";
-  scoreline.appendChild(playerA);
-  scoreline.appendChild(result);
-  scoreline.appendChild(playerB);
 
-  main.appendChild(scoreline);
+  const otSlot = document.createElement("span");
+  if (game.overtime) {
+    otSlot.className = "badge series-game-ot";
+    otSlot.textContent = "OT";
+  }
 
   const side = document.createElement("div");
   side.className = "series-game-side";
@@ -2107,12 +2094,13 @@ function createSeriesGameRow(game, runningA, runningB) {
   }
   const running = document.createElement("span");
   running.className = "series-game-running";
-  running.textContent = `${runningA}-${runningB} series`;
-  side.appendChild(winner);
+  running.textContent = `${runningA}-${runningB}`;
   side.appendChild(running);
+  side.appendChild(winner);
 
   item.appendChild(marker);
-  item.appendChild(main);
+  item.appendChild(score);
+  item.appendChild(otSlot);
   item.appendChild(side);
   return item;
 }
@@ -2570,9 +2558,22 @@ function handleCopyLink() {
   }
   updateUrl(idA, idB);
   const link = window.location.href;
+  const btn = elements.copyLinkBtn;
+  const originalText = btn.textContent;
   if (navigator.clipboard) {
     navigator.clipboard.writeText(link).then(
-      () => setStatus("Link copied."),
+      () => {
+        btn.textContent = "✓ Copied!";
+        btn.style.borderColor = "var(--teal)";
+        btn.style.color = "var(--teal)";
+        btn.style.background = "var(--teal-soft)";
+        setTimeout(() => {
+          btn.textContent = originalText;
+          btn.style.borderColor = "";
+          btn.style.color = "";
+          btn.style.background = "";
+        }, 1500);
+      },
       () => setStatus("Copy failed.")
     );
   } else {
@@ -2743,7 +2744,8 @@ function initTableDetails() {
     if (!detailRow) return;
     const isOpen = !detailRow.hidden;
     detailRow.hidden = isOpen;
-    button.textContent = isOpen ? "+" : "-";
+    button.textContent = isOpen ? "+" : "−";
+    button.classList.toggle("is-open", !isOpen);
   });
 }
 
