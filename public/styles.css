@@ -390,6 +390,17 @@ body[data-theme="dark"] .grid {
     animation: none;
   }
 
+  .streak-chip,
+  .highlight--sparkle::before,
+  .highlight--sparkle::after {
+    animation: none;
+  }
+
+  .highlight--sparkle::before,
+  .highlight--sparkle::after {
+    content: none;
+  }
+
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
@@ -651,6 +662,44 @@ body[data-theme="dark"] .tab:hover:not(.is-active) {
   background: var(--card-bg);
 }
 
+.streak-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 42px;
+  height: clamp(22px, 2.6vw, 28px);
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(239, 108, 68, 0.34);
+  background: rgba(239, 108, 68, 0.12);
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  flex: 0 0 auto;
+  box-shadow: 0 0 0 0 rgba(24, 32, 37, 0);
+  animation: streak-pop 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes streak-pop {
+  0% {
+    transform: scale(0.92);
+    box-shadow: 0 0 0 0 rgba(239, 108, 68, 0.16);
+  }
+
+  65% {
+    transform: scale(1.06);
+    box-shadow: 0 0 0 5px rgba(239, 108, 68, 0);
+  }
+
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(239, 108, 68, 0);
+  }
+}
+
 .summary-grid {
   display: block;
 }
@@ -863,6 +912,8 @@ body[data-theme="dark"] .h2h-scoreboard {
 }
 
 .highlight {
+  position: relative;
+  overflow: hidden;
   border-radius: 12px;
   border: 1px solid var(--border);
   padding: 10px 12px;
@@ -880,6 +931,72 @@ body[data-theme="dark"] .h2h-scoreboard {
 
 .highlight--b {
   border-left-color: var(--accent);
+}
+
+.highlight--sparkle::before {
+  content: "";
+  position: absolute;
+  top: -45%;
+  left: -35%;
+  width: 34%;
+  height: 190%;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.42), transparent);
+  transform: rotate(18deg) translateX(-150%);
+  animation: highlight-sheen 0.9s ease-out 0.12s both;
+}
+
+.highlight--sparkle::after {
+  content: "";
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  pointer-events: none;
+  color: var(--teal);
+  background: currentColor;
+  box-shadow: 8px 7px 0 -1px currentColor, -7px 12px 0 -2px currentColor;
+  opacity: 0;
+  animation: milestone-glint 0.7s ease-out 0.28s both;
+}
+
+.highlight--b.highlight--sparkle::after {
+  color: var(--accent);
+}
+
+@keyframes highlight-sheen {
+  0% {
+    opacity: 0;
+    transform: rotate(18deg) translateX(-150%);
+  }
+
+  30% {
+    opacity: 0.72;
+  }
+
+  100% {
+    opacity: 0;
+    transform: rotate(18deg) translateX(420%);
+  }
+}
+
+@keyframes milestone-glint {
+  0% {
+    opacity: 0;
+    transform: scale(0.65);
+  }
+
+  35% {
+    opacity: 0.65;
+    transform: scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.25);
+  }
 }
 
 .highlight-title {
@@ -1410,6 +1527,75 @@ body[data-theme="dark"] .h2h-scoreboard {
   z-index: 1;
   color: var(--muted);
   font-weight: 600;
+}
+
+.expand-header {
+  width: 36px;
+}
+
+.sort-header {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  transition: color 0.16s ease;
+}
+
+.sort-header:hover,
+.sort-header:focus-visible {
+  color: var(--accent);
+}
+
+.sort-header:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.sort-header.is-active {
+  color: var(--text);
+}
+
+.sort-header.is-active:hover,
+.sort-header.is-active:focus-visible {
+  color: var(--accent);
+}
+
+.sort-indicator {
+  width: 12px;
+  height: 12px;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  color: currentColor;
+}
+
+.sort-indicator::before {
+  content: "↑";
+  display: block;
+  opacity: 0.28;
+  font-size: 0.72rem;
+  line-height: 1;
+  transform-origin: center;
+  transform: rotate(0deg) scale(0.92);
+  transition: opacity 0.16s ease, transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.sort-header.is-active .sort-indicator::before {
+  opacity: 1;
+  transform: rotate(0deg) scale(1);
+}
+
+.sort-header.is-desc .sort-indicator::before {
+  transform: rotate(180deg) scale(1);
 }
 
 .match-score {

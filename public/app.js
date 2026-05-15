@@ -28,7 +28,10 @@ const state = {
     tightOnly: false,
     bestOf: [],
   },
-  sort: "date-desc",
+  sort: {
+    key: "date",
+    direction: "desc",
+  },
   perPage: 50,
   page: 1,
   loading: false,
@@ -65,7 +68,6 @@ const elements = {
   stageFilter: document.getElementById("stage-filter"),
   bestOfFilter: document.getElementById("best-of-filter"),
   bestOfOptions: document.getElementById("best-of-options"),
-  sortFilter: document.getElementById("sort-filter"),
   otToggle: document.getElementById("ot-toggle"),
   tightToggle: document.getElementById("tight-toggle"),
   searchFilter: document.getElementById("search-filter"),
@@ -90,6 +92,28 @@ const elements = {
   playerBLoader: document.getElementById("player-b-loader"),
   matchesHeadRow: document.getElementById("matches-head-row"),
 };
+
+const GAME_TABLE_COLUMNS = [
+  { label: "", key: null },
+  { label: "Date", key: "date", defaultDirection: "desc" },
+  { label: "Tournament", key: "tournament", defaultDirection: "asc" },
+  { label: "Stage", key: "stage", defaultDirection: "asc" },
+  { label: "Round", key: "round", defaultDirection: "asc" },
+  { label: "Score", key: "score", defaultDirection: "desc" },
+  { label: "OT", key: "ot", defaultDirection: "desc" },
+  { label: "Winner", key: "winner", defaultDirection: "asc" },
+];
+
+const SERIES_TABLE_COLUMNS = [
+  { label: "", key: null },
+  { label: "Date", key: "date", defaultDirection: "desc" },
+  { label: "Tournament", key: "tournament", defaultDirection: "asc" },
+  { label: "Stage", key: "stage", defaultDirection: "asc" },
+  { label: "Series", key: "series", defaultDirection: "asc" },
+  { label: "Games", key: "games", defaultDirection: "desc" },
+  { label: "Goals", key: "goals", defaultDirection: "desc" },
+  { label: "Winner", key: "winner", defaultDirection: "asc" },
+];
 
 function normalizeText(text) {
   if (!text) return "";
@@ -1254,6 +1278,9 @@ function getHighlightInfo(match, side) {
 function createHighlightBlock(label, info, side) {
   const block = document.createElement("div");
   block.className = `highlight highlight--${side}`;
+  if (info.score && info.score !== DASH) {
+    block.classList.add("highlight--sparkle");
+  }
 
   const title = document.createElement("div");
   title.className = "highlight-title";
@@ -1445,13 +1472,52 @@ function renderSeriesSummary(seriesItems) {
   elements.summaryGrid.appendChild(scoreboard);
 }
 
+function getChronologicalItems(items) {
+  return [...items].sort((a, b) => {
+    const seqA = a.stage_sequence ?? 0;
+    const seqB = b.stage_sequence ?? 0;
+    const roundA = a.round_number ?? 0;
+    const roundB = b.round_number ?? 0;
+    const gameA = a.playoff_game_number ?? 0;
+    const gameB = b.playoff_game_number ?? 0;
+    return a.ts - b.ts || seqA - seqB || roundA - roundB || gameA - gameB;
+  });
+}
+
+function getCurrentWinStreak(items) {
+  const ordered = getChronologicalItems(items);
+  const latest = ordered[ordered.length - 1];
+  if (!latest || latest.result !== "A") return 0;
+
+  let count = 0;
+  for (let index = ordered.length - 1; index >= 0; index -= 1) {
+    if (ordered[index].result !== "A") break;
+    count += 1;
+  }
+
+  return count;
+}
+
+function createCurrentStreakChip(items) {
+  const streak = getCurrentWinStreak(items);
+  if (streak < 3) return null;
+
+  const chip = document.createElement("span");
+  const itemLabel = isSeriesMode() ? "series" : "game";
+  chip.className = "streak-chip";
+  chip.textContent = `🔥 ${streak}`;
+  chip.title = `${state.playerA?.name || "Player 1"} has won ${streak} ${itemLabel}s in a row`;
+  chip.setAttribute("aria-label", chip.title);
+  return chip;
+}
+
 function renderForm(matches) {
   elements.formChips.innerHTML = "";
   if (!matches.length) {
     elements.formChips.innerHTML = "<span class=\"muted\">No matches</span>";
     return;
   }
-  const ordered = [...matches].sort((a, b) => a.ts - b.ts).slice(-10);
+  const ordered = getChronologicalItems(matches).slice(-10);
   const fragment = document.createDocumentFragment();
   ordered.forEach((match) => {
     const chip = document.createElement("span");
@@ -1475,6 +1541,8 @@ function renderForm(matches) {
     }
     fragment.appendChild(chip);
   });
+  const streakChip = createCurrentStreakChip(matches);
+  if (streakChip) fragment.appendChild(streakChip);
   elements.formChips.appendChild(fragment);
 }
 
@@ -1734,31 +1802,59 @@ function renderTable(matches) {
   renderGameTable(matches);
 }
 
+function getTableColumns() {
+  return isSeriesMode() ? SERIES_TABLE_COLUMNS : GAME_TABLE_COLUMNS;
+}
+
+function getSortColumn(columns = getTableColumns()) {
+  return columns.find((column) => column.key === state.sort.key) || null;
+}
+
+function ensureSortForMode() {
+  if (getSortColumn()) return;
+  state.sort = { key: "date", direction: "desc" };
+}
+
 function renderTableHeaders() {
   if (!elements.matchesHeadRow) return;
-  if (isSeriesMode()) {
-    elements.matchesHeadRow.innerHTML = `
-      <th></th>
-      <th>Date</th>
-      <th>Tournament</th>
-      <th>Stage</th>
-      <th>Series</th>
-      <th>Games</th>
-      <th>Goals</th>
-      <th>Winner</th>
-    `;
-    return;
-  }
-  elements.matchesHeadRow.innerHTML = `
-    <th></th>
-    <th>Date</th>
-    <th>Tournament</th>
-    <th>Stage</th>
-    <th>Round</th>
-    <th>Score</th>
-    <th>OT</th>
-    <th>Winner</th>
-  `;
+  ensureSortForMode();
+  const columns = getTableColumns();
+  const fragment = document.createDocumentFragment();
+
+  columns.forEach((column) => {
+    const th = document.createElement("th");
+    th.scope = "col";
+
+    if (!column.key) {
+      th.className = "expand-header";
+      fragment.appendChild(th);
+      return;
+    }
+
+    const isActive = state.sort.key === column.key;
+    th.setAttribute("aria-sort", isActive ? (state.sort.direction === "asc" ? "ascending" : "descending") : "none");
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "sort-header";
+    button.dataset.sortKey = column.key;
+    button.setAttribute("aria-label", `Sort by ${column.label}`);
+    if (isActive) button.classList.add("is-active", `is-${state.sort.direction}`);
+
+    const label = document.createElement("span");
+    label.textContent = column.label;
+
+    const indicator = document.createElement("span");
+    indicator.className = "sort-indicator";
+    indicator.setAttribute("aria-hidden", "true");
+
+    button.appendChild(label);
+    button.appendChild(indicator);
+    th.appendChild(button);
+    fragment.appendChild(th);
+  });
+
+  elements.matchesHeadRow.replaceChildren(fragment);
 }
 
 function renderGameTable(matches) {
@@ -2149,47 +2245,92 @@ function applyFilters(matches) {
   });
 }
 
-function sortMatches(matches) {
-  const sorted = [...matches];
-  const stageOrder = (match) => {
-    const seq = match.stage_sequence ?? 0;
-    const round = match.round_number ?? 0;
-    const playoff = match.playoff_game_number ?? 0;
-    return [seq, round, playoff];
-  };
-  const compareStageDesc = (a, b) => {
-    const [seqA, roundA, playoffA] = stageOrder(a);
-    const [seqB, roundB, playoffB] = stageOrder(b);
-    return seqB - seqA || roundB - roundA || playoffB - playoffA;
-  };
-  const compareStageAsc = (a, b) => {
-    const [seqA, roundA, playoffA] = stageOrder(a);
-    const [seqB, roundB, playoffB] = stageOrder(b);
-    return seqA - seqB || roundA - roundB || playoffA - playoffB;
-  };
-  switch (state.sort) {
-    case "date-asc":
-      sorted.sort((a, b) => a.ts - b.ts || compareStageAsc(a, b));
-      break;
-    case "date-desc":
-      sorted.sort((a, b) => b.ts - a.ts || compareStageDesc(a, b));
-      break;
+function getStageSortParts(match) {
+  return [
+    toNumber(match.stage_sequence, 0),
+    toNumber(match.round_number, 0),
+    toNumber(match.playoff_game_number, 0),
+  ];
+}
+
+function compareStageOrderAsc(a, b) {
+  const [seqA, roundA, playoffA] = getStageSortParts(a);
+  const [seqB, roundB, playoffB] = getStageSortParts(b);
+  return seqA - seqB || roundA - roundB || playoffA - playoffB;
+}
+
+function compareTextValues(a, b) {
+  const normalized = normalizeText(a).localeCompare(normalizeText(b));
+  return normalized || String(a || "").localeCompare(String(b || ""));
+}
+
+function compareNumberValues(a, b) {
+  return toNumber(a, 0) - toNumber(b, 0);
+}
+
+function getWinnerSortLabel(item) {
+  if (item.result === "A") return state.playerA?.name || "Player A";
+  if (item.result === "B") return state.playerB?.name || "Player B";
+  return isSeriesMode() ? "Tied" : "Draw";
+}
+
+function compareDateAsc(a, b) {
+  return compareNumberValues(a.ts, b.ts) || compareStageOrderAsc(a, b);
+}
+
+function compareScoreSort(a, b) {
+  const margin = compareNumberValues(a.goal_abs, b.goal_abs);
+  if (margin) return margin;
+  return compareNumberValues(toNumber(a.goals_a, 0) + toNumber(a.goals_b, 0), toNumber(b.goals_a, 0) + toNumber(b.goals_b, 0));
+}
+
+function compareGoalsSort(a, b) {
+  const margin = compareNumberValues(
+    Math.abs(toNumber(a.goals_a, 0) - toNumber(a.goals_b, 0)),
+    Math.abs(toNumber(b.goals_a, 0) - toNumber(b.goals_b, 0))
+  );
+  if (margin) return margin;
+  return compareNumberValues(toNumber(a.goals_a, 0) + toNumber(a.goals_b, 0), toNumber(b.goals_a, 0) + toNumber(b.goals_b, 0));
+}
+
+function compareItemsForSortKey(a, b, key) {
+  switch (key) {
+    case "date":
+      return compareDateAsc(a, b);
     case "tournament":
-      sorted.sort((a, b) =>
-        (a.tournament_name || "").localeCompare(b.tournament_name || "") ||
-        b.ts - a.ts ||
-        compareStageDesc(a, b)
-      );
-      break;
-    case "diff-asc":
-      sorted.sort((a, b) => a.goal_abs - b.goal_abs || b.ts - a.ts || compareStageDesc(a, b));
-      break;
-    case "diff-desc":
-      sorted.sort((a, b) => b.goal_abs - a.goal_abs || b.ts - a.ts || compareStageDesc(a, b));
-      break;
+      return compareTextValues(a.tournament_name, b.tournament_name);
+    case "stage":
+      return compareTextValues(a.stage, b.stage) || compareStageOrderAsc(a, b);
+    case "round":
+      return compareNumberValues(a.round_number, b.round_number) || compareNumberValues(a.playoff_game_number, b.playoff_game_number);
+    case "score":
+      return compareScoreSort(a, b);
+    case "ot":
+      return compareNumberValues(a.overtime ? 1 : 0, b.overtime ? 1 : 0);
+    case "winner":
+      return compareTextValues(getWinnerSortLabel(a), getWinnerSortLabel(b));
+    case "series":
+      return compareNumberValues(a.best_of, b.best_of) || compareNumberValues(a.total_games, b.total_games);
+    case "games":
+      return compareNumberValues(a.goal_abs, b.goal_abs) || compareNumberValues(a.total_games, b.total_games);
+    case "goals":
+      return compareGoalsSort(a, b);
     default:
-      break;
+      return 0;
   }
+}
+
+function sortMatches(matches) {
+  ensureSortForMode();
+  const sorted = [...matches];
+  const directionMultiplier = state.sort.direction === "asc" ? 1 : -1;
+  sorted.sort((a, b) => {
+    const primary = compareItemsForSortKey(a, b, state.sort.key);
+    if (primary) return primary * directionMultiplier;
+    const dateFallback = compareDateAsc(a, b);
+    if (state.sort.key === "date") return dateFallback * directionMultiplier;
+    return dateFallback * -1;
+  });
   return sorted;
 }
 
@@ -2306,17 +2447,7 @@ function updateModeControls() {
     button.setAttribute("aria-pressed", isActive ? "true" : "false");
   });
   document.body.dataset.statsMode = getStatsMode();
-  const diffDesc = elements.sortFilter.querySelector('option[value="diff-desc"]');
-  const diffAsc = elements.sortFilter.querySelector('option[value="diff-asc"]');
-  if (diffDesc && diffAsc) {
-    if (isSeriesMode()) {
-      diffDesc.textContent = "Series margin (largest)";
-      diffAsc.textContent = "Series margin (smallest)";
-    } else {
-      diffDesc.textContent = "Goal diff (largest)";
-      diffAsc.textContent = "Goal diff (smallest)";
-    }
-  }
+  ensureSortForMode();
 }
 
 function getActiveItems() {
@@ -2461,7 +2592,7 @@ async function handleCompare() {
     state.playerB = getPlayerById(idB) || data.playerB;
     state.baseMatches = data.matches;
     state.page = 1;
-    state.sort = elements.sortFilter.value;
+    state.sort = { key: "date", direction: "desc" };
     state.perPage = Number(elements.pageSize.value);
 
     updateUrl(idA, idB);
@@ -2596,6 +2727,21 @@ async function handleRecentClick(event) {
   handleCompare();
 }
 
+function handleSortHeaderClick(event) {
+  const button = event.target.closest(".sort-header");
+  if (!button) return;
+  const column = getTableColumns().find((item) => item.key === button.dataset.sortKey);
+  if (!column) return;
+
+  const isCurrent = state.sort.key === column.key;
+  state.sort = {
+    key: column.key,
+    direction: isCurrent && state.sort.direction === "asc" ? "desc" : isCurrent ? "asc" : column.defaultDirection,
+  };
+  state.page = 1;
+  updateView();
+}
+
 function initFilters() {
   elements.yearFromFilter.addEventListener("change", () => {
     state.filters.yearFrom = elements.yearFromFilter.value;
@@ -2666,11 +2812,6 @@ function initFilters() {
     });
   }
 
-  elements.sortFilter.addEventListener("change", () => {
-    state.sort = elements.sortFilter.value;
-    state.page = 1;
-    updateView();
-  });
   elements.otToggle.addEventListener("change", () => {
     state.filters.otOnly = elements.otToggle.checked;
     state.page = 1;
@@ -2733,6 +2874,11 @@ function initModeToggle() {
       updateView();
     });
   });
+}
+
+function initTableSorting() {
+  if (!elements.matchesHeadRow) return;
+  elements.matchesHeadRow.addEventListener("click", handleSortHeaderClick);
 }
 
 function initTableDetails() {
@@ -2816,6 +2962,7 @@ async function init() {
   initPagination();
   initTabs();
   initModeToggle();
+  initTableSorting();
   initTableDetails();
 
   await loadPlayers();
