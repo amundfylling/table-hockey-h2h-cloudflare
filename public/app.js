@@ -9,12 +9,14 @@ const state = {
   playersById: new Map(),
   aliasMap: new Map(),
   pairCache: new Map(),
+  playerStatsCache: new Map(),
   playerFileCache: new Map(),
   baseMatches: [],
   stageMatches: [],
   filteredMatches: [],
   playerA: null,
   playerB: null,
+  comparisonMode: "matchup",
   opponentsOfA: new Map(),
   opponentsLoading: false,
   stageTab: "overall",
@@ -104,9 +106,33 @@ const GAME_TABLE_COLUMNS = [
   { label: "Winner", key: "winner", defaultDirection: "asc" },
 ];
 
+const SINGLE_TABLE_COLUMNS = [
+  { label: "", key: null },
+  { label: "Date", key: "date", defaultDirection: "desc" },
+  { label: "Opponent", key: "opponent", defaultDirection: "asc" },
+  { label: "Tournament", key: "tournament", defaultDirection: "asc" },
+  { label: "Stage", key: "stage", defaultDirection: "asc" },
+  { label: "Round", key: "round", defaultDirection: "asc" },
+  { label: "Score", key: "score", defaultDirection: "desc" },
+  { label: "OT", key: "ot", defaultDirection: "desc" },
+  { label: "Winner", key: "winner", defaultDirection: "asc" },
+];
+
 const SERIES_TABLE_COLUMNS = [
   { label: "", key: null },
   { label: "Date", key: "date", defaultDirection: "desc" },
+  { label: "Tournament", key: "tournament", defaultDirection: "asc" },
+  { label: "Stage", key: "stage", defaultDirection: "asc" },
+  { label: "Series", key: "series", defaultDirection: "asc" },
+  { label: "Games", key: "games", defaultDirection: "desc" },
+  { label: "Goals", key: "goals", defaultDirection: "desc" },
+  { label: "Winner", key: "winner", defaultDirection: "asc" },
+];
+
+const SINGLE_SERIES_TABLE_COLUMNS = [
+  { label: "", key: null },
+  { label: "Date", key: "date", defaultDirection: "desc" },
+  { label: "Opponent", key: "opponent", defaultDirection: "asc" },
   { label: "Tournament", key: "tournament", defaultDirection: "asc" },
   { label: "Stage", key: "stage", defaultDirection: "asc" },
   { label: "Series", key: "series", defaultDirection: "asc" },
@@ -181,6 +207,15 @@ function getStatsMode() {
 
 function isSeriesMode() {
   return getStatsMode() === "series";
+}
+
+function isSinglePlayerMode() {
+  return state.comparisonMode === "single";
+}
+
+function updatePrimaryActionLabel() {
+  if (!elements.compareBtn) return;
+  elements.compareBtn.textContent = resolvePlayerId(elements.playerB) ? "Compare" : "Display";
 }
 
 function safeStorageGet(key, fallback) {
@@ -337,6 +372,7 @@ function setInputPlayer(inputEl, player) {
   if (!player) return;
   inputEl.value = `${player.name} (${player.id})`;
   inputEl.dataset.playerId = player.id;
+  updatePrimaryActionLabel();
 }
 
 function clearInputPlayer(inputEl, listEl) {
@@ -344,6 +380,7 @@ function clearInputPlayer(inputEl, listEl) {
   inputEl.dataset.playerId = "";
   listEl.classList.remove("is-open");
   listEl.innerHTML = "";
+  updatePrimaryActionLabel();
 }
 
 function resolvePlayerId(inputEl) {
@@ -397,10 +434,14 @@ function addRecent(p1, p2, p1Name, p2Name) {
   renderRecent();
 }
 
-function updateUrl(p1, p2) {
+function updateUrl(p1, p2 = null) {
   const url = new URL(window.location.href);
   url.searchParams.set("p1", p1);
-  url.searchParams.set("p2", p2);
+  if (p2) {
+    url.searchParams.set("p2", p2);
+  } else {
+    url.searchParams.delete("p2");
+  }
   window.history.replaceState({}, "", url);
 }
 
@@ -408,10 +449,10 @@ function getUrlSelection() {
   const params = new URLSearchParams(window.location.search);
   const p1 = params.get("p1");
   const p2 = params.get("p2");
-  if (!p1 || !p2) return null;
+  if (!p1) return null;
   const id1 = Number(p1);
-  const id2 = Number(p2);
-  if (!Number.isFinite(id1) || !Number.isFinite(id2)) return null;
+  const id2 = p2 ? Number(p2) : null;
+  if (!Number.isFinite(id1) || (p2 && !Number.isFinite(id2))) return null;
   return { p1: id1, p2: id2 };
 }
 
@@ -596,6 +637,7 @@ function setupTypeahead(inputEl, listEl, options = {}) {
 
   inputEl.addEventListener("input", () => {
     inputEl.dataset.playerId = "";
+    updatePrimaryActionLabel();
     debouncedUpdate();
   });
 
@@ -781,6 +823,16 @@ function normalizePlayerMatch(raw, isPlayerA) {
   };
 }
 
+function normalizeSinglePlayerMatch(raw, opponentId, opponentPlayer) {
+  const normalized = normalizePlayerMatch(raw, true);
+  const fallbackName = opponentId ? `Player ${opponentId}` : "Unknown opponent";
+  return {
+    ...normalized,
+    opponent_id: opponentId ?? null,
+    opponent_name: opponentPlayer?.name || getPlayerById(opponentId)?.name || fallbackName,
+  };
+}
+
 function buildMatchKey(match) {
   return [
     match.date || "",
@@ -793,6 +845,10 @@ function buildMatchKey(match) {
     match.goals_b ?? "",
     match.overtime ? 1 : 0,
   ].join("|");
+}
+
+function buildScopedMatchKey(match) {
+  return `${match.opponent_id ?? ""}|${buildMatchKey(match)}`;
 }
 
 async function buildGroupMatches(groupA, groupB, onProgress) {
@@ -821,6 +877,50 @@ async function buildGroupMatches(groupA, groupB, onProgress) {
   }
 
   return matches;
+}
+
+async function loadPlayerStats(playerId, onProgress) {
+  const groupA = getAliasGroup(playerId);
+  const cacheKey = groupA.join(",");
+  if (state.playerStatsCache.has(cacheKey)) {
+    return state.playerStatsCache.get(cacheKey);
+  }
+
+  const selfIds = new Set(groupA.map((id) => Number(id)));
+  const matches = [];
+  const seen = new Set();
+  let playerA = getPlayerById(playerId) || { id: playerId, name: `Player ${playerId}` };
+
+  for (let index = 0; index < groupA.length; index += 1) {
+    const groupId = groupA[index];
+    if (onProgress) onProgress(index + 1, groupA.length);
+    const payload = await fetchPlayerPayload(groupId);
+    if (!payload || !payload.opponents) continue;
+    if (!playerA?.name && payload.player) playerA = payload.player;
+
+    Object.entries(payload.opponents).forEach(([opponentIdRaw, opponentPayload]) => {
+      const opponentId = Number(opponentIdRaw);
+      if (!Number.isFinite(opponentId) || selfIds.has(opponentId)) return;
+      if (!opponentPayload || !Array.isArray(opponentPayload.matches)) return;
+      const opponentPlayer = opponentPayload.player || getPlayerById(opponentId);
+
+      opponentPayload.matches.forEach((match) => {
+        const normalized = normalizeSinglePlayerMatch(match, opponentId, opponentPlayer);
+        const key = buildScopedMatchKey(normalized);
+        if (seen.has(key)) return;
+        seen.add(key);
+        matches.push(normalized);
+      });
+    });
+  }
+
+  const data = {
+    playerA,
+    playerB: { id: null, name: "Opponents" },
+    matches,
+  };
+  state.playerStatsCache.set(cacheKey, data);
+  return data;
 }
 
 async function loadMatchup(p1, p2, onProgress) {
@@ -970,6 +1070,7 @@ function getSeriesGroupKey(match) {
     match.stage_sequence ?? "",
     normalizeText(match.stage || ""),
     match.round_number ?? "",
+    match.opponent_id ?? "",
   ].join("|");
 }
 
@@ -993,12 +1094,12 @@ function annotatePlayoffGamesWithSeries(matches) {
   const seriesByMatch = new Map();
   seriesItems.forEach((series) => {
     series.games.forEach((match) => {
-      seriesByMatch.set(buildMatchKey(match), series.best_of);
+      seriesByMatch.set(buildScopedMatchKey(match), series.best_of);
     });
   });
   return matches.map((match) => ({
     ...match,
-    series_best_of: seriesByMatch.get(buildMatchKey(match)) || null,
+    series_best_of: seriesByMatch.get(buildScopedMatchKey(match)) || null,
   }));
 }
 
@@ -1056,6 +1157,8 @@ function createSeriesFromMatches(matches) {
     tournament_name: first.tournament_name || "",
     tournament_id: first.tournament_id ?? null,
     tournament_key: first.tournament_key || "",
+    opponent_id: first.opponent_id ?? null,
+    opponent_name: first.opponent_name || "",
     stage: first.stage || "",
     stage_type: "playoff",
     stage_id: first.stage_id ?? null,
@@ -1191,7 +1294,7 @@ function createScoreHeader() {
 
   const title = document.createElement("div");
   title.className = "scoreboard-title";
-  title.textContent = isSeriesMode() ? "Playoff Series" : "Head to Head";
+  title.textContent = isSinglePlayerMode() ? "Player Stats" : isSeriesMode() ? "Playoff Series" : "Head to Head";
 
   const right = document.createElement("div");
   right.className = "scoreboard-player scoreboard-player--b";
@@ -1264,6 +1367,14 @@ function createScoreRow(label, leftValue, rightValue, options = {}) {
 function getHighlightInfo(match, side) {
   if (!match) {
     return { score: DASH, date: DASH, opponent: DASH, tournament: DASH };
+  }
+  if (isSinglePlayerMode()) {
+    return {
+      score: formatScore(match) || DASH,
+      date: match.date || DASH,
+      opponent: match.opponent_name || DASH,
+      tournament: match.tournament_name || DASH,
+    };
   }
   const score = side === "b" ? `${match.goals_b}-${match.goals_a}` : formatScore(match);
   const opponent = side === "b" ? state.playerA?.name : state.playerB?.name;
@@ -1348,7 +1459,7 @@ function createHighlightBlock(label, info, side) {
   return block;
 }
 
-function createHighlightColumn(name, side, winInfo) {
+function createHighlightColumn(name, side, winInfo, label = "Largest win") {
   const column = document.createElement("div");
   column.className = `highlight-column highlight-column--${side}`;
 
@@ -1358,13 +1469,21 @@ function createHighlightColumn(name, side, winInfo) {
   if (name) title.title = name;
 
   column.appendChild(title);
-  column.appendChild(createHighlightBlock("Largest win", winInfo, side));
+  column.appendChild(createHighlightBlock(label, winInfo, side));
   return column;
 }
 
 function getSeriesHighlightInfo(series, side) {
   if (!series) {
     return { score: DASH, date: DASH, opponent: DASH, tournament: DASH };
+  }
+  if (isSinglePlayerMode()) {
+    return {
+      score: `${series.game_wins_a}-${series.game_wins_b}`,
+      date: formatDateRange(series.date, series.end_date),
+      opponent: series.opponent_name || DASH,
+      tournament: `${series.tournament_name || DASH} | ${formatSeriesLength(series)} | goals ${series.goals_a}-${series.goals_b}`,
+    };
   }
   const score =
     side === "b"
@@ -1389,15 +1508,16 @@ function renderSummary(items) {
 
 function renderGameSummary(matches) {
   updateFormTitle();
-  if (!state.playerA || !state.playerB) return;
+  if (!state.playerA || (!isSinglePlayerMode() && !state.playerB)) return;
   const summary = computeSummary(matches);
   const total = summary.total || 0;
   const winPct = total ? (summary.winsA / total) * 100 : 0;
   const lossPct = total ? (summary.winsB / total) * 100 : 0;
+  const opponentLabel = isSinglePlayerMode() ? "Opponents" : state.playerB.name;
 
-  elements.headline.textContent = `${state.playerA.name} vs ${state.playerB.name}`;
+  elements.headline.textContent = isSinglePlayerMode() ? state.playerA.name : `${state.playerA.name} vs ${state.playerB.name}`;
   elements.subhead.textContent = total
-    ? `${total} matches across ${summary.tournaments.size} tournaments.`
+    ? `${total} ${total === 1 ? "game" : "games"} across ${summary.tournaments.size} tournaments.`
     : "No matches for this filter.";
 
   elements.record.innerHTML = `
@@ -1422,23 +1542,15 @@ function renderGameSummary(matches) {
       note: `Draws ${summary.draws}`,
     })
   );
-  rows.appendChild(createScoreRow("Total goals scored", summary.goalsA, summary.goalsB));
+  rows.appendChild(createScoreRow(isSinglePlayerMode() ? "Goals for / against" : "Total goals scored", summary.goalsA, summary.goalsB));
   rows.appendChild(createScoreRow("Tight wins (1 goal)", summary.tightWins, summary.tightLosses));
   rows.appendChild(createScoreRow("Overtime wins", summary.otWinsA, summary.otWinsB));
   scoreboard.appendChild(rows);
 
   const highlights = document.createElement("div");
   highlights.className = "scoreboard-highlights";
-  const highlightA = createHighlightColumn(
-    state.playerA.name,
-    "a",
-    getHighlightInfo(summary.largestWin, "a")
-  );
-  const highlightB = createHighlightColumn(
-    state.playerB.name,
-    "b",
-    getHighlightInfo(summary.largestLoss, "b")
-  );
+  const highlightA = createHighlightColumn(state.playerA.name, "a", getHighlightInfo(summary.largestWin, "a"), "Biggest win");
+  const highlightB = createHighlightColumn(opponentLabel, "b", getHighlightInfo(summary.largestLoss, "b"), isSinglePlayerMode() ? "Biggest loss" : "Biggest win");
   highlights.appendChild(highlightA);
   highlights.appendChild(highlightB);
   scoreboard.appendChild(highlights);
@@ -1448,15 +1560,16 @@ function renderGameSummary(matches) {
 
 function renderSeriesSummary(seriesItems) {
   updateFormTitle();
-  if (!state.playerA || !state.playerB) return;
+  if (!state.playerA || (!isSinglePlayerMode() && !state.playerB)) return;
   const summary = computeSeriesSummary(seriesItems);
   const total = summary.total || 0;
   const winPct = total ? (summary.winsA / total) * 100 : 0;
   const lossPct = total ? (summary.winsB / total) * 100 : 0;
   const avgGoalsA = total ? summary.goalsA / total : 0;
   const avgGoalsB = total ? summary.goalsB / total : 0;
+  const opponentLabel = isSinglePlayerMode() ? "Opponents" : state.playerB.name;
 
-  elements.headline.textContent = `${state.playerA.name} vs ${state.playerB.name}`;
+  elements.headline.textContent = isSinglePlayerMode() ? state.playerA.name : `${state.playerA.name} vs ${state.playerB.name}`;
   elements.subhead.textContent = total
     ? `${total} playoff series, ${summary.totalGames} games across ${summary.tournaments.size} tournaments.`
     : "No playoff series for this filter.";
@@ -1488,7 +1601,7 @@ function renderSeriesSummary(seriesItems) {
       note: `Drawn games ${summary.gameDraws}`,
     })
   );
-  rows.appendChild(createScoreRow("Total goals in series", summary.goalsA, summary.goalsB));
+  rows.appendChild(createScoreRow(isSinglePlayerMode() ? "Goals for / against in series" : "Total goals in series", summary.goalsA, summary.goalsB));
   rows.appendChild(
     createScoreRow("Avg goals / series", avgGoalsA, avgGoalsB, {
       leftDisplay: avgGoalsA.toFixed(1),
@@ -1500,10 +1613,10 @@ function renderSeriesSummary(seriesItems) {
   const highlights = document.createElement("div");
   highlights.className = "scoreboard-highlights";
   highlights.appendChild(
-    createHighlightColumn(state.playerA.name, "a", getSeriesHighlightInfo(summary.largestWin, "a"))
+    createHighlightColumn(state.playerA.name, "a", getSeriesHighlightInfo(summary.largestWin, "a"), isSinglePlayerMode() ? "Biggest series win" : "Largest win")
   );
   highlights.appendChild(
-    createHighlightColumn(state.playerB.name, "b", getSeriesHighlightInfo(summary.largestLoss, "b"))
+    createHighlightColumn(opponentLabel, "b", getSeriesHighlightInfo(summary.largestLoss, "b"), isSinglePlayerMode() ? "Biggest series loss" : "Largest win")
   );
   scoreboard.appendChild(highlights);
 
@@ -1562,10 +1675,11 @@ function renderForm(matches) {
     chip.className = "chip";
     const tournament = match.tournament_name || "Unknown tournament";
     const stage = match.stage ? ` | ${match.stage}` : "";
+    const opponentName = match.opponent_name || state.playerB?.name || "Opponent";
     if (match.type === "series") {
-      chip.title = `${formatDateRange(match.date, match.end_date)} | ${state.playerA.name} ${formatSeriesScore(match)} ${state.playerB.name} | ${formatSeriesLength(match)} | ${tournament}${stage}`;
+      chip.title = `${formatDateRange(match.date, match.end_date)} | ${state.playerA.name} ${formatSeriesScore(match)} ${opponentName} | ${formatSeriesLength(match)} | ${tournament}${stage}`;
     } else {
-      chip.title = `${match.date || "Unknown date"} | ${state.playerA.name} ${match.goals_a}-${match.goals_b} ${state.playerB.name} | ${tournament}${stage}`;
+      chip.title = `${match.date || "Unknown date"} | ${state.playerA.name} ${match.goals_a}-${match.goals_b} ${opponentName} | ${tournament}${stage}`;
     }
     if (match.result === "A") {
       chip.textContent = "W";
@@ -1629,12 +1743,13 @@ function renderRecordChart(matches) {
   const leadLabel =
     endValue === 0
       ? "Tied overall"
-      : `${endValue > 0 ? state.playerA.name : state.playerB.name} lead`;
+      : `${endValue > 0 ? state.playerA.name : state.playerB?.name || "Opponents"} lead`;
+  const opponentSeriesLabel = state.playerB?.name || "Opponents";
 
   elements.recordChart.innerHTML = `
     <div class="chart-legend">
       <span><span class="legend-dot a"></span>${state.playerA.name}</span>
-      <span><span class="legend-dot b"></span>${state.playerB.name}</span>
+      <span><span class="legend-dot b"></span>${opponentSeriesLabel}</span>
       <span class="chart-note">${leadLabel}</span>
     </div>
     <svg viewBox="0 0 ${width} ${height}" aria-label="Cumulative record chart">
@@ -1683,8 +1798,8 @@ function renderRecordChart(matches) {
     const recordValue = cumulative > 0 ? `+${cumulative}` : `${cumulative}`;
     const scoreLine =
       match.type === "series"
-        ? `${state.playerA.name} ${formatSeriesScore(match)} ${state.playerB.name} (${match.goals_a}-${match.goals_b} goals)`
-        : `${state.playerA.name} ${match.goals_a}-${match.goals_b} ${state.playerB.name}`;
+        ? `${state.playerA.name} ${formatSeriesScore(match)} ${match.opponent_name || opponentSeriesLabel} (${match.goals_a}-${match.goals_b} goals)`
+        : `${state.playerA.name} ${match.goals_a}-${match.goals_b} ${match.opponent_name || opponentSeriesLabel}`;
     const html = `
       <div class="tooltip-title">${match.type === "series" ? formatDateRange(match.date, match.end_date) : match.date || "Unknown date"}</div>
       <div class="tooltip-row">${scoreLine}</div>
@@ -1774,7 +1889,7 @@ function renderGoalsChart(matches) {
   elements.goalsChart.innerHTML = `
     <div class="chart-legend">
       <span><span class="legend-dot a"></span>${state.playerA.name}</span>
-      <span><span class="legend-dot b"></span>${state.playerB.name}</span>
+      <span><span class="legend-dot b"></span>${state.playerB?.name || "Opponents"}</span>
     </div>
     <svg viewBox="0 0 ${width} ${height}" aria-label="Average goals by year chart">
       ${grid}
@@ -1798,7 +1913,7 @@ function renderGoalsChart(matches) {
     const year = target.getAttribute("data-year");
     const side = target.getAttribute("data-side");
     const value = target.getAttribute("data-value");
-    const name = side === "b" ? state.playerB.name : state.playerA.name;
+    const name = side === "b" ? state.playerB?.name || "Opponents" : state.playerA.name;
     const html = `
       <div class="tooltip-title">${year}</div>
       <div class="tooltip-row">${name}: ${value} avg goals</div>
@@ -1841,6 +1956,8 @@ function renderTable(matches) {
 }
 
 function getTableColumns() {
+  if (isSinglePlayerMode() && isSeriesMode()) return SINGLE_SERIES_TABLE_COLUMNS;
+  if (isSinglePlayerMode()) return SINGLE_TABLE_COLUMNS;
   return isSeriesMode() ? SERIES_TABLE_COLUMNS : GAME_TABLE_COLUMNS;
 }
 
@@ -1897,10 +2014,12 @@ function renderTableHeaders() {
 
 function renderGameTable(matches) {
   elements.matchesBody.innerHTML = "";
+  const isSingle = isSinglePlayerMode();
+  const colSpan = isSingle ? 9 : 8;
   if (!matches.length) {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
-    cell.colSpan = 8;
+    cell.colSpan = colSpan;
     cell.textContent = "No matches for these filters.";
     row.appendChild(cell);
     elements.matchesBody.appendChild(row);
@@ -1915,6 +2034,7 @@ function renderGameTable(matches) {
   pageMatches.forEach((match, index) => {
     const rowId = `row-${start + index}`;
     const row = document.createElement("tr");
+    if (isSingle) row.className = "single-match-row";
 
     const expCell = document.createElement("td");
     const expBtn = document.createElement("button");
@@ -1930,6 +2050,10 @@ function renderGameTable(matches) {
     const dateCell = document.createElement("td");
     dateCell.className = "date-cell";
     dateCell.textContent = formatDate(match.date);
+
+    const opponentCell = document.createElement("td");
+    opponentCell.className = "opponent-cell";
+    opponentCell.textContent = match.opponent_name || "-";
 
     const tournamentCell = document.createElement("td");
     if (match.stage_id) {
@@ -1976,7 +2100,9 @@ function renderGameTable(matches) {
     const winner = document.createElement("span");
     winner.className = "winner";
     const nameA = firstName(state.playerA?.name) || "Player A";
-    const nameB = firstName(state.playerB?.name) || "Player B";
+    const nameB = isSingle
+      ? firstName(match.opponent_name) || "Opponent"
+      : firstName(state.playerB?.name) || "Player B";
     if (match.result === "A") {
       winner.classList.add("a");
       winner.textContent = nameA;
@@ -1984,7 +2110,7 @@ function renderGameTable(matches) {
     } else if (match.result === "B") {
       winner.classList.add("b");
       winner.textContent = nameB;
-      winner.title = state.playerB.name;
+      winner.title = isSingle ? match.opponent_name || "Opponent" : state.playerB.name;
     } else {
       winner.classList.add("d");
       winner.textContent = "Draw";
@@ -1994,6 +2120,7 @@ function renderGameTable(matches) {
 
     row.appendChild(expCell);
     row.appendChild(dateCell);
+    if (isSingle) row.appendChild(opponentCell);
     row.appendChild(tournamentCell);
     row.appendChild(stageCell);
     row.appendChild(roundCell);
@@ -2006,10 +2133,11 @@ function renderGameTable(matches) {
     detailRow.className = "detail-row match-detail-row";
     detailRow.hidden = true;
     const detailCell = document.createElement("td");
-    detailCell.colSpan = 8;
+    detailCell.colSpan = colSpan;
     const detailGrid = document.createElement("div");
     detailGrid.className = "detail-grid";
     const detailItems = [
+      ...(isSingle ? [{ label: "Opponent", value: match.opponent_name || match.opponent_id }] : []),
       { label: "Stage ID", value: match.stage_id },
       { label: "Tournament ID", value: match.tournament_id },
       { label: "Stage sequence", value: match.stage_sequence },
@@ -2036,10 +2164,12 @@ function renderGameTable(matches) {
 
 function renderSeriesTable(seriesItems) {
   elements.matchesBody.innerHTML = "";
+  const isSingle = isSinglePlayerMode();
+  const colSpan = isSingle ? 9 : 8;
   if (!seriesItems.length) {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
-    cell.colSpan = 8;
+    cell.colSpan = colSpan;
     cell.textContent = "No playoff series for these filters.";
     row.appendChild(cell);
     elements.matchesBody.appendChild(row);
@@ -2070,6 +2200,10 @@ function renderSeriesTable(seriesItems) {
     const dateCell = document.createElement("td");
     dateCell.className = "date-cell";
     dateCell.textContent = formatDateRange(series.date, series.end_date);
+
+    const opponentCell = document.createElement("td");
+    opponentCell.className = "opponent-cell";
+    opponentCell.textContent = series.opponent_name || "-";
 
     const tournamentCell = document.createElement("td");
     if (series.stage_id) {
@@ -2111,7 +2245,9 @@ function renderSeriesTable(seriesItems) {
     const winner = document.createElement("span");
     winner.className = "winner";
     const nameA = firstName(state.playerA?.name) || "Player A";
-    const nameB = firstName(state.playerB?.name) || "Player B";
+    const nameB = isSingle
+      ? firstName(series.opponent_name) || "Opponent"
+      : firstName(state.playerB?.name) || "Player B";
     if (series.result === "A") {
       winner.classList.add("a");
       winner.textContent = nameA;
@@ -2119,7 +2255,7 @@ function renderSeriesTable(seriesItems) {
     } else if (series.result === "B") {
       winner.classList.add("b");
       winner.textContent = nameB;
-      winner.title = state.playerB.name;
+      winner.title = isSingle ? series.opponent_name || "Opponent" : state.playerB.name;
     } else {
       winner.classList.add("d");
       winner.textContent = "Tied";
@@ -2129,6 +2265,7 @@ function renderSeriesTable(seriesItems) {
 
     row.appendChild(expCell);
     row.appendChild(dateCell);
+    if (isSingle) row.appendChild(opponentCell);
     row.appendChild(tournamentCell);
     row.appendChild(stageCell);
     row.appendChild(seriesCell);
@@ -2141,7 +2278,7 @@ function renderSeriesTable(seriesItems) {
     detailRow.className = "detail-row series-detail-row";
     detailRow.hidden = true;
     const detailCell = document.createElement("td");
-    detailCell.colSpan = 8;
+    detailCell.colSpan = colSpan;
     detailCell.appendChild(createSeriesDetailPanel(series));
     detailRow.appendChild(detailCell);
 
@@ -2158,6 +2295,9 @@ function renderSeriesTable(seriesItems) {
 function createSeriesDetailPanel(series) {
   const panel = document.createElement("div");
   panel.className = "series-detail-panel";
+  const opponentName = isSinglePlayerMode()
+    ? series.opponent_name || "Opponent"
+    : state.playerB?.name || "Player B";
 
   const header = document.createElement("div");
   header.className = "series-detail-head";
@@ -2186,7 +2326,7 @@ function createSeriesDetailPanel(series) {
   // Header row with player names shown once
   const namesHeader = document.createElement("div");
   namesHeader.className = "series-games-header";
-  namesHeader.textContent = `${state.playerA?.name || "Player A"} vs ${state.playerB?.name || "Player B"}`;
+  namesHeader.textContent = `${state.playerA?.name || "Player A"} vs ${opponentName}`;
   panel.appendChild(namesHeader);
 
   const list = document.createElement("div");
@@ -2229,8 +2369,11 @@ function createSeriesGameRow(game, runningA, runningB) {
     winner.textContent = firstName(state.playerA?.name) || "Player A";
     winner.title = state.playerA?.name || "Player A";
   } else if (game.result === "B") {
-    winner.textContent = firstName(state.playerB?.name) || "Player B";
-    winner.title = state.playerB?.name || "Player B";
+    const opponentName = isSinglePlayerMode()
+      ? game.opponent_name || "Opponent"
+      : state.playerB?.name || "Player B";
+    winner.textContent = firstName(opponentName) || "Player B";
+    winner.title = opponentName;
   } else {
     winner.textContent = "Draw";
     winner.title = "Draw";
@@ -2285,7 +2428,7 @@ function applyFilters(matches) {
     if (filters.otOnly && !match.overtime) return false;
     if (filters.tightOnly && match.goal_abs > 1) return false;
     if (search) {
-      const hay = `${match.tournament_name || ""} ${match.stage || ""}`;
+      const hay = `${match.tournament_name || ""} ${match.stage || ""} ${match.opponent_name || ""}`;
       if (!normalizeText(hay).includes(search)) return false;
     }
     return true;
@@ -2317,7 +2460,7 @@ function compareNumberValues(a, b) {
 
 function getWinnerSortLabel(item) {
   if (item.result === "A") return state.playerA?.name || "Player A";
-  if (item.result === "B") return state.playerB?.name || "Player B";
+  if (item.result === "B") return item.opponent_name || state.playerB?.name || "Player B";
   return isSeriesMode() ? "Tied" : "Draw";
 }
 
@@ -2346,6 +2489,8 @@ function compareItemsForSortKey(a, b, key) {
       return compareDateAsc(a, b);
     case "tournament":
       return compareTextValues(a.tournament_name, b.tournament_name);
+    case "opponent":
+      return compareTextValues(a.opponent_name, b.opponent_name);
     case "stage":
       return compareTextValues(a.stage, b.stage) || compareStageOrderAsc(a, b);
     case "round":
@@ -2494,6 +2639,7 @@ function updateModeControls() {
     button.setAttribute("aria-pressed", isActive ? "true" : "false");
   });
   document.body.dataset.statsMode = getStatsMode();
+  document.body.dataset.comparisonMode = state.comparisonMode;
   ensureSortForMode();
 }
 
@@ -2599,27 +2745,38 @@ function setStageTab(stage) {
 async function handleCompare() {
   const idA = resolvePlayerId(elements.playerA);
   const idB = resolvePlayerId(elements.playerB);
+  const isSingle = !idB;
 
-  if (!idA || !idB) {
-    setStatus("Select two valid players.");
+  if (!idA) {
+    setStatus("Select a valid player.");
     return;
   }
-  if (idA === idB) {
+  if (!isSingle && idA === idB) {
     setStatus("Choose two different players.");
     return;
   }
 
   setLoading(true);
-  setStatus("Loading matchup...");
+  setStatus(isSingle ? "Loading player stats..." : "Loading matchup...");
   elements.emptyState.hidden = true;
   elements.errorState.hidden = true;
   renderSummarySkeleton();
   renderTableSkeleton();
 
   try {
-    const data = await loadMatchup(idA, idB, (current, total) => {
-      setStatus(`Loading chunks ${current}/${total}...`);
-    });
+    const data = isSingle
+      ? await loadPlayerStats(idA, (current, total) => {
+          setStatus(`Loading player files ${current}/${total}...`);
+        })
+        : await loadMatchup(idA, idB, (current, total) => {
+          setStatus(`Loading chunks ${current}/${total}...`);
+        });
+
+    state.playerA = getPlayerById(idA) || data?.playerA || { id: idA, name: `Player ${idA}` };
+    state.playerB = isSingle
+      ? data?.playerB || { id: null, name: "Opponents" }
+      : getPlayerById(idB) || data?.playerB || { id: idB, name: `Player ${idB}` };
+    state.comparisonMode = isSingle ? "single" : "matchup";
 
     if (!data || !data.matches.length) {
       elements.emptyState.hidden = false;
@@ -2635,16 +2792,14 @@ async function handleCompare() {
       return;
     }
 
-    state.playerA = getPlayerById(idA) || data.playerA;
-    state.playerB = getPlayerById(idB) || data.playerB;
     state.baseMatches = data.matches;
     state.page = 1;
     state.sort = { key: "date", direction: "desc" };
     state.perPage = Number(elements.pageSize.value);
 
-    updateUrl(idA, idB);
-    safeStorageSet(STORAGE_KEYS.last, { p1: idA, p2: idB });
-    addRecent(idA, idB, state.playerA.name, state.playerB.name);
+    updateUrl(idA, isSingle ? null : idB);
+    safeStorageSet(STORAGE_KEYS.last, { p1: idA, p2: isSingle ? null : idB });
+    if (!isSingle) addRecent(idA, idB, state.playerA.name, state.playerB.name);
     updateStageMeta();
     resetFilters();
     setStageTab("overall");
@@ -2654,7 +2809,7 @@ async function handleCompare() {
     console.error(err);
     setLoading(false);
     elements.errorState.hidden = false;
-    setStatus("Failed to load matchup.");
+    setStatus(isSingle ? "Failed to load player stats." : "Failed to load matchup.");
   }
 }
 
@@ -2697,16 +2852,23 @@ function renderTableSkeleton() {
 }
 
 async function handleSwap() {
-  animateSwapButton();
   const aValue = elements.playerA.value;
   const bValue = elements.playerB.value;
   const aId = elements.playerA.dataset.playerId;
   const bId = elements.playerB.dataset.playerId;
 
+  if (!bId) {
+    setStatus("Select Player 2 to swap.");
+    return;
+  }
+
+  animateSwapButton();
+
   elements.playerA.value = bValue;
   elements.playerB.value = aValue;
   elements.playerA.dataset.playerId = bId || "";
   elements.playerB.dataset.playerId = aId || "";
+  updatePrimaryActionLabel();
 
   // Reload opponents for the new Player A
   const newAId = bId ? Number(bId) : null;
@@ -2730,11 +2892,11 @@ function animateSwapButton() {
 function handleCopyLink() {
   const idA = resolvePlayerId(elements.playerA);
   const idB = resolvePlayerId(elements.playerB);
-  if (!idA || !idB) {
-    setStatus("Select players first.");
+  if (!idA) {
+    setStatus("Select a player first.");
     return;
   }
-  updateUrl(idA, idB);
+  updateUrl(idA, idB || null);
   const link = window.location.href;
   const btn = elements.copyLinkBtn;
   const originalText = btn.textContent;
@@ -3026,13 +3188,16 @@ async function init() {
   const selection = urlSelection || lastSelection;
   if (selection) {
     const player1 = getPlayerById(selection.p1) || { id: selection.p1, name: `Player ${selection.p1}` };
-    const player2 = getPlayerById(selection.p2) || { id: selection.p2, name: `Player ${selection.p2}` };
     setInputPlayer(elements.playerA, player1);
     elements.playerB.disabled = false;
     await loadOpponentsForPlayer(selection.p1);
-    setInputPlayer(elements.playerB, player2);
+    if (selection.p2) {
+      const player2 = getPlayerById(selection.p2) || { id: selection.p2, name: `Player ${selection.p2}` };
+      setInputPlayer(elements.playerB, player2);
+    }
     handleCompare();
   }
+  updatePrimaryActionLabel();
 }
 
 init();
