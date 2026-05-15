@@ -1275,12 +1275,47 @@ function getHighlightInfo(match, side) {
   };
 }
 
+let highlightSparkleObserver = null;
+
+function getHighlightSparkleObserver() {
+  if (!("IntersectionObserver" in window)) return null;
+  if (highlightSparkleObserver) return highlightSparkleObserver;
+
+  highlightSparkleObserver = new IntersectionObserver(
+    (entries, observer) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting || entry.intersectionRatio < 0.35) return;
+        entry.target.classList.add("highlight--sparkle");
+        observer.unobserve(entry.target);
+      });
+    },
+    {
+      root: null,
+      rootMargin: "0px 0px -8% 0px",
+      threshold: [0, 0.35],
+    }
+  );
+  return highlightSparkleObserver;
+}
+
+function armHighlightSparkle(block) {
+  const reduceMotion =
+    window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduceMotion) return;
+
+  const observer = getHighlightSparkleObserver();
+  requestAnimationFrame(() => {
+    if (observer) {
+      observer.observe(block);
+    } else {
+      block.classList.add("highlight--sparkle");
+    }
+  });
+}
+
 function createHighlightBlock(label, info, side) {
   const block = document.createElement("div");
   block.className = `highlight highlight--${side}`;
-  if (info.score && info.score !== DASH) {
-    block.classList.add("highlight--sparkle");
-  }
 
   const title = document.createElement("div");
   title.className = "highlight-title";
@@ -1307,6 +1342,9 @@ function createHighlightBlock(label, info, side) {
   block.appendChild(score);
   block.appendChild(meta);
   block.appendChild(tour);
+  if (info.score && info.score !== DASH) {
+    armHighlightSparkle(block);
+  }
   return block;
 }
 
@@ -1883,6 +1921,9 @@ function renderGameTable(matches) {
     expBtn.type = "button";
     expBtn.className = "expand-btn";
     expBtn.dataset.row = rowId;
+    expBtn.setAttribute("aria-controls", `detail-${rowId}`);
+    expBtn.setAttribute("aria-expanded", "false");
+    expBtn.setAttribute("aria-label", "Show match details");
     expBtn.textContent = "+";
     expCell.appendChild(expBtn);
 
@@ -1962,7 +2003,7 @@ function renderGameTable(matches) {
 
     const detailRow = document.createElement("tr");
     detailRow.id = `detail-${rowId}`;
-    detailRow.className = "detail-row";
+    detailRow.className = "detail-row match-detail-row";
     detailRow.hidden = true;
     const detailCell = document.createElement("td");
     detailCell.colSpan = 8;
@@ -2013,12 +2054,16 @@ function renderSeriesTable(seriesItems) {
   pageSeries.forEach((series, index) => {
     const rowId = `series-${start + index}`;
     const row = document.createElement("tr");
+    row.className = "series-row";
 
     const expCell = document.createElement("td");
     const expBtn = document.createElement("button");
     expBtn.type = "button";
     expBtn.className = "expand-btn";
     expBtn.dataset.row = rowId;
+    expBtn.setAttribute("aria-controls", `detail-${rowId}`);
+    expBtn.setAttribute("aria-expanded", "false");
+    expBtn.setAttribute("aria-label", "Show series games");
     expBtn.textContent = "+";
     expCell.appendChild(expBtn);
 
@@ -2049,6 +2094,7 @@ function renderSeriesTable(seriesItems) {
     stageCell.textContent = series.stage || "-";
 
     const seriesCell = document.createElement("td");
+    seriesCell.className = "series-length-cell";
     seriesCell.textContent = formatSeriesLength(series);
 
     const gamesCell = document.createElement("td");
@@ -2058,6 +2104,7 @@ function renderSeriesTable(seriesItems) {
     gamesCell.appendChild(gamesSpan);
 
     const goalsCell = document.createElement("td");
+    goalsCell.className = "series-goals-cell";
     goalsCell.textContent = `${series.goals_a} - ${series.goals_b}`;
 
     const winnerCell = document.createElement("td");
@@ -2091,7 +2138,7 @@ function renderSeriesTable(seriesItems) {
 
     const detailRow = document.createElement("tr");
     detailRow.id = `detail-${rowId}`;
-    detailRow.className = "detail-row";
+    detailRow.className = "detail-row series-detail-row";
     detailRow.hidden = true;
     const detailCell = document.createElement("td");
     detailCell.colSpan = 8;
@@ -2890,6 +2937,12 @@ function initTableDetails() {
     if (!detailRow) return;
     const isOpen = !detailRow.hidden;
     detailRow.hidden = isOpen;
+    button.closest("tr")?.classList.toggle("is-expanded", !isOpen);
+    button.setAttribute("aria-expanded", isOpen ? "false" : "true");
+    if (button.getAttribute("aria-label")) {
+      const itemLabel = detailRow.classList.contains("series-detail-row") ? "series games" : "match details";
+      button.setAttribute("aria-label", isOpen ? `Show ${itemLabel}` : `Hide ${itemLabel}`);
+    }
     button.textContent = isOpen ? "+" : "−";
     button.classList.toggle("is-open", !isOpen);
   });

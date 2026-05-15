@@ -391,6 +391,8 @@ body[data-theme="dark"] .grid {
   }
 
   .streak-chip,
+  .highlight--sparkle,
+  .highlight--sparkle .highlight-score,
   .highlight--sparkle::before,
   .highlight--sparkle::after {
     animation: none;
@@ -933,69 +935,107 @@ body[data-theme="dark"] .h2h-scoreboard {
   border-left-color: var(--accent);
 }
 
+.highlight--sparkle {
+  animation: milestone-card-pulse 1.15s ease-out 0.08s both;
+}
+
 .highlight--sparkle::before {
   content: "";
   position: absolute;
-  top: -45%;
-  left: -35%;
-  width: 34%;
-  height: 190%;
+  inset: 0;
   pointer-events: none;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.42), transparent);
-  transform: rotate(18deg) translateX(-150%);
-  animation: highlight-sheen 0.9s ease-out 0.12s both;
+  background:
+    linear-gradient(100deg, transparent 18%, rgba(239, 108, 68, 0.24) 42%, rgba(42, 117, 100, 0.18) 54%, transparent 74%);
+  transform: translateX(-115%) skewX(-14deg);
+  animation: highlight-sheen 1s ease-out 0.12s both;
 }
 
 .highlight--sparkle::after {
   content: "";
   position: absolute;
-  top: 10px;
-  right: 14px;
-  width: 4px;
-  height: 4px;
-  border-radius: 999px;
+  top: 7px;
+  right: 10px;
+  width: 48px;
+  height: 32px;
   pointer-events: none;
-  color: var(--teal);
-  background: currentColor;
-  box-shadow: 8px 7px 0 -1px currentColor, -7px 12px 0 -2px currentColor;
+  background:
+    radial-gradient(circle at 74% 22%, var(--accent) 0 2px, transparent 3px),
+    radial-gradient(circle at 42% 54%, var(--teal) 0 2px, transparent 3px),
+    radial-gradient(circle at 18% 30%, rgba(239, 108, 68, 0.75) 0 1.5px, transparent 2.5px),
+    radial-gradient(circle at 62% 76%, rgba(255, 191, 87, 0.95) 0 2px, transparent 3px);
   opacity: 0;
-  animation: milestone-glint 0.7s ease-out 0.28s both;
+  transform: scale(0.72) rotate(-8deg);
+  animation: milestone-glint 0.95s ease-out 0.22s both;
 }
 
-.highlight--b.highlight--sparkle::after {
-  color: var(--accent);
+.highlight--sparkle .highlight-score {
+  animation: milestone-score-pop 0.75s cubic-bezier(0.22, 1, 0.36, 1) 0.16s both;
+}
+
+@keyframes milestone-card-pulse {
+  0% {
+    border-color: var(--border);
+    box-shadow: 0 0 0 0 rgba(239, 108, 68, 0);
+  }
+
+  34% {
+    border-color: rgba(239, 108, 68, 0.46);
+    box-shadow: 0 0 0 4px rgba(239, 108, 68, 0.12), 0 8px 20px rgba(0, 0, 0, 0.08);
+  }
+
+  100% {
+    border-color: var(--border);
+    box-shadow: 0 0 0 0 rgba(239, 108, 68, 0);
+  }
 }
 
 @keyframes highlight-sheen {
   0% {
     opacity: 0;
-    transform: rotate(18deg) translateX(-150%);
+    transform: translateX(-115%) skewX(-14deg);
   }
 
   30% {
-    opacity: 0.72;
+    opacity: 1;
   }
 
   100% {
     opacity: 0;
-    transform: rotate(18deg) translateX(420%);
+    transform: translateX(115%) skewX(-14deg);
   }
 }
 
 @keyframes milestone-glint {
   0% {
     opacity: 0;
-    transform: scale(0.65);
+    transform: scale(0.62) rotate(-8deg);
   }
 
-  35% {
-    opacity: 0.65;
-    transform: scale(1);
+  38% {
+    opacity: 1;
+    transform: scale(1.08) rotate(0deg);
   }
 
   100% {
     opacity: 0;
-    transform: scale(1.25);
+    transform: scale(1.24) rotate(5deg);
+  }
+}
+
+@keyframes milestone-score-pop {
+  0% {
+    transform: scale(1);
+    text-shadow: none;
+  }
+
+  45% {
+    transform: scale(1.12);
+    text-shadow: 0 0 12px rgba(239, 108, 68, 0.28);
+  }
+
+  100% {
+    transform: scale(1);
+    text-shadow: none;
   }
 }
 
@@ -1012,6 +1052,7 @@ body[data-theme="dark"] .h2h-scoreboard {
   font-weight: 800;
   color: var(--text);
   font-variant-numeric: tabular-nums;
+  transform-origin: left center;
 }
 
 .highlight-meta {
@@ -1969,8 +2010,8 @@ body[data-theme="dark"] .h2h-scoreboard {
     gap: 12px;
   }
 
-  /* Hide expand detail rows on mobile */
-  #matches-table tr.detail-row {
+  /* Hide regular match detail rows on mobile; series drilldown is enabled below. */
+  #matches-table tr.match-detail-row {
     display: none !important;
   }
 
@@ -2041,6 +2082,90 @@ body[data-theme="dark"] .h2h-scoreboard {
   /* Expand button cell */
   #matches-table td:first-child {
     display: none;
+  }
+
+  body[data-stats-mode="series"] #matches-table tr.series-row {
+    grid-template-columns: 28px minmax(0, 1fr) auto;
+  }
+
+  body[data-stats-mode="series"] #matches-table tr.series-row.is-expanded {
+    border-bottom-color: transparent;
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+
+  body[data-stats-mode="series"] #matches-table tr.series-row td:first-child {
+    display: flex;
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    align-items: center;
+  }
+
+  body[data-stats-mode="series"] #matches-table tr.series-row .expand-btn {
+    width: 26px;
+    height: 26px;
+    border: 1px solid var(--border);
+    background: var(--bg-alt);
+    color: var(--accent);
+  }
+
+  body[data-stats-mode="series"] #matches-table tr.series-row td.date-cell {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  body[data-stats-mode="series"] #matches-table tr.series-row td:nth-child(3) {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  body[data-stats-mode="series"] #matches-table tr.series-row td:nth-child(4) {
+    grid-column: 2;
+    grid-row: 3;
+  }
+
+  body[data-stats-mode="series"] #matches-table tr.series-row td:nth-child(5) {
+    grid-column: 3;
+    grid-row: 3;
+    text-align: right;
+  }
+
+  body[data-stats-mode="series"] #matches-table tr.series-row td:nth-child(6) {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  body[data-stats-mode="series"] #matches-table tr.series-row td:nth-child(7) {
+    grid-column: 2 / -1;
+    grid-row: 4;
+    text-align: left;
+    color: var(--muted);
+    font-size: 0.75rem;
+  }
+
+  body[data-stats-mode="series"] #matches-table tr.series-row td:nth-child(7)::before {
+    content: "Goals ";
+    font-weight: 700;
+  }
+
+  body[data-stats-mode="series"] #matches-table tr.series-row td:nth-child(8) {
+    grid-column: 3;
+    grid-row: 2;
+  }
+
+  body[data-stats-mode="series"] #matches-table tr.series-detail-row:not([hidden]) {
+    display: block !important;
+    margin-top: -12px;
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 var(--radius) var(--radius);
+    background: var(--card);
+  }
+
+  body[data-stats-mode="series"] #matches-table tr.series-detail-row td {
+    display: block;
+    padding: 0 12px 12px;
+    background: var(--card);
+    border: none;
   }
 
   .match-score {
