@@ -153,8 +153,9 @@ body[data-theme="dark"] .grid {
 
 .brand {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 16px;
+  max-width: 820px;
 }
 
 .logo {
@@ -178,6 +179,13 @@ body[data-theme="dark"] .grid {
 .logo svg {
   width: 32px;
   height: 32px;
+}
+
+.site-description {
+  max-width: 760px;
+  margin-top: 8px;
+  font-size: 0.95rem;
+  line-height: 1.55;
 }
 
 @keyframes logo-pulse {
