@@ -150,6 +150,53 @@ function normalizeText(text) {
     .toLowerCase();
 }
 
+const COUNTRY_FLAGS = new Map(
+  [
+    ["Belarus", "🇧🇾"],
+    ["Canada", "🇨🇦"],
+    ["Chile", "🇨🇱"],
+    ["Czech Republic", "🇨🇿"],
+    ["Denmark", "🇩🇰"],
+    ["Estonia", "🇪🇪"],
+    ["Finland", "🇫🇮"],
+    ["France", "🇫🇷"],
+    ["Germany", "🇩🇪"],
+    ["Hungary", "🇭🇺"],
+    ["Iceland", "🇮🇸"],
+    ["Ireland", "🇮🇪"],
+    ["Israel", "🇮🇱"],
+    ["Italy", "🇮🇹"],
+    ["Kazakhstan", "🇰🇿"],
+    ["kazakistan", "🇰🇿"],
+    ["Kyrgyzstan", "🇰🇬"],
+    ["Latvia", "🇱🇻"],
+    ["Netherlands", "🇳🇱"],
+    ["Norway", "🇳🇴"],
+    ["Pakistan", "🇵🇰"],
+    ["Portugal", "🇵🇹"],
+    ["Republic of Lithuania", "🇱🇹"],
+    ["Russia", "🇷🇺"],
+    ["Россия", "🇷🇺"],
+    ["Serbia", "🇷🇸"],
+    ["Slovakia", "🇸🇰"],
+    ["Slovenia", "🇸🇮"],
+    ["Spain", "🇪🇸"],
+    ["Sri Lanka", "🇱🇰"],
+    ["Sweden", "🇸🇪"],
+    ["Sweden / Portugal", "🇸🇪/🇵🇹"],
+    ["Switzerland", "🇨🇭"],
+    ["Syria", "🇸🇾"],
+    ["Tajikistan", "🇹🇯"],
+    ["Ukraine", "🇺🇦"],
+    ["United Kingdom", "🇬🇧"],
+    ["United States of America", "🇺🇸"],
+  ].map(([country, flag]) => [normalizeText(country), flag])
+);
+
+function getCountryFlag(country) {
+  return COUNTRY_FLAGS.get(normalizeText(country)) || "";
+}
+
 function toNumber(value, fallback = 0) {
   const num = Number(value);
   return Number.isFinite(num) ? num : fallback;
@@ -488,6 +535,28 @@ function buildOpponentSuggestions(query) {
   return results.slice(0, 20);
 }
 
+function createSuggestionIdentity(player) {
+  const identity = document.createElement("span");
+  identity.className = "typeahead-player";
+
+  const flag = getCountryFlag(player.country);
+  if (flag) {
+    const flagEl = document.createElement("span");
+    flagEl.className = "typeahead-flag";
+    flagEl.textContent = flag;
+    flagEl.title = player.country;
+    flagEl.setAttribute("aria-label", player.country);
+    identity.appendChild(flagEl);
+  }
+
+  const name = document.createElement("span");
+  name.className = "typeahead-name";
+  name.textContent = player.name;
+  identity.appendChild(name);
+
+  return identity;
+}
+
 async function loadOpponentsForPlayer(playerId) {
   state.opponentsOfA = new Map();
   state.opponentsLoading = true;
@@ -599,9 +668,7 @@ function setupTypeahead(inputEl, listEl, options = {}) {
       btn.type = "button";
       btn.dataset.id = player.id;
       btn.dataset.index = idx;
-      const name = document.createElement("span");
-      name.textContent = player.name;
-      btn.appendChild(name);
+      btn.appendChild(createSuggestionIdentity(player));
       if (isPlayerB && player.totalMatches != null) {
         const count = document.createElement("span");
         count.className = "game-count";

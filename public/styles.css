@@ -297,6 +297,27 @@ body[data-theme="dark"] .grid {
   color: var(--text);
 }
 
+.typeahead-player {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.typeahead-flag {
+  width: 24px;
+  flex: 0 0 24px;
+  text-align: center;
+  line-height: 1;
+}
+
+.typeahead-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .typeahead button:hover,
 .typeahead button.is-active {
   background: var(--accent-soft);
