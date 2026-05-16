@@ -1424,9 +1424,10 @@ function armHighlightSparkle(block) {
   });
 }
 
-function createHighlightBlock(label, info, side) {
+function createHighlightBlock(label, info, side, tooltip = "") {
   const block = document.createElement("div");
   block.className = `highlight highlight--${side}`;
+  if (tooltip) block.title = tooltip;
 
   const title = document.createElement("div");
   title.className = "highlight-title";
@@ -1459,7 +1460,7 @@ function createHighlightBlock(label, info, side) {
   return block;
 }
 
-function createHighlightColumn(name, side, winInfo, label = "Largest win") {
+function createHighlightColumn(name, side, winInfo, label = "Largest win", tooltip = "") {
   const column = document.createElement("div");
   column.className = `highlight-column highlight-column--${side}`;
 
@@ -1469,8 +1470,20 @@ function createHighlightColumn(name, side, winInfo, label = "Largest win") {
   if (name) title.title = name;
 
   column.appendChild(title);
-  column.appendChild(createHighlightBlock(label, winInfo, side));
+  column.appendChild(createHighlightBlock(label, winInfo, side, tooltip));
   return column;
+}
+
+function getCanonOpponentKey(item) {
+  if (!item || !isSinglePlayerMode()) return "";
+  if (item.opponent_id != null) return `id:${item.opponent_id}`;
+  return normalizeText(item.opponent_name || "");
+}
+
+function getCanonRivalryTooltip(winItem, lossItem) {
+  const winKey = getCanonOpponentKey(winItem);
+  const lossKey = getCanonOpponentKey(lossItem);
+  return winKey && winKey === lossKey ? "canon rivalry" : "";
 }
 
 function getSeriesHighlightInfo(series, side) {
@@ -1549,8 +1562,9 @@ function renderGameSummary(matches) {
 
   const highlights = document.createElement("div");
   highlights.className = "scoreboard-highlights";
-  const highlightA = createHighlightColumn(state.playerA.name, "a", getHighlightInfo(summary.largestWin, "a"), "Biggest win");
-  const highlightB = createHighlightColumn(opponentLabel, "b", getHighlightInfo(summary.largestLoss, "b"), isSinglePlayerMode() ? "Biggest loss" : "Biggest win");
+  const canonTooltip = getCanonRivalryTooltip(summary.largestWin, summary.largestLoss);
+  const highlightA = createHighlightColumn(state.playerA.name, "a", getHighlightInfo(summary.largestWin, "a"), "Biggest win", canonTooltip);
+  const highlightB = createHighlightColumn(opponentLabel, "b", getHighlightInfo(summary.largestLoss, "b"), isSinglePlayerMode() ? "Biggest loss" : "Biggest win", canonTooltip);
   highlights.appendChild(highlightA);
   highlights.appendChild(highlightB);
   scoreboard.appendChild(highlights);
@@ -1612,11 +1626,12 @@ function renderSeriesSummary(seriesItems) {
 
   const highlights = document.createElement("div");
   highlights.className = "scoreboard-highlights";
+  const canonTooltip = getCanonRivalryTooltip(summary.largestWin, summary.largestLoss);
   highlights.appendChild(
-    createHighlightColumn(state.playerA.name, "a", getSeriesHighlightInfo(summary.largestWin, "a"), isSinglePlayerMode() ? "Biggest series win" : "Largest win")
+    createHighlightColumn(state.playerA.name, "a", getSeriesHighlightInfo(summary.largestWin, "a"), isSinglePlayerMode() ? "Biggest series win" : "Largest win", canonTooltip)
   );
   highlights.appendChild(
-    createHighlightColumn(opponentLabel, "b", getSeriesHighlightInfo(summary.largestLoss, "b"), isSinglePlayerMode() ? "Biggest series loss" : "Largest win")
+    createHighlightColumn(opponentLabel, "b", getSeriesHighlightInfo(summary.largestLoss, "b"), isSinglePlayerMode() ? "Biggest series loss" : "Largest win", canonTooltip)
   );
   scoreboard.appendChild(highlights);
 
@@ -1655,11 +1670,17 @@ function createCurrentStreakChip(items) {
 
   const chip = document.createElement("span");
   const itemLabel = isSeriesMode() ? "series" : "game";
+  const baseTitle = `${state.playerA?.name || "Player 1"} has won ${streak} ${itemLabel}s in a row`;
   chip.className = "streak-chip";
   chip.textContent = `🔥 ${streak}`;
-  chip.title = `${state.playerA?.name || "Player 1"} has won ${streak} ${itemLabel}s in a row`;
+  chip.title = streak >= 7 ? `Generational run. ${baseTitle}` : baseTitle;
   chip.setAttribute("aria-label", chip.title);
   return chip;
+}
+
+function formatMatchCountText(start, end, total) {
+  const suffix = total === 69 ? ". nice." : "";
+  return `Showing ${start + 1}-${end} of ${total} matches${suffix}`;
 }
 
 function renderForm(matches) {
@@ -2159,7 +2180,7 @@ function renderGameTable(matches) {
   elements.matchesBody.appendChild(fragment);
 
   const end = Math.min(start + state.perPage, matches.length);
-  elements.matchCount.textContent = `Showing ${start + 1}-${end} of ${matches.length} matches`;
+  elements.matchCount.textContent = formatMatchCountText(start, end, matches.length);
 }
 
 function renderSeriesTable(seriesItems) {
