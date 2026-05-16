@@ -288,6 +288,9 @@ function isSinglePlayerMode() {
 function updatePrimaryActionLabel() {
   if (!elements.compareBtn) return;
   elements.compareBtn.textContent = resolvePlayerId(elements.playerB) ? "Compare" : "Display";
+  if (elements.swapBtn) {
+    elements.swapBtn.disabled = !resolvePlayerId(elements.playerB);
+  }
 }
 
 function safeStorageGet(key, fallback) {
@@ -966,8 +969,8 @@ async function fetchPlayerPayload(playerId) {
 function normalizeMatchBase(raw) {
   const date = raw.date || raw.Date || "";
   const ts = Date.parse(date);
-  const stage = raw.stage || raw.Stage || "";
-  const tournamentName = raw.tournament_name || raw.TournamentName || "";
+  const stage = decodeHtmlEntities(raw.stage || raw.Stage || "");
+  const tournamentName = decodeHtmlEntities(raw.tournament_name || raw.TournamentName || "");
   const tournamentId = raw.tournament_id ?? raw.TournamentID ?? null;
   const stageId = raw.stage_id ?? raw.StageID ?? null;
   const stageSequence = raw.stage_sequence ?? raw.StageSequence ?? null;
@@ -2301,6 +2304,7 @@ function renderGameTable(matches) {
   const colSpan = isSingle ? 9 : 8;
   if (!matches.length) {
     const row = document.createElement("tr");
+    row.className = "empty-table-row";
     const cell = document.createElement("td");
     cell.colSpan = colSpan;
     cell.textContent = "No matches for these filters.";
@@ -2343,6 +2347,7 @@ function renderGameTable(matches) {
       const link = document.createElement("a");
       link.href = `https://th.sportscorpion.com/eng/tournament/stage/${match.stage_id}/matches/`;
       link.target = "_blank";
+      link.rel = "noopener";
       link.className = "table-link";
       link.innerHTML = `
         ${match.tournament_name || "-"}
@@ -2358,28 +2363,34 @@ function renderGameTable(matches) {
     }
 
     const stageCell = document.createElement("td");
+    stageCell.className = "stage-cell";
     stageCell.textContent = match.stage || "-";
 
     const roundCell = document.createElement("td");
+    roundCell.className = "round-cell";
     roundCell.textContent = formatRound(match);
 
     const scoreCell = document.createElement("td");
+    scoreCell.className = "score-cell";
     const scoreSpan = document.createElement("span");
     scoreSpan.className = "match-score";
     scoreSpan.textContent = `${match.goals_a} - ${match.goals_b}`;
     scoreCell.appendChild(scoreSpan);
 
     const otCell = document.createElement("td");
+    otCell.className = "ot-cell";
     if (match.overtime) {
       const badge = document.createElement("span");
       badge.className = "badge";
       badge.textContent = "OT";
       otCell.appendChild(badge);
     } else {
+      otCell.classList.add("is-empty");
       otCell.textContent = "-";
     }
 
     const winnerCell = document.createElement("td");
+    winnerCell.className = "winner-cell";
     const winner = document.createElement("span");
     winner.className = "winner";
     const nameA = firstName(state.playerA?.name) || "Player A";
@@ -2451,6 +2462,7 @@ function renderSeriesTable(seriesItems) {
   const colSpan = isSingle ? 9 : 8;
   if (!seriesItems.length) {
     const row = document.createElement("tr");
+    row.className = "empty-table-row";
     const cell = document.createElement("td");
     cell.colSpan = colSpan;
     cell.textContent = "No playoff series for these filters.";
@@ -2493,6 +2505,7 @@ function renderSeriesTable(seriesItems) {
       const link = document.createElement("a");
       link.href = `https://th.sportscorpion.com/eng/tournament/stage/${series.stage_id}/matches/`;
       link.target = "_blank";
+      link.rel = "noopener";
       link.className = "table-link";
       link.innerHTML = `
         ${series.tournament_name || "-"}
@@ -2508,6 +2521,7 @@ function renderSeriesTable(seriesItems) {
     }
 
     const stageCell = document.createElement("td");
+    stageCell.className = "stage-cell";
     stageCell.textContent = series.stage || "-";
 
     const seriesCell = document.createElement("td");
@@ -2515,6 +2529,7 @@ function renderSeriesTable(seriesItems) {
     seriesCell.textContent = formatSeriesLength(series);
 
     const gamesCell = document.createElement("td");
+    gamesCell.className = "score-cell";
     const gamesSpan = document.createElement("span");
     gamesSpan.className = "match-score";
     gamesSpan.textContent = formatSeriesScore(series);
@@ -2525,6 +2540,7 @@ function renderSeriesTable(seriesItems) {
     goalsCell.textContent = `${series.goals_a} - ${series.goals_b}`;
 
     const winnerCell = document.createElement("td");
+    winnerCell.className = "winner-cell";
     const winner = document.createElement("span");
     winner.className = "winner";
     const nameA = firstName(state.playerA?.name) || "Player A";
@@ -3131,6 +3147,7 @@ function renderTableSkeleton() {
   const fragment = document.createDocumentFragment();
   for (let i = 0; i < 6; i += 1) {
     const row = document.createElement("tr");
+    row.className = "loading-table-row";
     const cell = document.createElement("td");
     cell.colSpan = 8;
     cell.className = "skeleton";

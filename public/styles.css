@@ -69,9 +69,7 @@ p {
 }
 
 .table-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+  display: inline;
   color: inherit;
   text-decoration: none;
   transition: color 0.2s ease;
@@ -85,8 +83,11 @@ p {
 .external-icon {
   width: 10px;
   height: 10px;
+  display: inline-block;
+  margin-left: 4px;
   opacity: 0.6;
   transition: opacity 0.2s ease;
+  vertical-align: -0.1em;
 }
 
 .table-link:hover .external-icon {
@@ -97,6 +98,13 @@ button,
 input,
 select {
   font-family: inherit;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+  transform: none !important;
+  box-shadow: none !important;
 }
 
 .background {
@@ -261,8 +269,11 @@ body[data-theme="dark"] .grid {
   background: transparent;
   outline: none;
   width: 100%;
+  min-width: 0;
   font-size: 1rem;
   color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .icon-btn {
@@ -537,11 +548,15 @@ body[data-theme="dark"] .grid {
   background: var(--bg-alt);
   border-radius: 999px;
   padding: 6px 14px;
+  max-width: 100%;
   cursor: pointer;
   font-size: 0.9rem;
   font-weight: 600;
   color: var(--text);
   -webkit-text-fill-color: currentColor;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   transition: all 0.2s ease;
 }
 
@@ -588,6 +603,7 @@ body[data-theme="dark"] .recent-list button:focus-visible {
   border-radius: 999px;
   cursor: pointer;
   color: var(--muted);
+  white-space: nowrap;
   transition: all 0.2s ease;
 }
 
@@ -628,6 +644,7 @@ body[data-theme="dark"] .tab:hover:not(.is-active) {
   color: var(--muted);
   cursor: pointer;
   font-weight: 600;
+  white-space: nowrap;
   transition: background 0.2s ease, color 0.2s ease;
 }
 
@@ -700,6 +717,13 @@ body[data-theme="dark"] .tab:hover:not(.is-active) {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--card-bg);
+}
+
+#form-title {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  line-height: 1.3;
 }
 
 .streak-chip {
@@ -2015,7 +2039,8 @@ body[data-comparison-mode="single"][data-stats-mode="series"] #matches-table {
   .mode-btn {
     flex: 1;
     min-width: 0;
-    padding-inline: 10px;
+    padding-inline: 8px;
+    font-size: 0.82rem;
   }
 
   .filter-toggle-btn {
@@ -2024,6 +2049,41 @@ body[data-comparison-mode="single"][data-stats-mode="series"] #matches-table {
 
   .record {
     width: 100%;
+  }
+
+  .score-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 2px 10px;
+    min-height: 72px;
+    padding: 28px 12px 10px;
+  }
+
+  .score-label {
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    max-width: calc(100% - 24px);
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--card);
+    background: color-mix(in srgb, var(--card) 88%, transparent);
+    font-size: 0.66rem;
+    line-height: 1.15;
+    letter-spacing: 0.06em;
+    transform: translateX(-50%);
+  }
+
+  .score-value--a {
+    grid-column: 1;
+  }
+
+  .score-value--b {
+    grid-column: 2;
+  }
+
+  .score-note {
+    margin-top: 0;
+    font-size: 0.62rem;
   }
 
   .matches-header {
@@ -2045,20 +2105,19 @@ body[data-comparison-mode="single"][data-stats-mode="series"] #matches-table {
     gap: 12px;
   }
 
-  /* Hide regular match detail rows on mobile; series drilldown is enabled below. */
-  #matches-table tr.match-detail-row {
-    display: none !important;
-  }
-
-  /* Only style main match rows (those with 8 cells) */
   #matches-table tr:not(.detail-row) {
     display: grid;
-    grid-template-columns: auto 1fr auto;
+    grid-template-columns: 28px minmax(0, 1fr) auto;
     gap: 6px 12px;
     padding: 12px;
     background: var(--card);
     border: 1px solid var(--border);
     border-radius: var(--radius);
+  }
+
+  #matches-table tr:not(.detail-row).is-expanded {
+    border-bottom-color: transparent;
+    border-radius: var(--radius) var(--radius) 0 0;
   }
 
   #matches-table td {
@@ -2067,31 +2126,27 @@ body[data-comparison-mode="single"][data-stats-mode="series"] #matches-table {
     font-size: 0.85rem;
   }
 
-  /* Date in top left */
   #matches-table td.date-cell {
-    grid-column: 1;
+    grid-column: 2;
     grid-row: 1;
     font-weight: 600;
     color: var(--muted);
   }
 
-  /* Score in top right */
   #matches-table td:nth-child(6) {
     grid-column: 3;
     grid-row: 1;
     text-align: right;
   }
 
-  /* Winner badge */
   #matches-table td:nth-child(8) {
     grid-column: 3;
     grid-row: 2;
     text-align: right;
   }
 
-  /* Tournament spans full width */
   #matches-table td:nth-child(3) {
-    grid-column: 1 / -1;
+    grid-column: 2;
     grid-row: 2;
     font-size: 0.8rem;
     color: var(--muted);
@@ -2099,24 +2154,82 @@ body[data-comparison-mode="single"][data-stats-mode="series"] #matches-table {
     line-height: 1.4;
   }
 
-  /* Stage and round */
-  #matches-table td:nth-child(4),
-  #matches-table td:nth-child(5) {
+  #matches-table td:nth-child(4) {
+    grid-column: 2;
     grid-row: 3;
     font-size: 0.75rem;
     color: var(--muted);
   }
 
-  /* OT cell */
-  #matches-table td:nth-child(7) {
-    grid-column: 2;
-    grid-row: 1;
-    text-align: center;
+  #matches-table td:nth-child(5) {
+    grid-column: 3;
+    grid-row: 3;
+    text-align: right;
+    font-size: 0.75rem;
+    color: var(--muted);
   }
 
-  /* Expand button cell */
-  #matches-table td:first-child {
+  #matches-table td:nth-child(7) {
+    grid-column: 2;
+    grid-row: 4;
+    color: var(--muted);
+    font-size: 0.75rem;
+  }
+
+  #matches-table td.ot-cell.is-empty {
     display: none;
+  }
+
+  #matches-table td:first-child {
+    display: flex;
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    align-items: center;
+  }
+
+  #matches-table .expand-btn {
+    width: 26px;
+    height: 26px;
+    border: 1px solid var(--border);
+    background: var(--bg-alt);
+    color: var(--accent);
+  }
+
+  #matches-table tr.match-detail-row:not([hidden]) {
+    display: block !important;
+    margin-top: -12px;
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 var(--radius) var(--radius);
+    background: var(--card);
+  }
+
+  #matches-table tr.match-detail-row td {
+    display: block;
+    padding: 0 12px 12px;
+    background: var(--card);
+    border: none;
+  }
+
+  #matches-table tr.match-detail-row .detail-grid {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  #matches-table tr.empty-table-row,
+  #matches-table tr.loading-table-row {
+    display: block;
+    padding: 12px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+
+  #matches-table tr.empty-table-row td:first-child,
+  #matches-table tr.loading-table-row td:first-child {
+    display: block;
+    padding: 0;
+    color: var(--muted);
   }
 
   body[data-comparison-mode="single"] #matches-table {
@@ -2128,12 +2241,12 @@ body[data-comparison-mode="single"][data-stats-mode="series"] #matches-table {
   }
 
   body[data-comparison-mode="single"] #matches-table tr.single-match-row td.date-cell {
-    grid-column: 1;
+    grid-column: 2;
     grid-row: 1;
   }
 
   body[data-comparison-mode="single"] #matches-table tr.single-match-row td:nth-child(3) {
-    grid-column: 1 / -1;
+    grid-column: 2;
     grid-row: 2;
     font-size: 0.9rem;
     font-weight: 700;
@@ -2147,7 +2260,7 @@ body[data-comparison-mode="single"][data-stats-mode="series"] #matches-table {
   }
 
   body[data-comparison-mode="single"] #matches-table tr.single-match-row td:nth-child(4) {
-    grid-column: 1 / -1;
+    grid-column: 2 / -1;
     grid-row: 3;
     font-size: 0.8rem;
     color: var(--muted);
@@ -2155,9 +2268,17 @@ body[data-comparison-mode="single"][data-stats-mode="series"] #matches-table {
     line-height: 1.4;
   }
 
-  body[data-comparison-mode="single"] #matches-table tr.single-match-row td:nth-child(5),
-  body[data-comparison-mode="single"] #matches-table tr.single-match-row td:nth-child(6) {
+  body[data-comparison-mode="single"] #matches-table tr.single-match-row td:nth-child(5) {
+    grid-column: 2;
     grid-row: 4;
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+
+  body[data-comparison-mode="single"] #matches-table tr.single-match-row td:nth-child(6) {
+    grid-column: 3;
+    grid-row: 4;
+    text-align: right;
     font-size: 0.75rem;
     color: var(--muted);
   }
@@ -2170,8 +2291,8 @@ body[data-comparison-mode="single"][data-stats-mode="series"] #matches-table {
 
   body[data-comparison-mode="single"] #matches-table tr.single-match-row td:nth-child(8) {
     grid-column: 2;
-    grid-row: 1;
-    text-align: center;
+    grid-row: 5;
+    text-align: left;
   }
 
   body[data-comparison-mode="single"] #matches-table tr.single-match-row td:nth-child(9) {
