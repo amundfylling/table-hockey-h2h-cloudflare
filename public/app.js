@@ -150,6 +150,31 @@ function normalizeText(text) {
     .toLowerCase();
 }
 
+function decodeHtmlEntities(value) {
+  if (value == null) return "";
+  return String(value)
+    .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number(code)))
+    .replace(/&#x([\da-f]+);/gi, (_, code) => String.fromCodePoint(parseInt(code, 16)))
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, "\"")
+    .replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, " ");
+}
+
+function normalizePlayerRecord(player) {
+  if (!player) return null;
+  const name = decodeHtmlEntities(player.name);
+  return {
+    ...player,
+    name,
+    country: decodeHtmlEntities(player.country),
+    city: decodeHtmlEntities(player.city),
+    search_key: normalizeText(name),
+  };
+}
+
 const COUNTRY_FLAGS = new Map(
   [
     ["Belarus", "🇧🇾"],
@@ -407,6 +432,7 @@ function normalizeAliasIds(ids) {
   const unique = Array.from(
     new Set(
       (ids || [])
+        .filter((value) => value != null && String(value).trim() !== "")
         .map((value) => Number(value))
         .filter((value) => Number.isFinite(value))
     )
@@ -415,16 +441,56 @@ function normalizeAliasIds(ids) {
   return unique;
 }
 
+function expandAliasIds(ids) {
+  const expanded = [];
+  normalizeAliasIds(ids).forEach((id) => {
+    expanded.push(...getAliasGroup(id));
+  });
+  return normalizeAliasIds(expanded);
+}
+
+function getEffectiveAliasGroup(primaryId, explicitIds = []) {
+  const ids = normalizeAliasIds(explicitIds);
+  if (ids.length > 1) return expandAliasIds(ids);
+  return getAliasGroup(primaryId);
+}
+
+function parseIdList(value) {
+  return normalizeAliasIds(String(value || "").split(","));
+}
+
+function getSelectionIds(inputEl) {
+  const explicit = parseIdList(inputEl.dataset.playerIds);
+  if (explicit.length) return explicit;
+  const id = resolvePlayerId(inputEl);
+  return id ? [id] : [];
+}
+
+function getSelectionPlayer(inputEl, fallbackId) {
+  const id = resolvePlayerId(inputEl) || fallbackId;
+  const player = getPlayerById(id) || { id, name: `Player ${id}` };
+  const name = inputEl.dataset.playerName || player.name;
+  return { ...player, id, name };
+}
+
 function setInputPlayer(inputEl, player) {
   if (!player) return;
-  inputEl.value = `${player.name} (${player.id})`;
-  inputEl.dataset.playerId = player.id;
+  const primaryId = Number(player.id);
+  const ids = normalizeAliasIds([primaryId, ...(player.ids || [])]);
+  const id = Number.isFinite(primaryId) ? primaryId : ids[0];
+  const name = decodeHtmlEntities(player.name);
+  inputEl.value = ids.length > 1 ? `${name} (${ids.length} IDs)` : `${name} (${id})`;
+  inputEl.dataset.playerId = id;
+  inputEl.dataset.playerIds = ids.length > 1 ? ids.join(",") : "";
+  inputEl.dataset.playerName = name;
   updatePrimaryActionLabel();
 }
 
 function clearInputPlayer(inputEl, listEl) {
   inputEl.value = "";
   inputEl.dataset.playerId = "";
+  inputEl.dataset.playerIds = "";
+  inputEl.dataset.playerName = "";
   listEl.classList.remove("is-open");
   listEl.innerHTML = "";
   updatePrimaryActionLabel();
@@ -459,20 +525,24 @@ function renderRecent() {
   recent.forEach((item) => {
     const button = document.createElement("button");
     button.type = "button";
-    button.textContent = `${item.p1Name} vs ${item.p2Name}`;
+    button.textContent = `${decodeHtmlEntities(item.p1Name)} vs ${decodeHtmlEntities(item.p2Name)}`;
     button.dataset.p1 = item.p1Id;
     button.dataset.p2 = item.p2Id;
+    if (item.p1Ids?.length > 1) button.dataset.p1Ids = item.p1Ids.join(",");
+    if (item.p2Ids?.length > 1) button.dataset.p2Ids = item.p2Ids.join(",");
     fragment.appendChild(button);
   });
   elements.recentList.appendChild(fragment);
 }
 
-function addRecent(p1, p2, p1Name, p2Name) {
+function addRecent(p1, p2, p1Name, p2Name, p1Ids = [p1], p2Ids = [p2]) {
   const recent = safeStorageGet(STORAGE_KEYS.recent, []);
   const filtered = recent.filter((item) => !(item.p1Id === p1 && item.p2Id === p2));
   filtered.unshift({
     p1Id: p1,
     p2Id: p2,
+    p1Ids: normalizeAliasIds(p1Ids),
+    p2Ids: normalizeAliasIds(p2Ids),
     p1Name,
     p2Name,
     ts: Date.now(),
@@ -481,13 +551,26 @@ function addRecent(p1, p2, p1Name, p2Name) {
   renderRecent();
 }
 
-function updateUrl(p1, p2 = null) {
+function updateUrl(p1, p2 = null, p1Ids = [p1], p2Ids = p2 ? [p2] : []) {
   const url = new URL(window.location.href);
   url.searchParams.set("p1", p1);
+  const groupA = normalizeAliasIds(p1Ids);
+  if (groupA.length > 1) {
+    url.searchParams.set("p1g", groupA.join(","));
+  } else {
+    url.searchParams.delete("p1g");
+  }
   if (p2) {
     url.searchParams.set("p2", p2);
+    const groupB = normalizeAliasIds(p2Ids);
+    if (groupB.length > 1) {
+      url.searchParams.set("p2g", groupB.join(","));
+    } else {
+      url.searchParams.delete("p2g");
+    }
   } else {
     url.searchParams.delete("p2");
+    url.searchParams.delete("p2g");
   }
   window.history.replaceState({}, "", url);
 }
@@ -500,7 +583,44 @@ function getUrlSelection() {
   const id1 = Number(p1);
   const id2 = p2 ? Number(p2) : null;
   if (!Number.isFinite(id1) || (p2 && !Number.isFinite(id2))) return null;
-  return { p1: id1, p2: id2 };
+  const p1Ids = normalizeAliasIds([id1, ...parseIdList(params.get("p1g"))]);
+  const p2Ids = id2 ? normalizeAliasIds([id2, ...parseIdList(params.get("p2g"))]) : [];
+  return { p1: id1, p2: id2, p1Ids, p2Ids };
+}
+
+function withGroupedDuplicateSuggestions(items) {
+  const byName = new Map();
+  items.forEach((player) => {
+    const key = normalizeText(player.name);
+    if (!key) return;
+    if (!byName.has(key)) byName.set(key, []);
+    byName.get(key).push(player);
+  });
+
+  const usedGroups = new Set();
+  const output = [];
+  items.forEach((player) => {
+    const key = normalizeText(player.name);
+    const group = byName.get(key) || [];
+    if (group.length < 2) {
+      output.push(player);
+      return;
+    }
+    if (usedGroups.has(key)) return;
+    usedGroups.add(key);
+    const ids = normalizeAliasIds(group.map((item) => item.id));
+    const countries = new Set(group.map((item) => item.country).filter(Boolean));
+    const totalMatches = group.reduce((sum, item) => sum + toNumber(item.totalMatches, 0), 0);
+    output.push({
+      ...group[0],
+      ids,
+      isGroup: true,
+      country: countries.size === 1 ? group[0].country : "",
+      totalMatches: totalMatches || null,
+    });
+    output.push(...group);
+  });
+  return output;
 }
 
 function buildSuggestions(query) {
@@ -537,7 +657,7 @@ function buildOpponentSuggestions(query) {
 
 function createSuggestionIdentity(player) {
   const identity = document.createElement("span");
-  identity.className = "typeahead-player";
+  identity.className = player.isGroup ? "typeahead-player typeahead-player--group" : "typeahead-player";
 
   const flag = getCountryFlag(player.country);
   if (flag) {
@@ -554,10 +674,17 @@ function createSuggestionIdentity(player) {
   name.textContent = player.name;
   identity.appendChild(name);
 
+  if (player.isGroup) {
+    const groupLabel = document.createElement("span");
+    groupLabel.className = "typeahead-group-label";
+    groupLabel.textContent = "grouped";
+    identity.appendChild(groupLabel);
+  }
+
   return identity;
 }
 
-async function loadOpponentsForPlayer(playerId) {
+async function loadOpponentsForPlayer(playerId, explicitIds = []) {
   state.opponentsOfA = new Map();
   state.opponentsLoading = true;
   elements.playerBLoader.hidden = false;
@@ -565,7 +692,7 @@ async function loadOpponentsForPlayer(playerId) {
   elements.playerB.placeholder = "Loading opponents...";
 
   try {
-    const groupIds = getAliasGroup(playerId);
+    const groupIds = getEffectiveAliasGroup(playerId, explicitIds);
     const opponentMap = new Map();
 
     for (const gId of groupIds) {
@@ -598,7 +725,7 @@ async function loadOpponentsForPlayer(playerId) {
     }
 
     // Remove self from opponents
-    const selfGroup = getAliasGroup(playerId);
+    const selfGroup = getEffectiveAliasGroup(playerId, explicitIds);
     for (const selfId of selfGroup) {
       expandedMap.delete(selfId);
     }
@@ -661,15 +788,24 @@ function setupTypeahead(inputEl, listEl, options = {}) {
       closeList();
       return;
     }
-    currentItems = items;
+    currentItems = items.some((item) => item.isGroup) ? items : withGroupedDuplicateSuggestions(items);
     const fragment = document.createDocumentFragment();
-    items.forEach((player, idx) => {
+    currentItems.forEach((player, idx) => {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.dataset.id = player.id;
+      if (player.ids?.length > 1) btn.dataset.ids = player.ids.join(",");
       btn.dataset.index = idx;
       btn.appendChild(createSuggestionIdentity(player));
-      if (isPlayerB && player.totalMatches != null) {
+      if (player.isGroup) {
+        const groupMeta = document.createElement("span");
+        groupMeta.className = "game-count";
+        const games = isPlayerB && player.totalMatches != null
+          ? ` · ${player.totalMatches} game${player.totalMatches !== 1 ? "s" : ""}`
+          : "";
+        groupMeta.textContent = `${player.ids.length} IDs${games}`;
+        btn.appendChild(groupMeta);
+      } else if (isPlayerB && player.totalMatches != null) {
         const count = document.createElement("span");
         count.className = "game-count";
         count.textContent = `${player.totalMatches} game${player.totalMatches !== 1 ? "s" : ""}`;
@@ -704,6 +840,8 @@ function setupTypeahead(inputEl, listEl, options = {}) {
 
   inputEl.addEventListener("input", () => {
     inputEl.dataset.playerId = "";
+    inputEl.dataset.playerIds = "";
+    inputEl.dataset.playerName = "";
     updatePrimaryActionLabel();
     debouncedUpdate();
   });
@@ -750,7 +888,7 @@ function setupTypeahead(inputEl, listEl, options = {}) {
   listEl.addEventListener("click", (event) => {
     const button = event.target.closest("button");
     if (!button) return;
-    const player = getPlayerById(Number(button.dataset.id));
+    const player = currentItems[Number(button.dataset.index)] || getPlayerById(Number(button.dataset.id));
     if (player) {
       setInputPlayer(inputEl, player);
       closeList();
@@ -770,7 +908,7 @@ function setupTypeahead(inputEl, listEl, options = {}) {
 async function onPlayerASelected(player) {
   if (!player || !player.id) return;
   clearInputPlayer(elements.playerB, elements.listB);
-  await loadOpponentsForPlayer(player.id);
+  await loadOpponentsForPlayer(player.id, player.ids || [player.id]);
 }
 
 async function fetchJson(url) {
@@ -785,6 +923,10 @@ async function fetchJson(url) {
 async function fetchPairPayload(id1, id2, onProgress) {
   const payload = await fetchJson(`data/h2h/${id1}/${id2}.json`);
   if (!payload) return null;
+  const normalizedPlayers = {
+    player1: normalizePlayerRecord(payload.player1),
+    player2: normalizePlayerRecord(payload.player2),
+  };
   if (payload.chunks && Array.isArray(payload.chunks)) {
     const matches = [];
     for (let i = 0; i < payload.chunks.length; i += 1) {
@@ -801,9 +943,9 @@ async function fetchPairPayload(id1, id2, onProgress) {
         matches.push(...chunkPayload.matches);
       }
     }
-    return { ...payload, matches };
+    return { ...payload, ...normalizedPlayers, matches };
   }
-  return payload;
+  return { ...payload, ...normalizedPlayers };
 }
 
 async function fetchPlayerPayload(playerId) {
@@ -812,9 +954,13 @@ async function fetchPlayerPayload(playerId) {
   }
   const payload = await fetchJson(`data/h2h/${playerId}.json`);
   if (payload) {
-    state.playerFileCache.set(playerId, payload);
+    const normalizedPayload = {
+      ...payload,
+      player: normalizePlayerRecord(payload.player),
+    };
+    state.playerFileCache.set(playerId, normalizedPayload);
   }
-  return payload;
+  return state.playerFileCache.get(playerId) || null;
 }
 
 function normalizeMatchBase(raw) {
@@ -896,7 +1042,7 @@ function normalizeSinglePlayerMatch(raw, opponentId, opponentPlayer) {
   return {
     ...normalized,
     opponent_id: opponentId ?? null,
-    opponent_name: opponentPlayer?.name || getPlayerById(opponentId)?.name || fallbackName,
+    opponent_name: decodeHtmlEntities(opponentPlayer?.name || getPlayerById(opponentId)?.name || fallbackName),
   };
 }
 
@@ -946,8 +1092,8 @@ async function buildGroupMatches(groupA, groupB, onProgress) {
   return matches;
 }
 
-async function loadPlayerStats(playerId, onProgress) {
-  const groupA = getAliasGroup(playerId);
+async function loadPlayerStats(playerId, onProgress, explicitIds = []) {
+  const groupA = getEffectiveAliasGroup(playerId, explicitIds);
   const cacheKey = groupA.join(",");
   if (state.playerStatsCache.has(cacheKey)) {
     return state.playerStatsCache.get(cacheKey);
@@ -990,9 +1136,9 @@ async function loadPlayerStats(playerId, onProgress) {
   return data;
 }
 
-async function loadMatchup(p1, p2, onProgress) {
-  const groupA = getAliasGroup(p1);
-  const groupB = getAliasGroup(p2);
+async function loadMatchup(p1, p2, onProgress, explicitIdsA = [], explicitIdsB = []) {
+  const groupA = getEffectiveAliasGroup(p1, explicitIdsA);
+  const groupB = getEffectiveAliasGroup(p2, explicitIdsB);
   const cacheKey = `${groupA.join(",")}-${groupB.join(",")}`;
   if (state.pairCache.has(cacheKey)) {
     return state.pairCache.get(cacheKey);
@@ -1453,42 +1599,73 @@ function getHighlightInfo(match, side) {
   };
 }
 
-let highlightSparkleObserver = null;
+const HIGHLIGHT_REACTIONS = {
+  celebrate: {
+    icon: "🎉",
+    label: "Celebrate this highlight",
+    items: ["🎉", "🎊"],
+    count: 18,
+  },
+  poop: {
+    icon: "💩",
+    label: "React to this lowlight",
+    items: ["💩"],
+    count: 13,
+  },
+};
 
-function getHighlightSparkleObserver() {
-  if (!("IntersectionObserver" in window)) return null;
-  if (highlightSparkleObserver) return highlightSparkleObserver;
-
-  highlightSparkleObserver = new IntersectionObserver(
-    (entries, observer) => {
-      entries.forEach((entry) => {
-        if (!entry.isIntersecting || entry.intersectionRatio < 0.35) return;
-        entry.target.classList.add("highlight--sparkle");
-        observer.unobserve(entry.target);
-      });
-    },
-    {
-      root: null,
-      rootMargin: "0px 0px -8% 0px",
-      threshold: [0, 0.35],
-    }
-  );
-  return highlightSparkleObserver;
+function shouldReduceMotion() {
+  return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-function armHighlightSparkle(block) {
-  const reduceMotion =
-    window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (reduceMotion) return;
+function launchHighlightReaction(kind = "celebrate") {
+  if (shouldReduceMotion()) return;
+  const reaction = HIGHLIGHT_REACTIONS[kind] || HIGHLIGHT_REACTIONS.celebrate;
+  const layer = document.createElement("div");
+  layer.className = `emoji-burst-layer emoji-burst-layer--${kind}`;
+  layer.setAttribute("aria-hidden", "true");
 
-  const observer = getHighlightSparkleObserver();
-  requestAnimationFrame(() => {
-    if (observer) {
-      observer.observe(block);
-    } else {
-      block.classList.add("highlight--sparkle");
-    }
+  for (let index = 0; index < reaction.count; index += 1) {
+    const item = document.createElement("span");
+    item.className = "emoji-burst-item";
+    item.textContent = reaction.items[Math.floor(Math.random() * reaction.items.length)];
+    item.style.setProperty("--burst-x", `${8 + Math.random() * 84}vw`);
+    item.style.setProperty("--burst-y", `${14 + Math.random() * 72}vh`);
+    item.style.setProperty("--burst-drift", `${Math.round((Math.random() - 0.5) * 80)}px`);
+    item.style.setProperty("--burst-lift", `${Math.round(28 + Math.random() * 62)}px`);
+    item.style.setProperty("--burst-size", `${Math.round(13 + Math.random() * 9)}px`);
+    item.style.setProperty("--burst-rotation", `${Math.round((Math.random() - 0.5) * 46)}deg`);
+    item.style.setProperty("--burst-spin", `${Math.round((Math.random() - 0.5) * 120)}deg`);
+    item.style.setProperty("--burst-delay", `${(Math.random() * 0.16).toFixed(2)}s`);
+    item.style.setProperty("--burst-duration", `${(0.92 + Math.random() * 0.42).toFixed(2)}s`);
+    layer.appendChild(item);
+  }
+
+  document.body.appendChild(layer);
+  window.setTimeout(() => layer.remove(), 1700);
+}
+
+function createHighlightReactionButton(effect) {
+  const reaction = HIGHLIGHT_REACTIONS[effect] || HIGHLIGHT_REACTIONS.celebrate;
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = `highlight-emoji-btn highlight-emoji-btn--${effect}`;
+  button.textContent = reaction.icon;
+  button.setAttribute("aria-label", reaction.label);
+  button.title = reaction.label;
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    launchHighlightReaction(effect);
   });
+  return button;
+}
+
+function createHighlightReactionActions(effects = ["celebrate", "poop"]) {
+  const actions = document.createElement("div");
+  actions.className = "highlight-emoji-actions";
+  effects.forEach((effect) => actions.appendChild(createHighlightReactionButton(effect)));
+  return actions;
 }
 
 function createHighlightBlock(label, info, side, tooltip = "") {
@@ -1522,7 +1699,7 @@ function createHighlightBlock(label, info, side, tooltip = "") {
   block.appendChild(meta);
   block.appendChild(tour);
   if (info.score && info.score !== DASH) {
-    armHighlightSparkle(block);
+    block.appendChild(createHighlightReactionActions());
   }
   return block;
 }
@@ -1631,7 +1808,13 @@ function renderGameSummary(matches) {
   highlights.className = "scoreboard-highlights";
   const canonTooltip = getCanonRivalryTooltip(summary.largestWin, summary.largestLoss);
   const highlightA = createHighlightColumn(state.playerA.name, "a", getHighlightInfo(summary.largestWin, "a"), "Biggest win", canonTooltip);
-  const highlightB = createHighlightColumn(opponentLabel, "b", getHighlightInfo(summary.largestLoss, "b"), isSinglePlayerMode() ? "Biggest loss" : "Biggest win", canonTooltip);
+  const highlightB = createHighlightColumn(
+    opponentLabel,
+    "b",
+    getHighlightInfo(summary.largestLoss, "b"),
+    isSinglePlayerMode() ? "Biggest loss" : "Biggest win",
+    canonTooltip
+  );
   highlights.appendChild(highlightA);
   highlights.appendChild(highlightB);
   scoreboard.appendChild(highlights);
@@ -1695,10 +1878,22 @@ function renderSeriesSummary(seriesItems) {
   highlights.className = "scoreboard-highlights";
   const canonTooltip = getCanonRivalryTooltip(summary.largestWin, summary.largestLoss);
   highlights.appendChild(
-    createHighlightColumn(state.playerA.name, "a", getSeriesHighlightInfo(summary.largestWin, "a"), isSinglePlayerMode() ? "Biggest series win" : "Largest win", canonTooltip)
+    createHighlightColumn(
+      state.playerA.name,
+      "a",
+      getSeriesHighlightInfo(summary.largestWin, "a"),
+      isSinglePlayerMode() ? "Biggest series win" : "Largest win",
+      canonTooltip
+    )
   );
   highlights.appendChild(
-    createHighlightColumn(opponentLabel, "b", getSeriesHighlightInfo(summary.largestLoss, "b"), isSinglePlayerMode() ? "Biggest series loss" : "Largest win", canonTooltip)
+    createHighlightColumn(
+      opponentLabel,
+      "b",
+      getSeriesHighlightInfo(summary.largestLoss, "b"),
+      isSinglePlayerMode() ? "Biggest series loss" : "Largest win",
+      canonTooltip
+    )
   );
   scoreboard.appendChild(highlights);
 
@@ -2833,13 +3028,15 @@ function setStageTab(stage) {
 async function handleCompare() {
   const idA = resolvePlayerId(elements.playerA);
   const idB = resolvePlayerId(elements.playerB);
+  const idsA = getSelectionIds(elements.playerA);
+  const idsB = getSelectionIds(elements.playerB);
   const isSingle = !idB;
 
   if (!idA) {
     setStatus("Select a valid player.");
     return;
   }
-  if (!isSingle && idA === idB) {
+  if (!isSingle && idsA.some((id) => idsB.includes(id))) {
     setStatus("Choose two different players.");
     return;
   }
@@ -2855,15 +3052,15 @@ async function handleCompare() {
     const data = isSingle
       ? await loadPlayerStats(idA, (current, total) => {
           setStatus(`Loading player files ${current}/${total}...`);
-        })
+        }, idsA)
         : await loadMatchup(idA, idB, (current, total) => {
           setStatus(`Loading chunks ${current}/${total}...`);
-        });
+        }, idsA, idsB);
 
-    state.playerA = getPlayerById(idA) || data?.playerA || { id: idA, name: `Player ${idA}` };
+    state.playerA = getSelectionPlayer(elements.playerA, idA) || data?.playerA || { id: idA, name: `Player ${idA}` };
     state.playerB = isSingle
       ? data?.playerB || { id: null, name: "Opponents" }
-      : getPlayerById(idB) || data?.playerB || { id: idB, name: `Player ${idB}` };
+      : getSelectionPlayer(elements.playerB, idB) || data?.playerB || { id: idB, name: `Player ${idB}` };
     state.comparisonMode = isSingle ? "single" : "matchup";
 
     if (!data || !data.matches.length) {
@@ -2885,9 +3082,14 @@ async function handleCompare() {
     state.sort = { key: "date", direction: "desc" };
     state.perPage = Number(elements.pageSize.value);
 
-    updateUrl(idA, isSingle ? null : idB);
-    safeStorageSet(STORAGE_KEYS.last, { p1: idA, p2: isSingle ? null : idB });
-    if (!isSingle) addRecent(idA, idB, state.playerA.name, state.playerB.name);
+    updateUrl(idA, isSingle ? null : idB, idsA, idsB);
+    safeStorageSet(STORAGE_KEYS.last, {
+      p1: idA,
+      p2: isSingle ? null : idB,
+      p1Ids: idsA,
+      p2Ids: isSingle ? [] : idsB,
+    });
+    if (!isSingle) addRecent(idA, idB, state.playerA.name, state.playerB.name, idsA, idsB);
     updateStageMeta();
     resetFilters();
     setStageTab("overall");
@@ -2944,6 +3146,10 @@ async function handleSwap() {
   const bValue = elements.playerB.value;
   const aId = elements.playerA.dataset.playerId;
   const bId = elements.playerB.dataset.playerId;
+  const aIds = elements.playerA.dataset.playerIds;
+  const bIds = elements.playerB.dataset.playerIds;
+  const aName = elements.playerA.dataset.playerName;
+  const bName = elements.playerB.dataset.playerName;
 
   if (!bId) {
     setStatus("Select Player 2 to swap.");
@@ -2956,13 +3162,17 @@ async function handleSwap() {
   elements.playerB.value = aValue;
   elements.playerA.dataset.playerId = bId || "";
   elements.playerB.dataset.playerId = aId || "";
+  elements.playerA.dataset.playerIds = bIds || "";
+  elements.playerB.dataset.playerIds = aIds || "";
+  elements.playerA.dataset.playerName = bName || "";
+  elements.playerB.dataset.playerName = aName || "";
   updatePrimaryActionLabel();
 
   // Reload opponents for the new Player A
   const newAId = bId ? Number(bId) : null;
   if (newAId) {
     elements.playerB.disabled = false;
-    await loadOpponentsForPlayer(newAId);
+    await loadOpponentsForPlayer(newAId, parseIdList(bIds || bId));
   }
 
   if (aValue && bValue) {
@@ -2980,11 +3190,13 @@ function animateSwapButton() {
 function handleCopyLink() {
   const idA = resolvePlayerId(elements.playerA);
   const idB = resolvePlayerId(elements.playerB);
+  const idsA = getSelectionIds(elements.playerA);
+  const idsB = getSelectionIds(elements.playerB);
   if (!idA) {
     setStatus("Select a player first.");
     return;
   }
-  updateUrl(idA, idB || null);
+  updateUrl(idA, idB || null, idsA, idsB);
   const link = window.location.href;
   const btn = elements.copyLinkBtn;
   const originalText = btn.textContent;
@@ -3015,11 +3227,13 @@ async function handleRecentClick(event) {
   const p1 = Number(button.dataset.p1);
   const p2 = Number(button.dataset.p2);
   if (!p1 || !p2) return;
-  const player1 = getPlayerById(p1) || { id: p1, name: `Player ${p1}` };
-  const player2 = getPlayerById(p2) || { id: p2, name: `Player ${p2}` };
+  const p1Ids = parseIdList(button.dataset.p1Ids || p1);
+  const p2Ids = parseIdList(button.dataset.p2Ids || p2);
+  const player1 = { ...(getPlayerById(p1) || { id: p1, name: `Player ${p1}` }), ids: p1Ids };
+  const player2 = { ...(getPlayerById(p2) || { id: p2, name: `Player ${p2}` }), ids: p2Ids };
   setInputPlayer(elements.playerA, player1);
   elements.playerB.disabled = false;
-  await loadOpponentsForPlayer(p1);
+  await loadOpponentsForPlayer(p1, p1Ids);
   setInputPlayer(elements.playerB, player2);
   handleCompare();
 }
@@ -3205,7 +3419,9 @@ async function loadPlayers() {
     setStatus("Players not found.");
     return;
   }
-  state.players = payload.filter((player) => player.name && player.name.trim());
+  state.players = payload
+    .map(normalizePlayerRecord)
+    .filter((player) => player.name && player.name.trim());
   state.players.forEach((player) => state.playersById.set(player.id, player));
   try {
     const aliasesPayload = (await fetchJson("aliases.json")) || (await fetchJson("data/aliases.json"));
@@ -3275,12 +3491,14 @@ async function init() {
   const lastSelection = safeStorageGet(STORAGE_KEYS.last, null);
   const selection = urlSelection || lastSelection;
   if (selection) {
-    const player1 = getPlayerById(selection.p1) || { id: selection.p1, name: `Player ${selection.p1}` };
+    const p1Ids = normalizeAliasIds(selection.p1Ids || [selection.p1]);
+    const p2Ids = normalizeAliasIds(selection.p2Ids || (selection.p2 ? [selection.p2] : []));
+    const player1 = { ...(getPlayerById(selection.p1) || { id: selection.p1, name: `Player ${selection.p1}` }), ids: p1Ids };
     setInputPlayer(elements.playerA, player1);
     elements.playerB.disabled = false;
-    await loadOpponentsForPlayer(selection.p1);
+    await loadOpponentsForPlayer(selection.p1, p1Ids);
     if (selection.p2) {
-      const player2 = getPlayerById(selection.p2) || { id: selection.p2, name: `Player ${selection.p2}` };
+      const player2 = { ...(getPlayerById(selection.p2) || { id: selection.p2, name: `Player ${selection.p2}` }), ids: p2Ids };
       setInputPlayer(elements.playerB, player2);
     }
     handleCompare();
