@@ -811,13 +811,19 @@ function setupTypeahead(inputEl, listEl, options = {}) {
       } else if (isPlayerB && player.totalMatches != null) {
         const count = document.createElement("span");
         count.className = "game-count";
-        count.textContent = `${player.totalMatches} game${player.totalMatches !== 1 ? "s" : ""}`;
+        const rank = formatWorldRank(player);
+        count.textContent = `${player.totalMatches} game${player.totalMatches !== 1 ? "s" : ""}${rank ? ` · ${rank}` : ""}`;
+        count.title = formatRankingTitle(player);
         btn.appendChild(count);
       } else {
-        const meta = document.createElement("span");
-        meta.className = "muted";
-        meta.textContent = `#${player.id}`;
-        btn.appendChild(meta);
+        const playerMeta = formatPlayerMeta(player);
+        if (playerMeta) {
+          const meta = document.createElement("span");
+          meta.className = "muted";
+          meta.textContent = playerMeta;
+          meta.title = formatRankingTitle(player);
+          btn.appendChild(meta);
+        }
       }
       if (idx === activeIndex) {
         btn.classList.add("is-active");
@@ -915,7 +921,7 @@ async function onPlayerASelected(player) {
 }
 
 async function fetchJson(url) {
-  const res = await fetch(url, { cache: "force-cache" });
+  const res = await fetch(url, { cache: "no-cache" });
   if (res.status === 404) return null;
   if (!res.ok) {
     throw new Error(`Failed to fetch ${url}`);
@@ -1470,6 +1476,36 @@ function formatCardValue(value) {
   return String(value);
 }
 
+function getWorldRank(player) {
+  const rank = Number(player?.world_rank);
+  return Number.isInteger(rank) && rank > 0 ? rank : null;
+}
+
+function enrichPlayerRecord(player) {
+  if (!player?.id) return player;
+  const fullRecord = getPlayerById(Number(player.id));
+  return fullRecord ? { ...fullRecord, ...player } : player;
+}
+
+function formatWorldRank(player) {
+  const rank = getWorldRank(enrichPlayerRecord(player));
+  return rank ? `WR #${rank}` : "";
+}
+
+function formatPlayerMeta(player) {
+  return formatWorldRank(player);
+}
+
+function formatRankingTitle(player) {
+  const enriched = enrichPlayerRecord(player);
+  const rank = formatWorldRank(enriched);
+  if (!rank) return "";
+  const parts = [rank];
+  if (enriched.ranking_points != null) parts.push(`${enriched.ranking_points} points`);
+  if (enriched.ranking_as_of) parts.push(`as of ${enriched.ranking_as_of}`);
+  return parts.join(" · ");
+}
+
 function formatRound(match) {
   const parts = [];
   if (match.round_number != null) parts.push(`R${match.round_number}`);
@@ -1500,21 +1536,47 @@ function formatScore(match) {
   return `${match.goals_a}-${match.goals_b}`;
 }
 
+function createScoreboardPlayer(player, fallback, className) {
+  const enriched = enrichPlayerRecord(player);
+  const element = document.createElement("div");
+  element.className = className;
+
+  const name = document.createElement("span");
+  name.className = "scoreboard-player-name";
+  name.textContent = enriched?.name || fallback;
+  element.appendChild(name);
+
+  const rank = formatWorldRank(enriched);
+  if (rank) {
+    const meta = document.createElement("span");
+    meta.className = "scoreboard-player-rank";
+    meta.textContent = rank;
+    meta.title = formatRankingTitle(enriched);
+    element.appendChild(meta);
+  }
+
+  return element;
+}
+
 function createScoreHeader() {
   const header = document.createElement("div");
   header.className = "scoreboard-head";
 
-  const left = document.createElement("div");
-  left.className = "scoreboard-player scoreboard-player--a";
-  left.textContent = state.playerA?.name || "Player A";
+  const left = createScoreboardPlayer(
+    state.playerA,
+    "Player A",
+    "scoreboard-player scoreboard-player--a"
+  );
 
   const title = document.createElement("div");
   title.className = "scoreboard-title";
   title.textContent = isSinglePlayerMode() ? "Player Stats" : isSeriesMode() ? "Playoff Series" : "Head to Head";
 
-  const right = document.createElement("div");
-  right.className = "scoreboard-player scoreboard-player--b";
-  right.textContent = state.playerB?.name || "Player B";
+  const right = createScoreboardPlayer(
+    state.playerB,
+    "Player B",
+    "scoreboard-player scoreboard-player--b"
+  );
 
   header.appendChild(left);
   header.appendChild(title);

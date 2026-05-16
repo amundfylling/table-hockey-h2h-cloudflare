@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import os
+import re
 import sys
 import shutil
 import unicodedata
@@ -20,6 +21,12 @@ CACHE_DIR = ROOT_DIR / ".cache"
 PUBLIC_DIR = ROOT_DIR / "public"
 DATA_DIR = PUBLIC_DIR / "data"
 H2H_DIR = DATA_DIR / "h2h"
+RANKING_HEADER = "Rank ID_Player Player Club Nation Points Player_Value"
+RANKING_ROW_RE = re.compile(
+    r"(?:^|\s)(\d+)\s+(\d+)\s+(.+?)\s+([A-Z]{3})\s+(\d+)\s+(\d+)"
+    r"(?=\s+\d+\s+\d+\s+|$)",
+    re.DOTALL,
+)
 
 
 def normalize_search_key(value: Optional[str]) -> str:
@@ -55,7 +62,43 @@ def write_json(path: Path, payload: dict) -> None:
         json.dump(payload, f, ensure_ascii=False, separators=(",", ":"))
 
 
-def load_players(players_path: Path) -> Tuple[Iterable[dict], Dict[int, str]]:
+def parse_ranking_date(text: str) -> str:
+    match = re.search(
+        r"ranking\s+up\s+to\s+(\d{1,2})\.(\d{1,2})\.(\d{4})",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if not match:
+        return ""
+    day, month, year = match.groups()
+    return f"{int(year):04d}-{int(month):02d}-{int(day):02d}"
+
+
+def load_rankings(ranking_path: Path) -> Dict[int, dict]:
+    text = ranking_path.read_text(encoding="utf-8-sig")
+    ranking_as_of = parse_ranking_date(text)
+    compact = re.sub(r"\s+", " ", text).strip()
+    if RANKING_HEADER in compact:
+        compact = compact.split(RANKING_HEADER, 1)[1].strip()
+
+    rankings: Dict[int, dict] = {}
+    for match in RANKING_ROW_RE.finditer(compact):
+        rank, player_id, _name_and_club, nation, points, player_value = match.groups()
+        ranking_id = int(player_id)
+        rankings[ranking_id] = {
+            "world_rank": int(rank),
+            "ranking_points": int(points),
+            "ranking_player_value": int(player_value),
+            "ranking_nation": nation,
+            "ranking_as_of": ranking_as_of,
+        }
+    return rankings
+
+
+def load_players(
+    players_path: Path, rankings: Optional[Dict[int, dict]] = None
+) -> Tuple[Iterable[dict], Dict[int, str]]:
+    rankings = rankings or {}
     players_df = pd.read_csv(players_path)
     players_df = players_df.rename(
         columns={
@@ -83,16 +126,24 @@ def load_players(players_path: Path) -> Tuple[Iterable[dict], Dict[int, str]]:
     players = []
     id_to_name = {}
     for row in players_df.itertuples(index=False):
+        ranking_id = int(row.ranking_id) if pd.notna(row.ranking_id) else None
         payload = {
             "id": int(row.id),
             "name": row.name if pd.notna(row.name) else "",
-            "ranking_id": int(row.ranking_id) if pd.notna(row.ranking_id) else None,
+            "ranking_id": ranking_id,
+            "world_rank": None,
+            "ranking_points": None,
+            "ranking_player_value": None,
+            "ranking_nation": "",
+            "ranking_as_of": "",
             "country": row.country if pd.notna(row.country) else "",
             "city": row.city if pd.notna(row.city) else "",
             "date_of_birth": row.date_of_birth if pd.notna(row.date_of_birth) else "",
             "sex": row.sex if pd.notna(row.sex) else "",
             "search_key": row.search_key,
         }
+        if ranking_id in rankings:
+            payload.update(rankings[ranking_id])
         players.append(payload)
         id_to_name[int(row.id)] = payload["name"]
     return players, id_to_name
@@ -160,7 +211,8 @@ def process_matches_df(matches: pd.DataFrame) -> pd.DataFrame:
         pd.to_numeric(matches["goals_player2"], errors="coerce").fillna(0).astype(int)
     )
 
-    matches["overtime"] = matches["overtime_raw"].apply(normalize_overtime)
+    overtime_text = matches["overtime_raw"].fillna("").astype(str).str.strip().str.lower()
+    matches["overtime"] = ~overtime_text.isin({"", "none", "nan", "null", "na", "0", "false", "no"})
     matches["date_dt"] = pd.to_datetime(matches["date_raw"], errors="coerce")
     matches["date"] = matches["date_dt"].dt.strftime("%Y-%m-%d")
 
@@ -181,8 +233,12 @@ def process_matches_df(matches: pd.DataFrame) -> pd.DataFrame:
     else:
         matches["player2_name"] = ""
 
-    matches["id1"] = matches[["player1_id", "player2_id"]].min(axis=1)
-    matches["id2"] = matches[["player1_id", "player2_id"]].max(axis=1)
+    matches["id1"] = matches["player1_id"].where(
+        matches["player1_id"] <= matches["player2_id"], matches["player2_id"]
+    )
+    matches["id2"] = matches["player2_id"].where(
+        matches["player1_id"] <= matches["player2_id"], matches["player1_id"]
+    )
     is_p1_id1 = matches["player1_id"] == matches["id1"]
     matches["goals_id1"] = matches["goals_player1"].where(is_p1_id1, matches["goals_player2"])
     matches["goals_id2"] = matches["goals_player2"].where(is_p1_id1, matches["goals_player1"])
@@ -283,83 +339,40 @@ def build_player_files(matches: pd.DataFrame, player_names: Dict[int, str]) -> N
     for pid, name in player_names.items():
         player_payloads[pid] = {"player": {"id": pid, "name": name}, "opponents": {}}
 
-    grouped = matches.groupby(["id1", "id2"], sort=False)
-    for (id1, id2), group in grouped:
-        id1_int = int(id1)
-        id2_int = int(id2)
-
+    def finish_group(
+        id1_int: int,
+        id2_int: int,
+        first_player1_id: int,
+        first_player1_name: str,
+        first_player2_name: str,
+        total_matches: int,
+        wins_id1: int,
+        wins_id2: int,
+        draws: int,
+        goals_for_id1: int,
+        goals_for_id2: int,
+        overtime_games: int,
+        first_meeting_date: Optional[str],
+        last_meeting_date: Optional[str],
+        tournaments: Dict[int, str],
+        last10: deque,
+        matches_id1: list,
+    ) -> None:
         if id1_int not in player_payloads or id2_int not in player_payloads:
-            continue
+            return
 
-        first_row = group.iloc[0]
         name1 = player_names.get(id1_int)
         name2 = player_names.get(id2_int)
         if not name1:
-            if first_row.player1_id == id1_int:
-                name1 = first_row.player1_name
+            if first_player1_id == id1_int:
+                name1 = first_player1_name
             else:
-                name1 = first_row.player2_name
+                name1 = first_player2_name
         if not name2:
-            if first_row.player1_id == id2_int:
-                name2 = first_row.player1_name
+            if first_player1_id == id2_int:
+                name2 = first_player1_name
             else:
-                name2 = first_row.player2_name
-
-        total_matches = 0
-        wins_id1 = 0
-        wins_id2 = 0
-        draws = 0
-        goals_for_id1 = 0
-        goals_for_id2 = 0
-        overtime_games = 0
-        first_meeting_date = None
-        last_meeting_date = None
-        tournaments: Dict[int, str] = {}
-        last10 = deque(maxlen=10)
-
-        matches_id1 = []
-
-        for row in group.itertuples(index=False):
-            base_match = _row_to_match(row)
-            match_id1 = {
-                "date": base_match["date"],
-                "tournament_id": base_match["tournament_id"],
-                "tournament_name": base_match["tournament_name"],
-                "stage": base_match["stage"],
-                "stage_id": base_match["stage_id"],
-                "stage_sequence": base_match["stage_sequence"],
-                "round_number": base_match["round_number"],
-                "playoff_game_number": base_match["playoff_game_number"],
-                "goals_for_player": base_match["goals_id1"],
-                "goals_for_opponent": base_match["goals_id2"],
-                "overtime": base_match["overtime"],
-            }
-            matches_id1.append(match_id1)
-
-            total_matches += 1
-            goals_for_id1 += base_match["goals_id1"]
-            goals_for_id2 += base_match["goals_id2"]
-
-            if base_match["goals_id1"] > base_match["goals_id2"]:
-                wins_id1 += 1
-                last10.append("W")
-            elif base_match["goals_id1"] < base_match["goals_id2"]:
-                wins_id2 += 1
-                last10.append("L")
-            else:
-                draws += 1
-                last10.append("D")
-
-            if base_match["overtime"]:
-                overtime_games += 1
-
-            if base_match["date"]:
-                if first_meeting_date is None:
-                    first_meeting_date = base_match["date"]
-                last_meeting_date = base_match["date"]
-
-            if base_match["tournament_id"] is not None:
-                tournaments[base_match["tournament_id"]] = base_match["tournament_name"]
+                name2 = first_player2_name
 
         last10_w = sum(1 for r in last10 if r == "W")
         last10_l = sum(1 for r in last10 if r == "L")
@@ -418,6 +431,177 @@ def build_player_files(matches: pd.DataFrame, player_names: Dict[int, str]) -> N
             "matches": matches_id2,
         }
 
+    id1_values = matches["id1"].to_numpy(dtype="int64", copy=False)
+    id2_values = matches["id2"].to_numpy(dtype="int64", copy=False)
+    player1_id_values = matches["player1_id"].to_numpy(dtype="int64", copy=False)
+    player1_name_values = matches["player1_name"].to_numpy(dtype=object, copy=False)
+    player2_name_values = matches["player2_name"].to_numpy(dtype=object, copy=False)
+    date_values = matches["date"].to_numpy(dtype=object, copy=False)
+    tournament_id_values = matches["tournament_id"].to_numpy(
+        dtype="int64", na_value=-1, copy=False
+    )
+    tournament_name_values = matches["tournament_name"].to_numpy(dtype=object, copy=False)
+    stage_values = matches["stage"].to_numpy(dtype=object, copy=False)
+    stage_id_values = matches["stage_id"].to_numpy(dtype="int64", na_value=-1, copy=False)
+    stage_sequence_values = matches["stage_sequence"].to_numpy(
+        dtype="int64", na_value=-1, copy=False
+    )
+    round_number_values = matches["round_number"].to_numpy(
+        dtype="int64", na_value=-1, copy=False
+    )
+    playoff_game_number_values = matches["playoff_game_number"].to_numpy(
+        dtype="int64", na_value=-1, copy=False
+    )
+    goals_id1_values = matches["goals_id1"].to_numpy(dtype="int64", copy=False)
+    goals_id2_values = matches["goals_id2"].to_numpy(dtype="int64", copy=False)
+    overtime_values = matches["overtime"].to_numpy(dtype=bool, copy=False)
+
+    current_id1 = None
+    current_id2 = None
+    first_player1_id = None
+    first_player1_name = ""
+    first_player2_name = ""
+    total_matches = 0
+    wins_id1 = 0
+    wins_id2 = 0
+    draws = 0
+    goals_for_id1 = 0
+    goals_for_id2 = 0
+    overtime_games = 0
+    first_meeting_date = None
+    last_meeting_date = None
+    tournaments: Dict[int, str] = {}
+    last10 = deque(maxlen=10)
+    matches_id1 = []
+
+    for idx in range(len(id1_values)):
+        id1_int = int(id1_values[idx])
+        id2_int = int(id2_values[idx])
+
+        if current_id1 is None:
+            current_id1 = id1_int
+            current_id2 = id2_int
+            first_player1_id = int(player1_id_values[idx])
+            first_player1_name = player1_name_values[idx]
+            first_player2_name = player2_name_values[idx]
+        elif id1_int != current_id1 or id2_int != current_id2:
+            finish_group(
+                current_id1,
+                current_id2,
+                first_player1_id,
+                first_player1_name,
+                first_player2_name,
+                total_matches,
+                wins_id1,
+                wins_id2,
+                draws,
+                goals_for_id1,
+                goals_for_id2,
+                overtime_games,
+                first_meeting_date,
+                last_meeting_date,
+                tournaments,
+                last10,
+                matches_id1,
+            )
+            current_id1 = id1_int
+            current_id2 = id2_int
+            first_player1_id = int(player1_id_values[idx])
+            first_player1_name = player1_name_values[idx]
+            first_player2_name = player2_name_values[idx]
+            total_matches = 0
+            wins_id1 = 0
+            wins_id2 = 0
+            draws = 0
+            goals_for_id1 = 0
+            goals_for_id2 = 0
+            overtime_games = 0
+            first_meeting_date = None
+            last_meeting_date = None
+            tournaments = {}
+            last10 = deque(maxlen=10)
+            matches_id1 = []
+
+        date_raw = date_values[idx]
+        date_value = date_raw if isinstance(date_raw, str) else None
+        tournament_id_raw = int(tournament_id_values[idx])
+        tournament_id = None if tournament_id_raw == -1 else tournament_id_raw
+        stage_id_raw = int(stage_id_values[idx])
+        stage_id = None if stage_id_raw == -1 else stage_id_raw
+        stage_sequence_raw = int(stage_sequence_values[idx])
+        stage_sequence = None if stage_sequence_raw == -1 else stage_sequence_raw
+        round_number_raw = int(round_number_values[idx])
+        round_number = None if round_number_raw == -1 else round_number_raw
+        playoff_game_number_raw = int(playoff_game_number_values[idx])
+        playoff_game_number = (
+            None if playoff_game_number_raw == -1 else playoff_game_number_raw
+        )
+        goals_id1 = int(goals_id1_values[idx])
+        goals_id2 = int(goals_id2_values[idx])
+        overtime = bool(overtime_values[idx])
+
+        matches_id1.append(
+            {
+                "date": date_value,
+                "tournament_id": tournament_id,
+                "tournament_name": tournament_name_values[idx],
+                "stage": stage_values[idx],
+                "stage_id": stage_id,
+                "stage_sequence": stage_sequence,
+                "round_number": round_number,
+                "playoff_game_number": playoff_game_number,
+                "goals_for_player": goals_id1,
+                "goals_for_opponent": goals_id2,
+                "overtime": overtime,
+            }
+        )
+
+        total_matches += 1
+        goals_for_id1 += goals_id1
+        goals_for_id2 += goals_id2
+
+        if goals_id1 > goals_id2:
+            wins_id1 += 1
+            last10.append("W")
+        elif goals_id1 < goals_id2:
+            wins_id2 += 1
+            last10.append("L")
+        else:
+            draws += 1
+            last10.append("D")
+
+        if overtime:
+            overtime_games += 1
+
+        if date_value:
+            if first_meeting_date is None:
+                first_meeting_date = date_value
+            last_meeting_date = date_value
+
+        if tournament_id is not None:
+            tournaments[tournament_id] = tournament_name_values[idx]
+
+    if current_id1 is not None:
+        finish_group(
+            current_id1,
+            current_id2,
+            first_player1_id,
+            first_player1_name,
+            first_player2_name,
+            total_matches,
+            wins_id1,
+            wins_id2,
+            draws,
+            goals_for_id1,
+            goals_for_id2,
+            overtime_games,
+            first_meeting_date,
+            last_meeting_date,
+            tournaments,
+            last10,
+            matches_id1,
+        )
+
     for pid, payload in player_payloads.items():
         write_json(H2H_DIR / f"{pid}.json", payload)
 
@@ -429,6 +613,7 @@ def main() -> int:
     matches_url = os.environ.get("MATCHES_PARQUET_URL", dl.DEFAULT_MATCHES_URL)
     players_url = os.environ.get("PLAYERS_CSV_URL", dl.DEFAULT_PLAYERS_URL)
     tournaments_url = os.environ.get("TOURNAMENTS_CSV_URL", dl.DEFAULT_TOURNAMENTS_URL)
+    ranking_url = os.environ.get("RANKING_TXT_URL", dl.DEFAULT_RANKING_URL)
     try:
         min_matches = int(os.environ.get("MIN_MATCHES", "50"))
     except ValueError as exc:
@@ -440,6 +625,7 @@ def main() -> int:
     extra_matches_path = CACHE_DIR / "extra_matches.csv"
     players_path = CACHE_DIR / "players_data.csv"
     tournaments_path = CACHE_DIR / "tournament_data.csv"
+    ranking_path = CACHE_DIR / "ranking.txt"
 
     print("Downloading source data...")
     dl.download(
@@ -478,9 +664,25 @@ def main() -> int:
         backoff=1.5,
         timeout=120,
     )
+    try:
+        dl.download(
+            ranking_url,
+            ranking_path,
+            etag_path=CACHE_DIR / "ranking.etag",
+            last_modified_path=CACHE_DIR / "ranking.last_modified",
+            retries=5,
+            backoff=1.5,
+            timeout=120,
+        )
+    except RuntimeError as exc:
+        if ranking_path.exists():
+            print(f"Warning: failed to refresh ranking; using cached file. {exc}")
+        else:
+            print(f"Warning: failed to download ranking; continuing without it. {exc}")
 
     print("Loading players...")
-    players, player_names = load_players(players_path)
+    rankings = load_rankings(ranking_path) if ranking_path.exists() else {}
+    players, player_names = load_players(players_path, rankings)
 
     print("Loading tournaments...")
     tournaments = load_tournaments(tournaments_path)

@@ -21,6 +21,7 @@ DEFAULT_TOURNAMENTS_URL = (
     "https://raw.githubusercontent.com/amundfylling/Scorpion-Scraper-2.0/main/data/"
     "tournament_data.csv"
 )
+DEFAULT_RANKING_URL = "https://stiga.trefik.cz/ithf/ranking/ranking.txt"
 
 USER_AGENT = "h2h-downloader/1.0"
 
@@ -120,6 +121,8 @@ def _resolve_default_url(kind: str) -> str:
         return os.environ.get("PLAYERS_CSV_URL", DEFAULT_PLAYERS_URL)
     if kind == "tournaments":
         return os.environ.get("TOURNAMENTS_CSV_URL", DEFAULT_TOURNAMENTS_URL)
+    if kind == "ranking":
+        return os.environ.get("RANKING_TXT_URL", DEFAULT_RANKING_URL)
     raise ValueError(f"Unknown kind: {kind}")
 
 
@@ -135,7 +138,7 @@ def main() -> int:
     parser.add_argument("--timeout", type=int, default=60)
     parser.add_argument(
         "--kind",
-        choices=["matches", "players", "tournaments"],
+        choices=["matches", "players", "tournaments", "ranking"],
         help="Use default URL for the specified data source",
     )
 
