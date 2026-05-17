@@ -24,6 +24,7 @@ const state = {
     yearFrom: "all",
     yearTo: "all",
     tournament: "all",
+    tournamentLevels: [],
     stage: "all",
     search: "",
     otOnly: false,
@@ -67,6 +68,7 @@ const elements = {
   yearFromFilter: document.getElementById("year-from-filter"),
   yearToFilter: document.getElementById("year-to-filter"),
   tournamentFilter: document.getElementById("tournament-filter"),
+  tournamentLevelOptions: document.getElementById("tournament-level-options"),
   stageFilter: document.getElementById("stage-filter"),
   bestOfFilter: document.getElementById("best-of-filter"),
   bestOfOptions: document.getElementById("best-of-options"),
@@ -225,6 +227,38 @@ function getCountryFlag(country) {
 function toNumber(value, fallback = 0) {
   const num = Number(value);
   return Number.isFinite(num) ? num : fallback;
+}
+
+const TOURNAMENT_LEVEL_NA = "__na__";
+
+function normalizeTournamentLevel(value) {
+  if (value == null) return null;
+  const text = String(value).trim();
+  if (!text) return null;
+  if (["nan", "none", "null", "na", "n/a"].includes(text.toLowerCase())) return null;
+  const numeric = Number(text);
+  if (Number.isFinite(numeric)) {
+    return String(numeric);
+  }
+  return text;
+}
+
+function getTournamentLevelKey(item) {
+  return normalizeTournamentLevel(item?.tournament_level) || TOURNAMENT_LEVEL_NA;
+}
+
+function getTournamentLevelLabel(value) {
+  return value === TOURNAMENT_LEVEL_NA ? "N/A" : `Level ${value}`;
+}
+
+function compareTournamentLevelKeys(a, b) {
+  if (a === TOURNAMENT_LEVEL_NA && b === TOURNAMENT_LEVEL_NA) return 0;
+  if (a === TOURNAMENT_LEVEL_NA) return 1;
+  if (b === TOURNAMENT_LEVEL_NA) return -1;
+  const numA = Number(a);
+  const numB = Number(b);
+  if (Number.isFinite(numA) && Number.isFinite(numB)) return numA - numB;
+  return String(a).localeCompare(String(b));
 }
 
 function parseOvertime(value) {
@@ -978,6 +1012,9 @@ function normalizeMatchBase(raw) {
   const stage = decodeHtmlEntities(raw.stage || raw.Stage || "");
   const tournamentName = decodeHtmlEntities(raw.tournament_name || raw.TournamentName || "");
   const tournamentId = raw.tournament_id ?? raw.TournamentID ?? null;
+  const tournamentLevel = normalizeTournamentLevel(
+    raw.tournament_level ?? raw.TournamentLevel ?? raw.Level ?? null
+  );
   const stageId = raw.stage_id ?? raw.StageID ?? null;
   const stageSequence = raw.stage_sequence ?? raw.StageSequence ?? null;
   const roundNumber = raw.round_number ?? raw.RoundNumber ?? null;
@@ -990,6 +1027,7 @@ function normalizeMatchBase(raw) {
     tournament_name: tournamentName,
     tournament_id: tournamentId !== null ? Number(tournamentId) : null,
     tournament_key: tournamentId != null ? `id:${tournamentId}` : `name:${tournamentName || "unknown"}`,
+    tournament_level: tournamentLevel,
     stage,
     stage_type: classifyStage(stage),
     stage_id: stageId != null ? Number(stageId) : null,
@@ -1379,6 +1417,7 @@ function createSeriesFromMatches(matches) {
     tournament_name: first.tournament_name || "",
     tournament_id: first.tournament_id ?? null,
     tournament_key: first.tournament_key || "",
+    tournament_level: first.tournament_level ?? null,
     opponent_id: first.opponent_id ?? null,
     opponent_name: first.opponent_name || "",
     stage: first.stage || "",
@@ -2496,6 +2535,7 @@ function renderGameTable(matches) {
       ...(isSingle ? [{ label: "Opponent", value: match.opponent_name || match.opponent_id }] : []),
       { label: "Stage ID", value: match.stage_id },
       { label: "Tournament ID", value: match.tournament_id },
+      { label: "Tournament level", value: getTournamentLevelLabel(getTournamentLevelKey(match)) },
       { label: "Stage sequence", value: match.stage_sequence },
       { label: "Round number", value: match.round_number },
       { label: "Playoff game", value: match.playoff_game_number },
@@ -2667,7 +2707,7 @@ function createSeriesDetailPanel(series) {
   const title = document.createElement("h4");
   title.textContent = "Series games";
   const meta = document.createElement("p");
-  meta.textContent = `${formatDateRange(series.date, series.end_date)} | ${formatSeriesLength(series)} | ${series.stage || "Playoff"}`;
+  meta.textContent = `${formatDateRange(series.date, series.end_date)} | ${formatSeriesLength(series)} | ${getTournamentLevelLabel(getTournamentLevelKey(series))} | ${series.stage || "Playoff"}`;
   titleWrap.appendChild(title);
   titleWrap.appendChild(meta);
 
@@ -2777,10 +2817,12 @@ function applyFilters(matches) {
   const filters = state.filters;
   const search = normalizeText(filters.search);
   const bestOfFilters = new Set(filters.bestOf || []);
+  const tournamentLevelFilters = new Set(filters.tournamentLevels || []);
   return matches.filter((match) => {
     if (filters.yearFrom !== "all" && match.year < filters.yearFrom) return false;
     if (filters.yearTo !== "all" && match.year > filters.yearTo) return false;
     if (filters.tournament !== "all" && match.tournament_key !== filters.tournament) return false;
+    if (tournamentLevelFilters.size && !tournamentLevelFilters.has(getTournamentLevelKey(match))) return false;
     if (filters.stage !== "all" && match.stage !== filters.stage) return false;
     if (state.stageTab === "playoff" && bestOfFilters.size) {
       const bestOf = match.best_of ?? match.series_best_of;
@@ -2789,7 +2831,7 @@ function applyFilters(matches) {
     if (filters.otOnly && !match.overtime) return false;
     if (filters.tightOnly && match.goal_abs > 1) return false;
     if (search) {
-      const hay = `${match.tournament_name || ""} ${match.stage || ""} ${match.opponent_name || ""}`;
+      const hay = `${match.tournament_name || ""} ${getTournamentLevelLabel(getTournamentLevelKey(match))} ${match.stage || ""} ${match.opponent_name || ""}`;
       if (!normalizeText(hay).includes(search)) return false;
     }
     return true;
@@ -2890,6 +2932,7 @@ function sortMatches(matches) {
 function refreshFilterOptions(matches) {
   const years = new Set();
   const tournaments = new Map();
+  const tournamentLevels = new Set([TOURNAMENT_LEVEL_NA]);
   const stages = new Set();
   const bestOfValues = new Set();
 
@@ -2898,6 +2941,7 @@ function refreshFilterOptions(matches) {
     if (match.tournament_key) {
       tournaments.set(match.tournament_key, match.tournament_name || "Unknown tournament");
     }
+    tournamentLevels.add(getTournamentLevelKey(match));
     if (match.stage) stages.add(match.stage);
     const bestOf = match.best_of ?? match.series_best_of;
     if (state.stageTab === "playoff" && bestOf) bestOfValues.add(String(bestOf));
@@ -2916,9 +2960,32 @@ function refreshFilterOptions(matches) {
   populateSelect(elements.yearFromFilter, yearFromOptions, "Earliest");
   populateSelect(elements.yearToFilter, yearToOptions, "Latest");
   populateSelect(elements.tournamentFilter, tournamentOptions, "All tournaments", tournaments);
+  populateTournamentLevelOptions(Array.from(tournamentLevels).sort(compareTournamentLevelKeys));
   populateSelect(elements.stageFilter, stageOptions, "All stages");
   populateBestOfOptions(Array.from(bestOfValues).sort((a, b) => Number(a) - Number(b)));
   syncFiltersFromControls();
+}
+
+function populateTournamentLevelOptions(values) {
+  if (!elements.tournamentLevelOptions) return;
+  state.filters.tournamentLevels = state.filters.tournamentLevels.filter((value) => values.includes(value));
+  elements.tournamentLevelOptions.innerHTML = "";
+
+  const fragment = document.createDocumentFragment();
+  values.forEach((value) => {
+    const label = document.createElement("label");
+    label.className = "toggle filter-chip-toggle";
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.value = value;
+    input.checked = state.filters.tournamentLevels.includes(value);
+    const text = document.createElement("span");
+    text.textContent = getTournamentLevelLabel(value);
+    label.appendChild(input);
+    label.appendChild(text);
+    fragment.appendChild(label);
+  });
+  elements.tournamentLevelOptions.appendChild(fragment);
 }
 
 function populateBestOfOptions(values) {
@@ -2953,6 +3020,12 @@ function syncFiltersFromControls() {
   state.filters.yearFrom = elements.yearFromFilter.value;
   state.filters.yearTo = elements.yearToFilter.value;
   state.filters.tournament = elements.tournamentFilter.value;
+  if (elements.tournamentLevelOptions) {
+    state.filters.tournamentLevels = Array.from(
+      elements.tournamentLevelOptions.querySelectorAll("input:checked"),
+      (input) => input.value
+    );
+  }
   state.filters.stage = elements.stageFilter.value;
   if (elements.bestOfOptions) {
     state.filters.bestOf = Array.from(
@@ -3019,6 +3092,7 @@ function getActiveFilterCount() {
   let count = 0;
   if (state.filters.yearFrom !== "all" || state.filters.yearTo !== "all") count += 1;
   if (state.filters.tournament !== "all") count += 1;
+  if (state.filters.tournamentLevels.length) count += 1;
   if (state.filters.stage !== "all") count += 1;
   if (state.filters.search.trim()) count += 1;
   if (state.filters.otOnly) count += 1;
@@ -3066,6 +3140,7 @@ function resetFilters() {
   state.filters.yearFrom = "all";
   state.filters.yearTo = "all";
   state.filters.tournament = "all";
+  state.filters.tournamentLevels = [];
   state.filters.stage = "all";
   state.filters.search = "";
   state.filters.otOnly = false;
@@ -3074,6 +3149,11 @@ function resetFilters() {
   elements.yearFromFilter.value = "all";
   elements.yearToFilter.value = "all";
   elements.tournamentFilter.value = "all";
+  if (elements.tournamentLevelOptions) {
+    elements.tournamentLevelOptions.querySelectorAll("input").forEach((input) => {
+      input.checked = false;
+    });
+  }
   elements.stageFilter.value = "all";
   elements.searchFilter.value = "";
   elements.otToggle.checked = false;
@@ -3356,6 +3436,16 @@ function initFilters() {
     state.page = 1;
     updateView();
   });
+  if (elements.tournamentLevelOptions) {
+    elements.tournamentLevelOptions.addEventListener("change", () => {
+      state.filters.tournamentLevels = Array.from(
+        elements.tournamentLevelOptions.querySelectorAll("input:checked"),
+        (input) => input.value
+      );
+      state.page = 1;
+      updateView();
+    });
+  }
   elements.stageFilter.addEventListener("change", () => {
     state.filters.stage = elements.stageFilter.value;
     state.page = 1;

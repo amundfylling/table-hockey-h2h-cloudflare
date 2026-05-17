@@ -13,6 +13,7 @@ Raw URLs (overridable via env vars):
 - `MATCHES_PARQUET_URL`: `https://raw.githubusercontent.com/amundfylling/Scorpion-Scraper-2.0/main/data/scraped_matches.parquet`
 - `PLAYERS_CSV_URL`: `https://raw.githubusercontent.com/amundfylling/Scorpion-Scraper-2.0/main/data/players_data.csv`
 - `TOURNAMENTS_CSV_URL`: `https://raw.githubusercontent.com/amundfylling/Scorpion-Scraper-2.0/main/data/tournament_data.csv`
+- `TOURNAMENT_METADATA_CSV_URL`: `https://raw.githubusercontent.com/amundfylling/Scorpion-Scraper-2.0/main/data/tournament_metadata.csv`
 - `RANKING_TXT_URL`: `https://stiga.trefik.cz/ithf/ranking/ranking.txt`
 
 ## Build-time slicing
@@ -22,6 +23,7 @@ Raw URLs (overridable via env vars):
 - Downloads raw data into `.cache/`.
 - Converts and normalizes types.
 - Joins current world ranking data by `RankingID` / `ID_Player`.
+- Joins tournament level metadata by `TournamentID`.
 - Filters to players with at least `MIN_MATCHES` matches (`50` by default).
 - Generates static JSON into `public/data/`:
   - `players.json` (50+ matches only)
@@ -66,6 +68,7 @@ Override URLs at build time using environment variables:
 export MATCHES_PARQUET_URL="https://raw.githubusercontent.com/your-org/your-repo/main/data/scraped_matches.parquet"
 export PLAYERS_CSV_URL="https://raw.githubusercontent.com/your-org/your-repo/main/data/players_data.csv"
 export TOURNAMENTS_CSV_URL="https://raw.githubusercontent.com/your-org/your-repo/main/data/tournament_data.csv"
+export TOURNAMENT_METADATA_CSV_URL="https://raw.githubusercontent.com/your-org/your-repo/main/data/tournament_metadata.csv"
 export RANKING_TXT_URL="https://example.com/ranking.txt"
 python scripts/build_h2h.py
 ```

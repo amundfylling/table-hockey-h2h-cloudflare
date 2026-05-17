@@ -62,6 +62,25 @@ def write_json(path: Path, payload: dict) -> None:
         json.dump(payload, f, ensure_ascii=False, separators=(",", ":"))
 
 
+def normalize_tournament_level(value: object) -> Optional[str]:
+    if pd.isna(value):
+        return None
+    text = str(value).strip()
+    if not text or text.lower() in {"nan", "none", "null", "na", "n/a"}:
+        return None
+    try:
+        numeric = float(text)
+    except ValueError:
+        return text
+    if numeric.is_integer():
+        return str(int(numeric))
+    return str(numeric)
+
+
+def first_existing_column(df: pd.DataFrame, candidates: Iterable[str]) -> Optional[str]:
+    return next((column for column in candidates if column in df.columns), None)
+
+
 def parse_ranking_date(text: str) -> str:
     match = re.search(
         r"ranking\s+up\s+to\s+(\d{1,2})\.(\d{1,2})\.(\d{4})",
@@ -149,7 +168,34 @@ def load_players(
     return players, id_to_name
 
 
-def load_tournaments(tournaments_path: Path) -> Iterable[dict]:
+def load_tournament_levels(metadata_path: Path) -> Dict[int, Optional[str]]:
+    if not metadata_path.exists():
+        return {}
+
+    metadata_df = pd.read_csv(metadata_path)
+    id_col = first_existing_column(
+        metadata_df, ["TournamentID", "ID", "tournament_id", "id"]
+    )
+    level_col = first_existing_column(
+        metadata_df, ["Level", "TournamentLevel", "tournament_level", "level"]
+    )
+    if not id_col or not level_col:
+        return {}
+
+    metadata_df[id_col] = pd.to_numeric(metadata_df[id_col], errors="coerce")
+    metadata_df = metadata_df.dropna(subset=[id_col])
+    metadata_df[id_col] = metadata_df[id_col].astype(int)
+
+    levels: Dict[int, Optional[str]] = {}
+    for row in metadata_df[[id_col, level_col]].itertuples(index=False):
+        levels[int(row[0])] = normalize_tournament_level(row[1])
+    return levels
+
+
+def load_tournaments(
+    tournaments_path: Path, tournament_levels: Optional[Dict[int, Optional[str]]] = None
+) -> Iterable[dict]:
+    tournament_levels = tournament_levels or {}
     tourneys_df = pd.read_csv(tournaments_path)
     tourneys_df = tourneys_df.rename(columns={"ID": "id", "Name": "name", "Type": "type"})
     tourneys_df["id"] = pd.to_numeric(tourneys_df["id"], errors="coerce")
@@ -164,6 +210,7 @@ def load_tournaments(tournaments_path: Path) -> Iterable[dict]:
                 "id": int(row.id),
                 "name": row.name if pd.notna(row.name) else "",
                 "type": row.type if pd.notna(row.type) else "",
+                "level": tournament_levels.get(int(row.id)),
             }
         )
     return tournaments
@@ -307,6 +354,11 @@ def _row_to_match(row) -> dict:
         "date": date_value,
         "tournament_id": int(row.tournament_id) if pd.notna(row.tournament_id) else None,
         "tournament_name": row.tournament_name,
+        "tournament_level": (
+            normalize_tournament_level(row.tournament_level)
+            if hasattr(row, "tournament_level")
+            else None
+        ),
         "stage": row.stage,
         "stage_id": int(row.stage_id) if pd.notna(row.stage_id) else None,
         "stage_sequence": int(row.stage_sequence) if pd.notna(row.stage_sequence) else None,
@@ -354,7 +406,7 @@ def build_player_files(matches: pd.DataFrame, player_names: Dict[int, str]) -> N
         overtime_games: int,
         first_meeting_date: Optional[str],
         last_meeting_date: Optional[str],
-        tournaments: Dict[int, str],
+        tournaments: Dict[int, dict],
         last10: deque,
         matches_id1: list,
     ) -> None:
@@ -379,7 +431,8 @@ def build_player_files(matches: pd.DataFrame, player_names: Dict[int, str]) -> N
         last10_d = sum(1 for r in last10 if r == "D")
 
         tournaments_list = [
-            {"id": tid, "name": name} for tid, name in tournaments.items()
+            {"id": tid, "name": item["name"], "level": item.get("level")}
+            for tid, item in tournaments.items()
         ]
         tournaments_list.sort(key=lambda x: (x["name"].lower(), x["id"]))
 
@@ -441,6 +494,9 @@ def build_player_files(matches: pd.DataFrame, player_names: Dict[int, str]) -> N
         dtype="int64", na_value=-1, copy=False
     )
     tournament_name_values = matches["tournament_name"].to_numpy(dtype=object, copy=False)
+    if "tournament_level" not in matches:
+        matches["tournament_level"] = None
+    tournament_level_values = matches["tournament_level"].to_numpy(dtype=object, copy=False)
     stage_values = matches["stage"].to_numpy(dtype=object, copy=False)
     stage_id_values = matches["stage_id"].to_numpy(dtype="int64", na_value=-1, copy=False)
     stage_sequence_values = matches["stage_sequence"].to_numpy(
@@ -470,7 +526,7 @@ def build_player_files(matches: pd.DataFrame, player_names: Dict[int, str]) -> N
     overtime_games = 0
     first_meeting_date = None
     last_meeting_date = None
-    tournaments: Dict[int, str] = {}
+    tournaments: Dict[int, dict] = {}
     last10 = deque(maxlen=10)
     matches_id1 = []
 
@@ -526,6 +582,8 @@ def build_player_files(matches: pd.DataFrame, player_names: Dict[int, str]) -> N
         date_value = date_raw if isinstance(date_raw, str) else None
         tournament_id_raw = int(tournament_id_values[idx])
         tournament_id = None if tournament_id_raw == -1 else tournament_id_raw
+        tournament_level_raw = tournament_level_values[idx]
+        tournament_level = normalize_tournament_level(tournament_level_raw)
         stage_id_raw = int(stage_id_values[idx])
         stage_id = None if stage_id_raw == -1 else stage_id_raw
         stage_sequence_raw = int(stage_sequence_values[idx])
@@ -545,6 +603,7 @@ def build_player_files(matches: pd.DataFrame, player_names: Dict[int, str]) -> N
                 "date": date_value,
                 "tournament_id": tournament_id,
                 "tournament_name": tournament_name_values[idx],
+                "tournament_level": tournament_level,
                 "stage": stage_values[idx],
                 "stage_id": stage_id,
                 "stage_sequence": stage_sequence,
@@ -579,7 +638,10 @@ def build_player_files(matches: pd.DataFrame, player_names: Dict[int, str]) -> N
             last_meeting_date = date_value
 
         if tournament_id is not None:
-            tournaments[tournament_id] = tournament_name_values[idx]
+            tournaments[tournament_id] = {
+                "name": tournament_name_values[idx],
+                "level": tournament_level,
+            }
 
     if current_id1 is not None:
         finish_group(
@@ -613,6 +675,9 @@ def main() -> int:
     matches_url = os.environ.get("MATCHES_PARQUET_URL", dl.DEFAULT_MATCHES_URL)
     players_url = os.environ.get("PLAYERS_CSV_URL", dl.DEFAULT_PLAYERS_URL)
     tournaments_url = os.environ.get("TOURNAMENTS_CSV_URL", dl.DEFAULT_TOURNAMENTS_URL)
+    tournament_metadata_url = os.environ.get(
+        "TOURNAMENT_METADATA_CSV_URL", dl.DEFAULT_TOURNAMENT_METADATA_URL
+    )
     ranking_url = os.environ.get("RANKING_TXT_URL", dl.DEFAULT_RANKING_URL)
     try:
         min_matches = int(os.environ.get("MIN_MATCHES", "50"))
@@ -625,6 +690,7 @@ def main() -> int:
     extra_matches_path = CACHE_DIR / "extra_matches.csv"
     players_path = CACHE_DIR / "players_data.csv"
     tournaments_path = CACHE_DIR / "tournament_data.csv"
+    tournament_metadata_path = CACHE_DIR / "tournament_metadata.csv"
     ranking_path = CACHE_DIR / "ranking.txt"
 
     print("Downloading source data...")
@@ -664,6 +730,15 @@ def main() -> int:
         backoff=1.5,
         timeout=120,
     )
+    dl.download(
+        tournament_metadata_url,
+        tournament_metadata_path,
+        etag_path=CACHE_DIR / "tournament_metadata.etag",
+        last_modified_path=CACHE_DIR / "tournament_metadata.last_modified",
+        retries=5,
+        backoff=1.5,
+        timeout=120,
+    )
     try:
         dl.download(
             ranking_url,
@@ -685,7 +760,8 @@ def main() -> int:
     players, player_names = load_players(players_path, rankings)
 
     print("Loading tournaments...")
-    tournaments = load_tournaments(tournaments_path)
+    tournament_levels = load_tournament_levels(tournament_metadata_path)
+    tournaments = load_tournaments(tournaments_path, tournament_levels)
     write_json(DATA_DIR / "tournaments.json", tournaments)
 
     print("Processing matches...")
@@ -693,6 +769,9 @@ def main() -> int:
     matches_extra = read_extra_matches_csv(extra_matches_path)
 
     matches = pd.concat([matches_main, matches_extra], ignore_index=True)
+    matches["tournament_level"] = matches["tournament_id"].map(
+        lambda tid: tournament_levels.get(int(tid)) if pd.notna(tid) else None
+    )
 
     sort_cols = [
         "id1",

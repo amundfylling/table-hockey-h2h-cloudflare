@@ -1465,6 +1465,7 @@ body[data-theme="dark"] .h2h-scoreboard {
   gap: 8px;
 }
 
+.filter-chip-toggle,
 .best-of-toggle {
   min-height: 36px;
   padding: 8px 10px;
@@ -1474,6 +1475,7 @@ body[data-theme="dark"] .h2h-scoreboard {
   color: var(--text);
 }
 
+.filter-chip-toggle:has(input:checked),
 .best-of-toggle:has(input:checked) {
   border-color: var(--accent);
   background: var(--accent-soft);
