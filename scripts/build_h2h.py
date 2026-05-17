@@ -77,6 +77,12 @@ def normalize_tournament_level(value: object) -> Optional[str]:
     return str(numeric)
 
 
+def clean_optional_string(value: object) -> str:
+    if pd.isna(value):
+        return ""
+    return str(value).strip()
+
+
 def first_existing_column(df: pd.DataFrame, candidates: Iterable[str]) -> Optional[str]:
     return next((column for column in candidates if column in df.columns), None)
 
@@ -271,6 +277,12 @@ def process_matches_df(matches: pd.DataFrame) -> pd.DataFrame:
         matches["stage"] = matches["stage"].fillna("")
     else:
         matches["stage"] = ""
+    if "stage_type" in matches:
+        matches["stage_type"] = (
+            matches["stage_type"].fillna("").astype(str).str.strip().str.lower()
+        )
+    else:
+        matches["stage_type"] = ""
     if "player1_name" in matches:
         matches["player1_name"] = matches["player1_name"].fillna("")
     else:
@@ -279,6 +291,20 @@ def process_matches_df(matches: pd.DataFrame) -> pd.DataFrame:
         matches["player2_name"] = matches["player2_name"].fillna("")
     else:
         matches["player2_name"] = ""
+    for column in [
+        "source",
+        "source_url",
+        "stage_url",
+        "result_url",
+        "tournament_url",
+        "source_tournament_id",
+        "source_stage_id",
+        "source_match_id",
+    ]:
+        if column in matches:
+            matches[column] = matches[column].fillna("").astype(str).str.strip()
+        else:
+            matches[column] = ""
 
     matches["id1"] = matches["player1_id"].where(
         matches["player1_id"] <= matches["player2_id"], matches["player2_id"]
@@ -291,6 +317,75 @@ def process_matches_df(matches: pd.DataFrame) -> pd.DataFrame:
     matches["goals_id2"] = matches["goals_player2"].where(is_p1_id1, matches["goals_player1"])
 
     return matches
+
+
+OVERLAP_DEDUPE_COLUMNS = [
+    "id1",
+    "id2",
+    "date",
+    "stage_sequence",
+    "round_number",
+    "playoff_game_number",
+    "goals_id1",
+    "goals_id2",
+    "overtime",
+]
+
+
+def deduplicate_overlapping_source_matches(matches: pd.DataFrame) -> pd.DataFrame:
+    if matches.empty or "source" not in matches:
+        return matches
+
+    missing_columns = [column for column in OVERLAP_DEDUPE_COLUMNS if column not in matches]
+    if missing_columns:
+        return matches
+
+    matches = matches.copy()
+    if "tournament_level" not in matches:
+        matches["tournament_level"] = None
+
+    source_text = matches["source"].fillna("").astype(str).str.lower()
+    is_bordshockey = source_text.str.contains("bordshockey", regex=False)
+    if not is_bordshockey.any():
+        return matches
+
+    duplicate_mask = matches.duplicated(OVERLAP_DEDUPE_COLUMNS, keep=False)
+    if not duplicate_mask.any():
+        return matches
+
+    drop_indices = []
+    grouped = matches.loc[duplicate_mask].groupby(
+        OVERLAP_DEDUPE_COLUMNS, dropna=False, sort=False
+    )
+    for _, group in grouped:
+        if len(group) < 2:
+            continue
+
+        group_is_bordshockey = is_bordshockey.loc[group.index]
+        if not group_is_bordshockey.any() or group_is_bordshockey.all():
+            continue
+
+        non_bordshockey = group.loc[~group_is_bordshockey]
+        level = next(
+            (
+                normalized
+                for value in non_bordshockey["tournament_level"]
+                for normalized in [normalize_tournament_level(value)]
+                if normalized is not None
+            ),
+            None,
+        )
+        if level is not None:
+            for index in group.loc[group_is_bordshockey].index:
+                if normalize_tournament_level(matches.at[index, "tournament_level"]) is None:
+                    matches.at[index, "tournament_level"] = level
+
+        drop_indices.extend(non_bordshockey.index.tolist())
+
+    if not drop_indices:
+        return matches
+
+    return matches.drop(index=drop_indices).reset_index(drop=True)
 
 
 def read_matches_parquet(matches_path: Path) -> pd.DataFrame:
@@ -318,11 +413,26 @@ def read_matches_parquet(matches_path: Path) -> pd.DataFrame:
 
 
 def read_extra_matches_csv(csv_path: Path) -> pd.DataFrame:
-    matches = pd.read_csv(csv_path)
+    matches = pd.read_csv(
+        csv_path,
+        encoding="utf-8-sig",
+        dtype={
+            "StageType": "string",
+            "TournamentURL": "string",
+            "ResultURL": "string",
+            "StageURL": "string",
+            "SourceURL": "string",
+            "Source": "string",
+            "SourceTournamentID": "string",
+            "SourceStageID": "string",
+            "SourceMatchID": "string",
+        },
+    )
     # Map CSV columns to internal schema
     matches = matches.rename(
         columns={
             "StageID": "stage_id",
+            "StageType": "stage_type",
             "Player1": "player1_name",
             "Player1ID": "player1_id",
             "Player2": "player2_name",
@@ -337,6 +447,14 @@ def read_extra_matches_csv(csv_path: Path) -> pd.DataFrame:
             "TournamentName": "tournament_name",
             "TournamentID": "tournament_id",
             "StageSequence": "stage_sequence",
+            "TournamentURL": "tournament_url",
+            "ResultURL": "result_url",
+            "StageURL": "stage_url",
+            "SourceURL": "source_url",
+            "Source": "source",
+            "SourceTournamentID": "source_tournament_id",
+            "SourceStageID": "source_stage_id",
+            "SourceMatchID": "source_match_id",
         }
     )
     # Ensure missing IDs are NaN so they get dropped or handled correctly
@@ -360,6 +478,7 @@ def _row_to_match(row) -> dict:
             else None
         ),
         "stage": row.stage,
+        "stage_type": clean_optional_string(row.stage_type) if hasattr(row, "stage_type") else "",
         "stage_id": int(row.stage_id) if pd.notna(row.stage_id) else None,
         "stage_sequence": int(row.stage_sequence) if pd.notna(row.stage_sequence) else None,
         "round_number": int(row.round_number) if pd.notna(row.round_number) else None,
@@ -369,6 +488,30 @@ def _row_to_match(row) -> dict:
         "goals_id1": int(row.goals_id1),
         "goals_id2": int(row.goals_id2),
         "overtime": bool(row.overtime),
+        "source": clean_optional_string(row.source) if hasattr(row, "source") else "",
+        "source_url": clean_optional_string(row.source_url) if hasattr(row, "source_url") else "",
+        "stage_url": clean_optional_string(row.stage_url) if hasattr(row, "stage_url") else "",
+        "result_url": clean_optional_string(row.result_url) if hasattr(row, "result_url") else "",
+        "tournament_url": (
+            clean_optional_string(row.tournament_url)
+            if hasattr(row, "tournament_url")
+            else ""
+        ),
+        "source_tournament_id": (
+            clean_optional_string(row.source_tournament_id)
+            if hasattr(row, "source_tournament_id")
+            else ""
+        ),
+        "source_stage_id": (
+            clean_optional_string(row.source_stage_id)
+            if hasattr(row, "source_stage_id")
+            else ""
+        ),
+        "source_match_id": (
+            clean_optional_string(row.source_match_id)
+            if hasattr(row, "source_match_id")
+            else ""
+        ),
     }
 
 
@@ -498,6 +641,7 @@ def build_player_files(matches: pd.DataFrame, player_names: Dict[int, str]) -> N
         matches["tournament_level"] = None
     tournament_level_values = matches["tournament_level"].to_numpy(dtype=object, copy=False)
     stage_values = matches["stage"].to_numpy(dtype=object, copy=False)
+    stage_type_values = matches["stage_type"].to_numpy(dtype=object, copy=False)
     stage_id_values = matches["stage_id"].to_numpy(dtype="int64", na_value=-1, copy=False)
     stage_sequence_values = matches["stage_sequence"].to_numpy(
         dtype="int64", na_value=-1, copy=False
@@ -511,6 +655,16 @@ def build_player_files(matches: pd.DataFrame, player_names: Dict[int, str]) -> N
     goals_id1_values = matches["goals_id1"].to_numpy(dtype="int64", copy=False)
     goals_id2_values = matches["goals_id2"].to_numpy(dtype="int64", copy=False)
     overtime_values = matches["overtime"].to_numpy(dtype=bool, copy=False)
+    source_values = matches["source"].to_numpy(dtype=object, copy=False)
+    source_url_values = matches["source_url"].to_numpy(dtype=object, copy=False)
+    stage_url_values = matches["stage_url"].to_numpy(dtype=object, copy=False)
+    result_url_values = matches["result_url"].to_numpy(dtype=object, copy=False)
+    tournament_url_values = matches["tournament_url"].to_numpy(dtype=object, copy=False)
+    source_tournament_id_values = matches["source_tournament_id"].to_numpy(
+        dtype=object, copy=False
+    )
+    source_stage_id_values = matches["source_stage_id"].to_numpy(dtype=object, copy=False)
+    source_match_id_values = matches["source_match_id"].to_numpy(dtype=object, copy=False)
 
     current_id1 = None
     current_id2 = None
@@ -597,6 +751,14 @@ def build_player_files(matches: pd.DataFrame, player_names: Dict[int, str]) -> N
         goals_id1 = int(goals_id1_values[idx])
         goals_id2 = int(goals_id2_values[idx])
         overtime = bool(overtime_values[idx])
+        source = clean_optional_string(source_values[idx])
+        source_url = clean_optional_string(source_url_values[idx])
+        stage_url = clean_optional_string(stage_url_values[idx])
+        result_url = clean_optional_string(result_url_values[idx])
+        tournament_url = clean_optional_string(tournament_url_values[idx])
+        source_tournament_id = clean_optional_string(source_tournament_id_values[idx])
+        source_stage_id = clean_optional_string(source_stage_id_values[idx])
+        source_match_id = clean_optional_string(source_match_id_values[idx])
 
         matches_id1.append(
             {
@@ -605,6 +767,7 @@ def build_player_files(matches: pd.DataFrame, player_names: Dict[int, str]) -> N
                 "tournament_name": tournament_name_values[idx],
                 "tournament_level": tournament_level,
                 "stage": stage_values[idx],
+                "stage_type": clean_optional_string(stage_type_values[idx]),
                 "stage_id": stage_id,
                 "stage_sequence": stage_sequence,
                 "round_number": round_number,
@@ -612,6 +775,14 @@ def build_player_files(matches: pd.DataFrame, player_names: Dict[int, str]) -> N
                 "goals_for_player": goals_id1,
                 "goals_for_opponent": goals_id2,
                 "overtime": overtime,
+                "source": source,
+                "source_url": source_url,
+                "stage_url": stage_url,
+                "result_url": result_url,
+                "tournament_url": tournament_url,
+                "source_tournament_id": source_tournament_id,
+                "source_stage_id": source_stage_id,
+                "source_match_id": source_match_id,
             }
         )
 
@@ -772,6 +943,11 @@ def main() -> int:
     matches["tournament_level"] = matches["tournament_id"].map(
         lambda tid: tournament_levels.get(int(tid)) if pd.notna(tid) else None
     )
+    before_dedupe_count = len(matches)
+    matches = deduplicate_overlapping_source_matches(matches)
+    deduped_count = before_dedupe_count - len(matches)
+    if deduped_count:
+        print(f"Removed {deduped_count} overlapping source matches.")
 
     sort_cols = [
         "id1",

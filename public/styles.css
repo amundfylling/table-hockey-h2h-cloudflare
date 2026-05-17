@@ -1814,6 +1814,10 @@ body[data-comparison-mode="single"][data-stats-mode="series"] #matches-table {
   gap: 10px;
 }
 
+.detail-grid div {
+  overflow-wrap: anywhere;
+}
+
 .series-detail-panel {
   display: flex;
   flex-direction: column;

@@ -4,6 +4,12 @@ from pathlib import Path
 
 import pandas as pd
 
+from scripts.build_h2h import (  # noqa: E402
+    deduplicate_overlapping_source_matches,
+    read_extra_matches_csv,
+    read_matches_parquet,
+)
+
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT_DIR / "public" / "data"
@@ -82,20 +88,12 @@ class TestH2HCounts(unittest.TestCase):
         if not MATCHES_PATH.exists():
             self.skipTest("No cached matches parquet found; skipping source count check.")
 
-        matches = pd.read_parquet(
-            MATCHES_PATH, engine="pyarrow", columns=["Player1ID", "Player2ID"]
-        )
+        matches = read_matches_parquet(MATCHES_PATH)
         if EXTRA_MATCHES_PATH.exists():
-            extra_matches = pd.read_csv(EXTRA_MATCHES_PATH, usecols=["Player1ID", "Player2ID"])
+            extra_matches = read_extra_matches_csv(EXTRA_MATCHES_PATH)
             matches = pd.concat([matches, extra_matches], ignore_index=True)
-        matches = matches.rename(
-            columns={"Player1ID": "player1_id", "Player2ID": "player2_id"}
-        )
-        matches["player1_id"] = pd.to_numeric(matches["player1_id"], errors="coerce")
-        matches["player2_id"] = pd.to_numeric(matches["player2_id"], errors="coerce")
-        matches = matches.dropna(subset=["player1_id", "player2_id"])
-        matches["player1_id"] = matches["player1_id"].astype(int)
-        matches["player2_id"] = matches["player2_id"].astype(int)
+        matches["tournament_level"] = None
+        matches = deduplicate_overlapping_source_matches(matches)
 
         eligible = self.player_id_set
         matches = matches[

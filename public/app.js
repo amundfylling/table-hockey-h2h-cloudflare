@@ -307,6 +307,13 @@ function classifyStage(stage) {
   return "other";
 }
 
+function normalizeStageType(value, stage) {
+  const text = normalizeText(value).replace(/_/g, "-");
+  if (text === "playoff") return "playoff";
+  if (text === "round-robin" || text === "round robin") return "round-robin";
+  return classifyStage(stage);
+}
+
 function getStatsMode() {
   return state.stageTab === "playoff" ? state.playoffMode : "games";
 }
@@ -1019,6 +1026,14 @@ function normalizeMatchBase(raw) {
   const stageSequence = raw.stage_sequence ?? raw.StageSequence ?? null;
   const roundNumber = raw.round_number ?? raw.RoundNumber ?? null;
   const playoffGameNumber = raw.playoff_game_number ?? raw.PlayoffGameNumber ?? null;
+  const source = decodeHtmlEntities(raw.source || raw.Source || "");
+  const sourceUrl = decodeHtmlEntities(raw.source_url || raw.SourceURL || "");
+  const stageUrl = decodeHtmlEntities(raw.stage_url || raw.StageURL || "");
+  const resultUrl = decodeHtmlEntities(raw.result_url || raw.ResultURL || "");
+  const tournamentUrl = decodeHtmlEntities(raw.tournament_url || raw.TournamentURL || "");
+  const sourceTournamentId = raw.source_tournament_id ?? raw.SourceTournamentID ?? "";
+  const sourceStageId = raw.source_stage_id ?? raw.SourceStageID ?? "";
+  const sourceMatchId = raw.source_match_id ?? raw.SourceMatchID ?? "";
 
   return {
     date,
@@ -1029,11 +1044,19 @@ function normalizeMatchBase(raw) {
     tournament_key: tournamentId != null ? `id:${tournamentId}` : `name:${tournamentName || "unknown"}`,
     tournament_level: tournamentLevel,
     stage,
-    stage_type: classifyStage(stage),
+    stage_type: normalizeStageType(raw.stage_type ?? raw.StageType ?? "", stage),
     stage_id: stageId != null ? Number(stageId) : null,
     stage_sequence: stageSequence != null ? Number(stageSequence) : null,
     round_number: roundNumber != null ? Number(roundNumber) : null,
     playoff_game_number: playoffGameNumber != null ? Number(playoffGameNumber) : null,
+    source,
+    source_url: sourceUrl,
+    stage_url: stageUrl,
+    result_url: resultUrl,
+    tournament_url: tournamentUrl,
+    source_tournament_id: sourceTournamentId != null ? String(sourceTournamentId) : "",
+    source_stage_id: sourceStageId != null ? String(sourceStageId) : "",
+    source_match_id: sourceMatchId != null ? String(sourceMatchId) : "",
   };
 }
 
@@ -1418,6 +1441,14 @@ function createSeriesFromMatches(matches) {
     tournament_id: first.tournament_id ?? null,
     tournament_key: first.tournament_key || "",
     tournament_level: first.tournament_level ?? null,
+    source: first.source || "",
+    source_url: first.source_url || "",
+    stage_url: first.stage_url || "",
+    result_url: first.result_url || "",
+    tournament_url: first.tournament_url || "",
+    source_tournament_id: first.source_tournament_id || "",
+    source_stage_id: first.source_stage_id || "",
+    source_match_id: first.source_match_id || "",
     opponent_id: first.opponent_id ?? null,
     opponent_name: first.opponent_name || "",
     stage: first.stage || "",
@@ -2399,6 +2430,63 @@ function renderTableHeaders() {
   elements.matchesHeadRow.replaceChildren(fragment);
 }
 
+function getItemSourceUrl(item) {
+  const explicitUrl = item.source_url || item.stage_url || item.result_url || item.tournament_url || "";
+  if (explicitUrl) return explicitUrl;
+  const source = normalizeText(item.source || "");
+  if (source.includes("bordshockey")) return "";
+  if (item.stage_id) {
+    return `https://th.sportscorpion.com/eng/tournament/stage/${item.stage_id}/matches/`;
+  }
+  return "";
+}
+
+function createExternalIcon() {
+  const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  icon.setAttribute("class", "external-icon");
+  icon.setAttribute("width", "10");
+  icon.setAttribute("height", "10");
+  icon.setAttribute("viewBox", "0 0 24 24");
+  icon.setAttribute("fill", "none");
+  icon.setAttribute("stroke", "currentColor");
+  icon.setAttribute("stroke-width", "1.5");
+  icon.setAttribute("stroke-linecap", "round");
+  icon.setAttribute("stroke-linejoin", "round");
+
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("d", "M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6");
+  const polyline = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+  polyline.setAttribute("points", "15 3 21 3 21 9");
+  const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+  line.setAttribute("x1", "10");
+  line.setAttribute("y1", "14");
+  line.setAttribute("x2", "21");
+  line.setAttribute("y2", "3");
+
+  icon.appendChild(path);
+  icon.appendChild(polyline);
+  icon.appendChild(line);
+  return icon;
+}
+
+function renderTournamentCell(cell, item) {
+  const label = item.tournament_name || "-";
+  const url = getItemSourceUrl(item);
+  if (!url) {
+    cell.textContent = label;
+    return;
+  }
+
+  const link = document.createElement("a");
+  link.href = url;
+  link.target = "_blank";
+  link.rel = "noopener";
+  link.className = "table-link";
+  link.appendChild(document.createTextNode(label));
+  link.appendChild(createExternalIcon());
+  cell.appendChild(link);
+}
+
 function renderGameTable(matches) {
   elements.matchesBody.innerHTML = "";
   const isSingle = isSinglePlayerMode();
@@ -2444,24 +2532,7 @@ function renderGameTable(matches) {
     opponentCell.textContent = match.opponent_name || "-";
 
     const tournamentCell = document.createElement("td");
-    if (match.stage_id) {
-      const link = document.createElement("a");
-      link.href = `https://th.sportscorpion.com/eng/tournament/stage/${match.stage_id}/matches/`;
-      link.target = "_blank";
-      link.rel = "noopener";
-      link.className = "table-link";
-      link.innerHTML = `
-        ${match.tournament_name || "-"}
-        <svg class="external-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-          <polyline points="15 3 21 3 21 9"></polyline>
-          <line x1="10" y1="14" x2="21" y2="3"></line>
-        </svg>
-      `;
-      tournamentCell.appendChild(link);
-    } else {
-      tournamentCell.textContent = match.tournament_name || "-";
-    }
+    renderTournamentCell(tournamentCell, match);
 
     const stageCell = document.createElement("td");
     stageCell.className = "stage-cell";
@@ -2539,6 +2610,8 @@ function renderGameTable(matches) {
       { label: "Stage sequence", value: match.stage_sequence },
       { label: "Round number", value: match.round_number },
       { label: "Playoff game", value: match.playoff_game_number },
+      { label: "Source", value: match.source || "sportscorpion" },
+      { label: "Source URL", value: getItemSourceUrl(match) },
     ];
     detailItems.forEach((item) => {
       const block = document.createElement("div");
@@ -2603,24 +2676,7 @@ function renderSeriesTable(seriesItems) {
     opponentCell.textContent = series.opponent_name || "-";
 
     const tournamentCell = document.createElement("td");
-    if (series.stage_id) {
-      const link = document.createElement("a");
-      link.href = `https://th.sportscorpion.com/eng/tournament/stage/${series.stage_id}/matches/`;
-      link.target = "_blank";
-      link.rel = "noopener";
-      link.className = "table-link";
-      link.innerHTML = `
-        ${series.tournament_name || "-"}
-        <svg class="external-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-          <polyline points="15 3 21 3 21 9"></polyline>
-          <line x1="10" y1="14" x2="21" y2="3"></line>
-        </svg>
-      `;
-      tournamentCell.appendChild(link);
-    } else {
-      tournamentCell.textContent = series.tournament_name || "-";
-    }
+    renderTournamentCell(tournamentCell, series);
 
     const stageCell = document.createElement("td");
     stageCell.className = "stage-cell";
