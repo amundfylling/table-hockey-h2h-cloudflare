@@ -165,6 +165,15 @@ function decodeHtmlEntities(value) {
     .replace(/&nbsp;/g, " ");
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function normalizePlayerRecord(player) {
   if (!player) return null;
   const name = decodeHtmlEntities(player.name);
@@ -332,6 +341,7 @@ function updatePrimaryActionLabel() {
   if (elements.swapBtn) {
     elements.swapBtn.disabled = !resolvePlayerId(elements.playerB);
   }
+  updateSelectionControls();
 }
 
 function safeStorageGet(key, fallback) {
@@ -349,6 +359,30 @@ function safeStorageSet(key, value) {
     localStorage.setItem(key, JSON.stringify(value));
   } catch (err) {
     // ignore
+  }
+}
+
+function safeStorageRemove(key) {
+  try {
+    localStorage.removeItem(key);
+  } catch (err) {
+    // ignore
+  }
+}
+
+function hasInputValue(inputEl) {
+  return Boolean(inputEl?.value?.trim() || inputEl?.dataset?.playerId);
+}
+
+function updateSelectionControls() {
+  document.querySelectorAll("[data-clear]").forEach((button) => {
+    const input = button.dataset.clear === "a" ? elements.playerA : elements.playerB;
+    const hasValue = hasInputValue(input);
+    button.hidden = !hasValue;
+    button.disabled = !hasValue;
+  });
+  if (elements.copyLinkBtn) {
+    elements.copyLinkBtn.disabled = !resolvePlayerId(elements.playerA);
   }
 }
 
@@ -412,6 +446,13 @@ function setTheme(mode) {
     document.body.setAttribute("data-theme", "dark");
   } else {
     document.body.removeAttribute("data-theme");
+  }
+  if (elements.themeToggle) {
+    const isDark = mode === "dark";
+    elements.themeToggle.setAttribute("aria-pressed", isDark ? "true" : "false");
+    elements.themeToggle.title = isDark ? "Switch to light mode" : "Switch to dark mode";
+    const label = elements.themeToggle.querySelector("span");
+    if (label) label.textContent = isDark ? "Light mode" : "Dark mode";
   }
   safeStorageSet(STORAGE_KEYS.theme, mode);
 }
@@ -528,6 +569,7 @@ function setInputPlayer(inputEl, player) {
   inputEl.dataset.playerIds = ids.length > 1 ? ids.join(",") : "";
   inputEl.dataset.playerName = name;
   updatePrimaryActionLabel();
+  updateSelectionControls();
 }
 
 function clearInputPlayer(inputEl, listEl) {
@@ -538,6 +580,7 @@ function clearInputPlayer(inputEl, listEl) {
   listEl.classList.remove("is-open");
   listEl.innerHTML = "";
   updatePrimaryActionLabel();
+  updateSelectionControls();
 }
 
 function resolvePlayerId(inputEl) {
@@ -893,6 +936,18 @@ function setupTypeahead(inputEl, listEl, options = {}) {
     inputEl.dataset.playerIds = "";
     inputEl.dataset.playerName = "";
     updatePrimaryActionLabel();
+    if (isPlayerB) {
+      resetCurrentResults({
+        keepPlayerA: Boolean(resolvePlayerId(elements.playerA)),
+        message: "",
+      });
+    } else {
+      clearInputPlayer(elements.playerB, elements.listB);
+      state.opponentsOfA = new Map();
+      elements.playerB.disabled = true;
+      elements.playerB.placeholder = "Select Player 1 first";
+      resetCurrentResults({ clearUrl: true, clearStoredSelection: true, message: "" });
+    }
     debouncedUpdate();
   });
 
@@ -958,6 +1013,7 @@ function setupTypeahead(inputEl, listEl, options = {}) {
 async function onPlayerASelected(player) {
   if (!player || !player.id) return;
   clearInputPlayer(elements.playerB, elements.listB);
+  resetCurrentResults({ keepPlayerA: true, message: "" });
   await loadOpponentsForPlayer(player.id, player.ids || [player.id]);
 }
 
@@ -1535,7 +1591,10 @@ function formatPercent(value) {
 
 function formatAxisValue(value) {
   if (!Number.isFinite(value)) return "0";
-  return String(Math.round(value));
+  if (Math.abs(value) < 0.005) return "0";
+  const rounded = Math.round(value);
+  if (Math.abs(value - rounded) < 0.005) return String(rounded);
+  return value.toFixed(1);
 }
 
 const DASH = "—";
@@ -1734,75 +1793,6 @@ function getHighlightInfo(match, side) {
   };
 }
 
-const HIGHLIGHT_REACTIONS = {
-  celebrate: {
-    icon: "🎉",
-    label: "Celebrate this highlight",
-    items: ["🎉", "🎊"],
-    count: 18,
-  },
-  poop: {
-    icon: "💩",
-    label: "React to this lowlight",
-    items: ["💩"],
-    count: 13,
-  },
-};
-
-function shouldReduceMotion() {
-  return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-}
-
-function launchHighlightReaction(kind = "celebrate") {
-  if (shouldReduceMotion()) return;
-  const reaction = HIGHLIGHT_REACTIONS[kind] || HIGHLIGHT_REACTIONS.celebrate;
-  const layer = document.createElement("div");
-  layer.className = `emoji-burst-layer emoji-burst-layer--${kind}`;
-  layer.setAttribute("aria-hidden", "true");
-
-  for (let index = 0; index < reaction.count; index += 1) {
-    const item = document.createElement("span");
-    item.className = "emoji-burst-item";
-    item.textContent = reaction.items[Math.floor(Math.random() * reaction.items.length)];
-    item.style.setProperty("--burst-x", `${8 + Math.random() * 84}vw`);
-    item.style.setProperty("--burst-y", `${14 + Math.random() * 72}vh`);
-    item.style.setProperty("--burst-drift", `${Math.round((Math.random() - 0.5) * 80)}px`);
-    item.style.setProperty("--burst-lift", `${Math.round(28 + Math.random() * 62)}px`);
-    item.style.setProperty("--burst-size", `${Math.round(13 + Math.random() * 9)}px`);
-    item.style.setProperty("--burst-rotation", `${Math.round((Math.random() - 0.5) * 46)}deg`);
-    item.style.setProperty("--burst-spin", `${Math.round((Math.random() - 0.5) * 120)}deg`);
-    item.style.setProperty("--burst-delay", `${(Math.random() * 0.16).toFixed(2)}s`);
-    item.style.setProperty("--burst-duration", `${(0.92 + Math.random() * 0.42).toFixed(2)}s`);
-    layer.appendChild(item);
-  }
-
-  document.body.appendChild(layer);
-  window.setTimeout(() => layer.remove(), 1700);
-}
-
-function createHighlightReactionButton(effect) {
-  const reaction = HIGHLIGHT_REACTIONS[effect] || HIGHLIGHT_REACTIONS.celebrate;
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className = `highlight-emoji-btn highlight-emoji-btn--${effect}`;
-  button.textContent = reaction.icon;
-  button.setAttribute("aria-label", reaction.label);
-  button.title = reaction.label;
-  button.addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    launchHighlightReaction(effect);
-  });
-  return button;
-}
-
-function createHighlightReactionActions(effects = ["celebrate", "poop"]) {
-  const actions = document.createElement("div");
-  actions.className = "highlight-emoji-actions";
-  effects.forEach((effect) => actions.appendChild(createHighlightReactionButton(effect)));
-  return actions;
-}
-
 function createHighlightBlock(label, info, side, tooltip = "") {
   const block = document.createElement("div");
   block.className = `highlight highlight--${side}`;
@@ -1814,28 +1804,30 @@ function createHighlightBlock(label, info, side, tooltip = "") {
 
   const score = document.createElement("div");
   score.className = "highlight-score";
-  score.textContent = info.score;
+  const hasResult = info.score && info.score !== DASH;
+  if (hasResult) {
+    score.textContent = info.score;
+  } else {
+    score.textContent = normalizeText(label).includes("loss") ? "No losses" : "No wins";
+  }
 
   const meta = document.createElement("div");
   meta.className = "highlight-meta";
   const opponent = info.opponent !== DASH ? `vs ${info.opponent}` : DASH;
   const date = info.date !== DASH ? info.date : DASH;
-  meta.textContent = `${opponent} | ${date}`;
+  meta.textContent = hasResult ? `${opponent} | ${date}` : "For this selection";
 
   const tour = document.createElement("div");
   tour.className = "highlight-tour";
-  tour.textContent = info.tournament;
-  if (info.tournament && info.tournament !== DASH) {
+  tour.textContent = hasResult ? info.tournament : "";
+  if (hasResult && info.tournament && info.tournament !== DASH) {
     tour.title = info.tournament;
   }
 
   block.appendChild(title);
   block.appendChild(score);
   block.appendChild(meta);
-  block.appendChild(tour);
-  if (info.score && info.score !== DASH) {
-    block.appendChild(createHighlightReactionActions());
-  }
+  if (hasResult) block.appendChild(tour);
   return block;
 }
 
@@ -1901,6 +1893,7 @@ function renderSummary(items) {
 function renderGameSummary(matches) {
   updateFormTitle();
   if (!state.playerA || (!isSinglePlayerMode() && !state.playerB)) return;
+  elements.record.hidden = false;
   const summary = computeSummary(matches);
   const total = summary.total || 0;
   const winPct = total ? (summary.winsA / total) * 100 : 0;
@@ -1960,6 +1953,7 @@ function renderGameSummary(matches) {
 function renderSeriesSummary(seriesItems) {
   updateFormTitle();
   if (!state.playerA || (!isSinglePlayerMode() && !state.playerB)) return;
+  elements.record.hidden = false;
   const summary = computeSeriesSummary(seriesItems);
   const total = summary.total || 0;
   const winPct = total ? (summary.winsA / total) * 100 : 0;
@@ -2076,8 +2070,7 @@ function createCurrentStreakChip(items) {
 }
 
 function formatMatchCountText(start, end, total) {
-  const suffix = total === 69 ? ". nice." : "";
-  return `Showing ${start + 1}-${end} of ${total} matches${suffix}`;
+  return `Showing ${start + 1}-${end} of ${total} matches`;
 }
 
 function renderForm(matches) {
@@ -2166,9 +2159,9 @@ function renderRecordChart(matches) {
 
   elements.recordChart.innerHTML = `
     <div class="chart-legend">
-      <span><span class="legend-dot a"></span>${state.playerA.name}</span>
-      <span><span class="legend-dot b"></span>${opponentSeriesLabel}</span>
-      <span class="chart-note">${leadLabel}</span>
+      <span><span class="legend-dot a"></span>${escapeHtml(state.playerA.name)}</span>
+      <span><span class="legend-dot b"></span>${escapeHtml(opponentSeriesLabel)}</span>
+      <span class="chart-note">${escapeHtml(leadLabel)}</span>
     </div>
     <svg viewBox="0 0 ${width} ${height}" aria-label="Cumulative record chart">
       ${gridLines.join("")}
@@ -2219,9 +2212,9 @@ function renderRecordChart(matches) {
         ? `${state.playerA.name} ${formatSeriesScore(match)} ${match.opponent_name || opponentSeriesLabel} (${match.goals_a}-${match.goals_b} goals)`
         : `${state.playerA.name} ${match.goals_a}-${match.goals_b} ${match.opponent_name || opponentSeriesLabel}`;
     const html = `
-      <div class="tooltip-title">${match.type === "series" ? formatDateRange(match.date, match.end_date) : match.date || "Unknown date"}</div>
-      <div class="tooltip-row">${scoreLine}</div>
-      <div class="tooltip-row">Record: ${recordValue}</div>
+      <div class="tooltip-title">${escapeHtml(match.type === "series" ? formatDateRange(match.date, match.end_date) : match.date || "Unknown date")}</div>
+      <div class="tooltip-row">${escapeHtml(scoreLine)}</div>
+      <div class="tooltip-row">Record: ${escapeHtml(recordValue)}</div>
     `;
     showChartTooltip(container, tooltip, html, xLocal, yLocal);
   };
@@ -2306,8 +2299,8 @@ function renderGoalsChart(matches) {
 
   elements.goalsChart.innerHTML = `
     <div class="chart-legend">
-      <span><span class="legend-dot a"></span>${state.playerA.name}</span>
-      <span><span class="legend-dot b"></span>${state.playerB?.name || "Opponents"}</span>
+      <span><span class="legend-dot a"></span>${escapeHtml(state.playerA.name)}</span>
+      <span><span class="legend-dot b"></span>${escapeHtml(state.playerB?.name || "Opponents")}</span>
     </div>
     <svg viewBox="0 0 ${width} ${height}" aria-label="Average goals by year chart">
       ${grid}
@@ -2333,8 +2326,8 @@ function renderGoalsChart(matches) {
     const value = target.getAttribute("data-value");
     const name = side === "b" ? state.playerB?.name || "Opponents" : state.playerA.name;
     const html = `
-      <div class="tooltip-title">${year}</div>
-      <div class="tooltip-row">${name}: ${value} avg goals</div>
+      <div class="tooltip-title">${escapeHtml(year)}</div>
+      <div class="tooltip-row">${escapeHtml(name)}: ${escapeHtml(value)} avg goals</div>
     `;
     const rect = container.getBoundingClientRect();
     const x = event.clientX - rect.left;
@@ -2392,6 +2385,7 @@ function renderTableHeaders() {
   if (!elements.matchesHeadRow) return;
   ensureSortForMode();
   const columns = getTableColumns();
+  const hasData = state.baseMatches.length > 0;
   const fragment = document.createDocumentFragment();
 
   columns.forEach((column) => {
@@ -2400,6 +2394,12 @@ function renderTableHeaders() {
 
     if (!column.key) {
       th.className = "expand-header";
+      fragment.appendChild(th);
+      return;
+    }
+
+    if (!hasData) {
+      th.textContent = column.label;
       fragment.appendChild(th);
       return;
     }
@@ -2615,7 +2615,10 @@ function renderGameTable(matches) {
     ];
     detailItems.forEach((item) => {
       const block = document.createElement("div");
-      block.innerHTML = `<strong>${item.label}:</strong> ${item.value ?? "-"}`;
+      const label = document.createElement("strong");
+      label.textContent = `${item.label}:`;
+      block.appendChild(label);
+      block.appendChild(document.createTextNode(` ${item.value ?? "-"}`));
       detailGrid.appendChild(block);
     });
     detailCell.appendChild(detailGrid);
@@ -3164,8 +3167,90 @@ function updateFilterCount() {
   elements.filterCount.textContent = count ? String(count) : "";
 }
 
+function setDataControlsEnabled(enabled) {
+  elements.tabs.forEach((tab) => {
+    tab.disabled = !enabled;
+  });
+  if (elements.filterToggle) {
+    elements.filterToggle.disabled = !enabled;
+    elements.filterToggle.setAttribute("aria-disabled", enabled ? "false" : "true");
+  }
+}
+
+function clearUrlSelection() {
+  const url = new URL(window.location.href);
+  ["p1", "p2", "p1g", "p2g"].forEach((key) => url.searchParams.delete(key));
+  window.history.replaceState({}, "", url);
+}
+
+function setStageTabControls(stage = "overall") {
+  state.stageTab = stage;
+  elements.tabs.forEach((tab) => {
+    const isActive = tab.dataset.stage === stage;
+    tab.classList.toggle("is-active", isActive);
+    tab.setAttribute("aria-selected", isActive ? "true" : "false");
+  });
+  updateModeControls();
+}
+
+function renderIdleState() {
+  const selectedId = resolvePlayerId(elements.playerA);
+  const selectedPlayer = selectedId ? getSelectionPlayer(elements.playerA, selectedId) : null;
+
+  elements.emptyState.hidden = true;
+  elements.errorState.hidden = true;
+  elements.headline.textContent = selectedPlayer ? selectedPlayer.name : "Pick a player";
+  elements.subhead.textContent = selectedPlayer
+    ? "Choose an opponent, or display all games for this player."
+    : "Search for a player to start.";
+  elements.record.hidden = true;
+  elements.record.replaceChildren();
+  elements.summaryGrid.replaceChildren();
+  elements.formTitle.textContent = "Recent form";
+  elements.formChips.replaceChildren();
+  const formMessage = document.createElement("span");
+  formMessage.className = "muted";
+  formMessage.textContent = selectedPlayer ? "No view loaded" : "No selection";
+  elements.formChips.appendChild(formMessage);
+  elements.recordChart.textContent = selectedPlayer ? "Display this player to build the record." : "No selection";
+  elements.goalsChart.textContent = selectedPlayer ? "Display this player to see yearly scoring." : "No selection";
+  elements.matchCount.textContent = "0 matches";
+  renderTableHeaders();
+  elements.matchesBody.replaceChildren();
+  const row = document.createElement("tr");
+  row.className = "empty-table-row";
+  const cell = document.createElement("td");
+  cell.colSpan = getTableColumns().length;
+  cell.textContent = selectedPlayer ? "Display this player or choose an opponent." : "Select a player to show matches.";
+  row.appendChild(cell);
+  elements.matchesBody.appendChild(row);
+  updatePagination(0);
+}
+
+function resetCurrentResults(options = {}) {
+  const keepPlayerA = Boolean(options.keepPlayerA);
+  state.baseMatches = [];
+  state.stageMatches = [];
+  state.filteredMatches = [];
+  state.playerA = keepPlayerA ? getSelectionPlayer(elements.playerA, resolvePlayerId(elements.playerA)) : null;
+  state.playerB = null;
+  state.comparisonMode = keepPlayerA ? "single" : "matchup";
+  state.page = 1;
+  state.sort = { key: "date", direction: "desc" };
+  resetFilters();
+  setStageTabControls("overall");
+  setDataControlsEnabled(false);
+  elements.stageMeta.textContent = "";
+  updateFilterCount();
+  renderIdleState();
+  if (options.clearStoredSelection) safeStorageRemove(STORAGE_KEYS.last);
+  if (options.clearUrl) clearUrlSelection();
+  if (options.message != null) setStatus(options.message);
+}
+
 function updateView() {
   if (!state.baseMatches.length) {
+    setDataControlsEnabled(false);
     updateModeControls();
     updateFilterCount();
     renderSummary([]);
@@ -3176,6 +3261,7 @@ function updateView() {
     return;
   }
 
+  setDataControlsEnabled(true);
   updateModeControls();
   state.stageMatches = getActiveItems();
   const filtered = applyFilters(state.stageMatches);
@@ -3257,6 +3343,11 @@ async function handleCompare() {
 
   setLoading(true);
   setStatus(isSingle ? "Loading player stats..." : "Loading matchup...");
+  state.baseMatches = [];
+  state.stageMatches = [];
+  state.filteredMatches = [];
+  elements.stageMeta.textContent = "";
+  setDataControlsEnabled(false);
   elements.emptyState.hidden = true;
   elements.errorState.hidden = true;
   renderSummarySkeleton();
@@ -3281,6 +3372,8 @@ async function handleCompare() {
       elements.emptyState.hidden = false;
       state.baseMatches = [];
       state.filteredMatches = [];
+      elements.stageMeta.textContent = "";
+      setDataControlsEnabled(false);
       renderSummary([]);
       renderForm([]);
       renderCharts([]);
@@ -3312,6 +3405,7 @@ async function handleCompare() {
   } catch (err) {
     console.error(err);
     setLoading(false);
+    renderIdleState();
     elements.errorState.hidden = false;
     setStatus(isSingle ? "Failed to load player stats." : "Failed to load matchup.");
   }
@@ -3520,26 +3614,35 @@ function initFilters() {
 
   const toggleFilterMenu = (open) => {
     if (open) {
+      if (elements.filterToggle?.disabled) return;
       elements.filterMenu.hidden = false;
       elements.filterBackdrop.hidden = false;
-      // Slight delay for animation
+      elements.filterToggle?.setAttribute("aria-expanded", "true");
       requestAnimationFrame(() => {
-        elements.filterMenu.removeAttribute("hidden");
-        elements.filterBackdrop.style.opacity = "1";
+        elements.filterMenu.classList.add("is-open");
+        elements.filterBackdrop.classList.add("is-open");
       });
+      window.setTimeout(() => elements.searchFilter?.focus(), 0);
     } else {
-      elements.filterMenu.setAttribute("hidden", "");
-      elements.filterBackdrop.style.opacity = "0";
+      elements.filterMenu.classList.remove("is-open");
+      elements.filterBackdrop.classList.remove("is-open");
+      elements.filterToggle?.setAttribute("aria-expanded", "false");
       setTimeout(() => {
         elements.filterMenu.hidden = true;
         elements.filterBackdrop.hidden = true;
       }, 300);
+      elements.filterToggle?.focus();
     }
   };
 
   elements.filterToggle.addEventListener("click", () => toggleFilterMenu(true));
   elements.filterClose.addEventListener("click", () => toggleFilterMenu(false));
   elements.filterBackdrop.addEventListener("click", () => toggleFilterMenu(false));
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !elements.filterMenu.hidden) {
+      toggleFilterMenu(false);
+    }
+  });
   if (elements.clearFiltersBtn) {
     elements.clearFiltersBtn.addEventListener("click", () => {
       resetFilters();
@@ -3693,6 +3796,22 @@ async function init() {
         state.opponentsOfA = new Map();
         elements.playerB.disabled = true;
         elements.playerB.placeholder = "Select Player 1 first";
+        resetCurrentResults({
+          clearStoredSelection: true,
+          clearUrl: true,
+          message: "Selection cleared.",
+        });
+      } else {
+        const idA = resolvePlayerId(elements.playerA);
+        const idsA = getSelectionIds(elements.playerA);
+        if (idA) {
+          updateUrl(idA, null, idsA, []);
+          safeStorageSet(STORAGE_KEYS.last, { p1: idA, p2: null, p1Ids: idsA, p2Ids: [] });
+        }
+        resetCurrentResults({
+          keepPlayerA: Boolean(idA),
+          message: idA ? "Opponent cleared. Display to show all games." : "",
+        });
       }
     });
   });
@@ -3727,8 +3846,11 @@ async function init() {
       setInputPlayer(elements.playerB, player2);
     }
     handleCompare();
+  } else {
+    resetCurrentResults({ message: "" });
   }
   updatePrimaryActionLabel();
+  updateSelectionControls();
 }
 
 init();
