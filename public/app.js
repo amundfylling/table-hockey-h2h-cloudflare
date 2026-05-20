@@ -1716,13 +1716,19 @@ function createScoreHeader() {
 function createScoreRow(label, leftValue, rightValue, options = {}) {
   const leftNum = toNumber(leftValue, 0);
   const rightNum = toNumber(rightValue, 0);
-  const total = options.totalOverride != null ? options.totalOverride : leftNum + rightNum;
+  const hasMiddle = options.middleValue != null || options.middleDisplay != null || options.middleLabel;
+  const middleNum = hasMiddle ? toNumber(options.middleValue, 0) : 0;
+  const total = options.totalOverride != null ? options.totalOverride : leftNum + rightNum + middleNum;
   const leftRatio = total > 0 ? leftNum / total : 0;
+  const middleRatio = total > 0 ? middleNum / total : 0;
   const rightRatio = total > 0 ? rightNum / total : 0;
   const leftDisplay =
     options.leftDisplay != null ? options.leftDisplay : formatCardValue(leftValue);
   const rightDisplay =
     options.rightDisplay != null ? options.rightDisplay : formatCardValue(rightValue);
+  const middleDisplay =
+    options.middleDisplay != null ? options.middleDisplay : formatCardValue(middleNum);
+  const middleLabel = options.middleLabel || "Draws";
   const noteText = options.note ? String(options.note) : "";
   const better = options.better || "high";
 
@@ -1732,14 +1738,17 @@ function createScoreRow(label, leftValue, rightValue, options = {}) {
   }
 
   const row = document.createElement("div");
-  row.className = "score-row";
+  row.className = hasMiddle ? "score-row score-row--with-middle" : "score-row";
   row.dataset.lead = lead;
   row.dataset.better = better;
   row.style.setProperty("--left", leftRatio.toFixed(3));
+  row.style.setProperty("--middle", middleRatio.toFixed(3));
   row.style.setProperty("--right", rightRatio.toFixed(3));
 
   const fillA = document.createElement("span");
   fillA.className = "score-fill score-fill--a";
+  const fillMiddle = document.createElement("span");
+  fillMiddle.className = "score-fill score-fill--middle";
   const fillB = document.createElement("span");
   fillB.className = "score-fill score-fill--b";
 
@@ -1758,9 +1767,32 @@ function createScoreRow(label, leftValue, rightValue, options = {}) {
   if (lead === "b") rightEl.classList.add("is-lead");
 
   row.appendChild(fillA);
+  if (hasMiddle) row.appendChild(fillMiddle);
   row.appendChild(fillB);
   row.appendChild(leftEl);
-  row.appendChild(labelEl);
+  if (hasMiddle) {
+    const centerEl = document.createElement("div");
+    centerEl.className = "score-center";
+
+    const middleEl = document.createElement("div");
+    middleEl.className = "score-middle";
+
+    const middleLabelEl = document.createElement("span");
+    middleLabelEl.className = "score-middle-label";
+    middleLabelEl.textContent = middleLabel;
+
+    const middleValueEl = document.createElement("span");
+    middleValueEl.className = "score-middle-value";
+    middleValueEl.textContent = middleDisplay;
+
+    middleEl.appendChild(middleLabelEl);
+    middleEl.appendChild(middleValueEl);
+    centerEl.appendChild(labelEl);
+    centerEl.appendChild(middleEl);
+    row.appendChild(centerEl);
+  } else {
+    row.appendChild(labelEl);
+  }
   row.appendChild(rightEl);
   if (noteText) {
     const note = document.createElement("div");
@@ -1897,6 +1929,7 @@ function renderGameSummary(matches) {
   const summary = computeSummary(matches);
   const total = summary.total || 0;
   const winPct = total ? (summary.winsA / total) * 100 : 0;
+  const drawPct = total ? (summary.draws / total) * 100 : 0;
   const lossPct = total ? (summary.winsB / total) * 100 : 0;
   const opponentLabel = isSinglePlayerMode() ? "Opponents" : state.playerB.name;
 
@@ -1924,7 +1957,9 @@ function renderGameSummary(matches) {
       leftDisplay: `${summary.winsA} (${formatPercent(winPct)})`,
       rightDisplay: `${summary.winsB} (${formatPercent(lossPct)})`,
       totalOverride: summary.winsA + summary.winsB + summary.draws,
-      note: `Draws ${summary.draws}`,
+      middleValue: summary.draws,
+      middleDisplay: `${summary.draws} (${formatPercent(drawPct)})`,
+      middleLabel: "Draws",
     })
   );
   rows.appendChild(createScoreRow(isSinglePlayerMode() ? "Goals for / against" : "Total goals scored", summary.goalsA, summary.goalsB));
@@ -1957,6 +1992,7 @@ function renderSeriesSummary(seriesItems) {
   const summary = computeSeriesSummary(seriesItems);
   const total = summary.total || 0;
   const winPct = total ? (summary.winsA / total) * 100 : 0;
+  const drawPct = total ? (summary.draws / total) * 100 : 0;
   const lossPct = total ? (summary.winsB / total) * 100 : 0;
   const avgGoalsA = total ? summary.goalsA / total : 0;
   const avgGoalsB = total ? summary.goalsB / total : 0;
@@ -1986,7 +2022,9 @@ function renderSeriesSummary(seriesItems) {
       leftDisplay: `${summary.winsA} (${formatPercent(winPct)})`,
       rightDisplay: `${summary.winsB} (${formatPercent(lossPct)})`,
       totalOverride: summary.winsA + summary.winsB + summary.draws,
-      note: `Tied series ${summary.draws}`,
+      middleValue: summary.draws,
+      middleDisplay: `${summary.draws} (${formatPercent(drawPct)})`,
+      middleLabel: "Tied series",
     })
   );
   rows.appendChild(
