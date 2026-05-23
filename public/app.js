@@ -2224,7 +2224,7 @@ function renderRecordChart(matches) {
   });
   const width = 520;
   const height = 180;
-  const padding = 28;
+  const padding = 38;
   const min = 0;
   const max = 100;
   const range = max - min;
@@ -2372,7 +2372,7 @@ function renderGoalsChart(matches) {
   const maxAvg = Math.max(1, ...averages.map((item) => Math.max(item.avgA, item.avgB)));
   const width = 520;
   const height = 180;
-  const padding = 28;
+  const padding = 38;
   const chartHeight = height - padding * 2;
   const groupWidth = (width - padding * 2) / years.length;
   const barWidth = Math.max(8, groupWidth * 0.35);
