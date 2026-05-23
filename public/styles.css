@@ -18,6 +18,8 @@
   --card-shadow: 0 6px 18px rgba(0, 0, 0, 0.05);
   --text-strong: rgba(20, 20, 20, 0.92);
   --text-muted: rgba(20, 20, 20, 0.6);
+  --runner-scale-normal: scaleX(-1);
+  --runner-scale-wiggle: scaleX(-1.05);
 }
 
 body[data-theme="dark"] {
@@ -1229,10 +1231,28 @@ body[data-theme="dark"] .h2h-scoreboard {
   font-weight: 600;
 }
 
-.viz-title:not(.with-info) {
+.viz-title:not(.with-info):not(.with-toggle) {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.viz-title.with-toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  width: 100%;
+}
+
+.mode-toggle.compact {
+  padding: 2px;
+}
+
+.mode-toggle.compact .mode-btn {
+  padding: 4px 10px;
+  font-size: 0.8rem;
 }
 
 .viz-title.with-info {
@@ -2660,4 +2680,163 @@ body[data-comparison-mode="single"][data-stats-mode="series"] #matches-table {
   .series-detail-summary {
     justify-items: start;
   }
+
+  /* Mobile responsiveness optimizations */
+  .viz-title.with-toggle {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .viz-title.with-toggle .viz-title-text {
+    white-space: normal;
+  }
+
+  .viz-title.with-toggle .mode-toggle.compact {
+    display: flex;
+    width: 100%;
+  }
+
+  .viz-title.with-toggle .mode-toggle.compact .mode-btn {
+    flex: 1;
+    text-align: center;
+    justify-content: center;
+  }
+
+  .selection-actions {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+    gap: 12px;
+  }
+
+  .selection-actions button {
+    flex: 1 1 calc(50% - 6px);
+    text-align: center;
+    justify-content: center;
+  }
+
+  .selection-actions .status {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .filter-toggle-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 10px 16px;
+  }
+
+  .viz-block {
+    padding: 12px;
+  }
 }
+
+/* Generational run easter egg styling */
+.form-chips.has-generational-run {
+  position: relative;
+  padding-top: 38px;
+}
+
+.generational-runner {
+  position: absolute;
+  top: 18px;
+  left: var(--runner-start-x, 0px);
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 10;
+  opacity: 0;
+}
+
+.generational-runner.animate-run {
+  animation: runner-run-across 4.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+.generational-runner .runner-emoji {
+  display: inline-block;
+  font-size: 1.1rem;
+  transform: var(--runner-scale-normal);
+}
+
+.generational-runner.animate-run .runner-emoji {
+  animation: runner-wiggle 0.35s infinite linear;
+}
+
+.generational-runner.animate-hide {
+  opacity: 0 !important;
+  transition: opacity 0.4s ease;
+}
+
+.generational-run-text {
+  position: absolute;
+  top: 2px;
+  left: calc((var(--runner-start-x, 0px) + var(--runner-end-x, 0px)) / 2);
+  transform: translateX(-50%) translateY(4px);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 9;
+  background: rgba(239, 108, 68, 0.14);
+  border: 1px solid rgba(239, 108, 68, 0.4);
+  box-shadow: 0 4px 12px rgba(239, 108, 68, 0.15);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  color: var(--accent);
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.generational-run-text.animate-run {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.generational-run-text.animate-hide {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-4px);
+}
+
+@keyframes runner-run-across {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(calc(var(--runner-end-x) - var(--runner-start-x)));
+    opacity: 0;
+  }
+}
+
+@keyframes runner-wiggle {
+  0% {
+    transform: var(--runner-scale-normal) translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: var(--runner-scale-wiggle) translateY(-3px) rotate(-12deg);
+  }
+  50% {
+    transform: var(--runner-scale-normal) translateY(0) rotate(0deg);
+  }
+  75% {
+    transform: var(--runner-scale-wiggle) translateY(-3px) rotate(12deg);
+  }
+  100% {
+    transform: var(--runner-scale-normal) translateY(0) rotate(0deg);
+  }
+}
+
+

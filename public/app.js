@@ -39,6 +39,7 @@ const state = {
   page: 1,
   loading: false,
   playoffMode: "series",
+  goalsMode: "series",
 };
 
 const elements = {
@@ -53,7 +54,9 @@ const elements = {
   recentList: document.getElementById("recent-list"),
   tabs: document.querySelectorAll(".tab"),
   playoffModeToggle: document.getElementById("playoff-mode-toggle"),
-  modeButtons: document.querySelectorAll(".mode-btn"),
+  modeButtons: document.querySelectorAll("#playoff-mode-toggle .mode-btn"),
+  goalsModeToggle: document.getElementById("goals-mode-toggle"),
+  goalsModeButtons: document.querySelectorAll("#goals-mode-toggle .mode-btn"),
   stageMeta: document.getElementById("stage-meta"),
   headline: document.getElementById("headline"),
   subhead: document.getElementById("subhead"),
@@ -1591,10 +1594,7 @@ function formatPercent(value) {
 
 function formatAxisValue(value) {
   if (!Number.isFinite(value)) return "0";
-  if (Math.abs(value) < 0.005) return "0";
-  const rounded = Math.round(value);
-  if (Math.abs(value - rounded) < 0.005) return String(rounded);
-  return value.toFixed(1);
+  return String(Math.round(value));
 }
 
 const DASH = "—";
@@ -2113,6 +2113,7 @@ function formatMatchCountText(start, end, total) {
 
 function renderForm(matches) {
   elements.formChips.innerHTML = "";
+  elements.formChips.classList.remove("has-generational-run");
   if (!matches.length) {
     elements.formChips.innerHTML = "<span class=\"muted\">No matches</span>";
     return;
@@ -2143,7 +2144,58 @@ function renderForm(matches) {
     fragment.appendChild(chip);
   });
   const streakChip = createCurrentStreakChip(matches);
-  if (streakChip) fragment.appendChild(streakChip);
+  if (streakChip) {
+    fragment.appendChild(streakChip);
+    const streak = getCurrentWinStreak(matches);
+    if (streak >= 10) {
+      elements.formChips.classList.add("has-generational-run");
+
+      const runner = document.createElement("span");
+      runner.className = "generational-runner";
+      runner.innerHTML = `<span class="runner-emoji">🏃‍♂️</span>`;
+      fragment.appendChild(runner);
+
+      const runText = document.createElement("div");
+      runText.className = "generational-run-text";
+      runText.textContent = "Generational run!";
+      fragment.appendChild(runText);
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            // Find win chips inside formChips container
+            const winChips = elements.formChips.querySelectorAll(".chip.win");
+            if (winChips.length > 0) {
+              const firstChip = winChips[0];
+              const lastChip = winChips[winChips.length - 1];
+              
+              const startX = firstChip.offsetLeft + (firstChip.offsetWidth / 2) - 10;
+              const endX = lastChip.offsetLeft + (lastChip.offsetWidth / 2) - 10;
+              const runnerY = firstChip.offsetTop - 20;
+
+              elements.formChips.style.setProperty("--runner-start-x", `${startX}px`);
+              elements.formChips.style.setProperty("--runner-end-x", `${endX}px`);
+              elements.formChips.style.setProperty("--runner-y", `${runnerY}px`);
+            }
+
+            runner.classList.add("animate-run");
+            runText.classList.add("animate-run");
+            observer.disconnect();
+
+            setTimeout(() => {
+              runner.classList.add("animate-hide");
+              runText.classList.add("animate-hide");
+              setTimeout(() => {
+                runner.remove();
+                runText.remove();
+              }, 500);
+            }, 5200);
+          }
+        });
+      }, { threshold: 0.1 });
+      observer.observe(streakChip);
+    }
+  }
   elements.formChips.appendChild(fragment);
 }
 
@@ -2152,64 +2204,80 @@ function renderRecordChart(matches) {
     elements.recordChart.textContent = "Not enough data";
     return;
   }
-  const ordered = [...matches].sort((a, b) => a.ts - b.ts);
+  const ordered = getChronologicalItems(matches);
   const values = [];
-  let current = 0;
+  let wins = 0;
+  let losses = 0;
+  let draws = 0;
   ordered.forEach((match) => {
-    if (match.result === "A") current += 1;
-    if (match.result === "B") current -= 1;
-    values.push(current);
+    if (match.result === "A") wins += 1;
+    else if (match.result === "B") losses += 1;
+    else draws += 1;
+    const total = wins + losses + draws;
+    values.push({
+      winRate: total ? (wins / total) * 100 : 0,
+      wins,
+      losses,
+      draws,
+      total,
+    });
   });
-  const min = Math.min(0, ...values);
-  const max = Math.max(0, ...values);
   const width = 520;
   const height = 180;
   const padding = 28;
-  const range = max - min || 1;
-  const zeroY = height - padding - ((0 - min) / range) * (height - padding * 2);
+  const min = 0;
+  const max = 100;
+  const range = max - min;
+  const referenceValue = 50;
+  const referenceY = height - padding - ((referenceValue - min) / range) * (height - padding * 2);
   const xScale = (index) =>
     padding + (index / Math.max(1, values.length - 1)) * (width - padding * 2);
   const yScale = (value) =>
     height - padding - ((value - min) / range) * (height - padding * 2);
-  const points = values.map((value, index) => `${xScale(index)},${yScale(value)}`);
-  const areaPath = `M ${xScale(0)} ${zeroY} L ${points.join(" ")} L ${xScale(values.length - 1)} ${zeroY} Z`;
-  const tickCount = 4;
+  const points = values.map((value, index) => `${xScale(index)},${yScale(value.winRate)}`);
+  const areaPath = `M ${xScale(0)} ${referenceY} L ${points.join(" ")} L ${xScale(values.length - 1)} ${referenceY} Z`;
+  const ticks = [0, 25, 50, 75, 100];
   const gridLines = [];
   const yLabels = [];
-  for (let i = 0; i <= tickCount; i += 1) {
-    const ratio = i / tickCount;
-    const y = padding + ratio * (height - padding * 2);
-    const value = max - ratio * (max - min);
+  ticks.forEach((value) => {
+    const y = yScale(value);
     gridLines.push(
       `<line x1="${padding}" y1="${y}" x2="${width - padding}" y2="${y}" stroke="var(--border)" stroke-width="1" />`
     );
     yLabels.push(
-      `<text x="${padding - 6}" y="${y}" fill="var(--muted)" font-size="10" text-anchor="end" dominant-baseline="middle">${formatAxisValue(value)}</text>`
+      `<text x="${padding - 6}" y="${y}" fill="var(--muted)" font-size="10" text-anchor="end" dominant-baseline="middle">${value}%</text>`
     );
-  }
+  });
   const endValue = values[values.length - 1];
-  const endColor = endValue >= 0 ? "var(--teal)" : "var(--accent)";
-  const leadLabel =
-    endValue === 0
-      ? "Tied overall"
-      : `${endValue > 0 ? state.playerA.name : state.playerB?.name || "Opponents"} lead`;
+  const endColor = endValue.winRate >= referenceValue ? "var(--teal)" : "var(--accent)";
+  const itemLabel = isSeriesMode() ? "series" : "game";
+  const leadLabel = `Current ${formatPercent(endValue.winRate)} win rate`;
   const opponentSeriesLabel = state.playerB?.name || "Opponents";
+  const firstLabel = ordered[0]?.date?.slice(0, 4) || "";
+  const lastLabel = ordered[ordered.length - 1]?.date?.slice(0, 4) || "";
+  const endX = xScale(values.length - 1);
+  const endY = yScale(endValue.winRate);
+  const endpointTextAnchor = endX > width - 95 ? "end" : "start";
+  const endpointTextX = endpointTextAnchor === "end" ? endX - 8 : endX + 8;
+  const endpointTextY = Math.max(padding + 10, Math.min(height - padding - 8, endY - 8));
 
   elements.recordChart.innerHTML = `
     <div class="chart-legend">
-      <span><span class="legend-dot a"></span>${escapeHtml(state.playerA.name)}</span>
-      <span><span class="legend-dot b"></span>${escapeHtml(opponentSeriesLabel)}</span>
+      <span><span class="legend-dot a"></span>${escapeHtml(state.playerA.name)} win rate</span>
       <span class="chart-note">${escapeHtml(leadLabel)}</span>
     </div>
-    <svg viewBox="0 0 ${width} ${height}" aria-label="Cumulative record chart">
+    <svg viewBox="0 0 ${width} ${height}" aria-label="Running win rate chart">
       ${gridLines.join("")}
       ${yLabels.join("")}
-      <line x1="${padding}" y1="${zeroY}" x2="${width - padding}" y2="${zeroY}" stroke="var(--muted)" stroke-dasharray="4 4" stroke-width="1" />
+      <line x1="${padding}" y1="${referenceY}" x2="${width - padding}" y2="${referenceY}" stroke="var(--muted)" stroke-dasharray="4 4" stroke-width="1.4" />
       <line x1="${padding}" y1="${height - padding}" x2="${width - padding}" y2="${height - padding}" stroke="var(--muted)" stroke-width="1" />
       <path d="${areaPath}" fill="var(--teal-soft)" stroke="none"></path>
       <polyline fill="none" stroke="var(--teal)" stroke-width="3" points="${points.join(" ")}" />
-      <circle cx="${xScale(values.length - 1)}" cy="${yScale(endValue)}" r="4.5" fill="${endColor}" />
-      <text x="${padding}" y="${zeroY - 6}" fill="var(--muted)" font-size="10">0</text>
+      <circle cx="${endX}" cy="${endY}" r="4.5" fill="${endColor}" />
+      <text x="${padding}" y="${referenceY - 6}" fill="var(--muted)" font-size="10">50%</text>
+      <text x="${endpointTextX}" y="${endpointTextY}" fill="${endColor}" font-size="11" font-weight="700" text-anchor="${endpointTextAnchor}">${formatPercent(endValue.winRate)}</text>
+      ${firstLabel ? `<text x="${padding}" y="${height - 6}" fill="var(--muted)" font-size="10" text-anchor="start">${escapeHtml(firstLabel)}</text>` : ""}
+      ${lastLabel && lastLabel !== firstLabel ? `<text x="${width - padding}" y="${height - 6}" fill="var(--muted)" font-size="10" text-anchor="end">${escapeHtml(lastLabel)}</text>` : ""}
       <line class="chart-hover-line" x1="0" y1="${padding}" x2="0" y2="${height - padding}" stroke="var(--muted)" stroke-dasharray="3 5" stroke-width="1" opacity="0" />
       <circle class="chart-hover-point" cx="0" cy="0" r="4" fill="var(--accent)" opacity="0" />
     </svg>
@@ -2229,10 +2297,10 @@ function renderRecordChart(matches) {
       Math.min(values.length - 1, Math.round(((x - padding) / (width - padding * 2)) * (values.length - 1)))
     );
     const match = ordered[index];
-    const cumulative = values[index];
+    const entry = values[index];
     if (!match) return;
     const xPos = xScale(index);
-    const yPos = yScale(cumulative);
+    const yPos = yScale(entry.winRate);
 
     hoverLine.setAttribute("x1", xPos);
     hoverLine.setAttribute("x2", xPos);
@@ -2244,7 +2312,6 @@ function renderRecordChart(matches) {
     const containerRect = container.getBoundingClientRect();
     const xLocal = (xPos / width) * rect.width + (rect.left - containerRect.left);
     const yLocal = (yPos / height) * rect.height + (rect.top - containerRect.top);
-    const recordValue = cumulative > 0 ? `+${cumulative}` : `${cumulative}`;
     const scoreLine =
       match.type === "series"
         ? `${state.playerA.name} ${formatSeriesScore(match)} ${match.opponent_name || opponentSeriesLabel} (${match.goals_a}-${match.goals_b} goals)`
@@ -2252,7 +2319,8 @@ function renderRecordChart(matches) {
     const html = `
       <div class="tooltip-title">${escapeHtml(match.type === "series" ? formatDateRange(match.date, match.end_date) : match.date || "Unknown date")}</div>
       <div class="tooltip-row">${escapeHtml(scoreLine)}</div>
-      <div class="tooltip-row">Record: ${escapeHtml(recordValue)}</div>
+      <div class="tooltip-row">Win rate: ${formatPercent(entry.winRate)}</div>
+      <div class="tooltip-row">Record: ${entry.wins}W ${entry.draws}D ${entry.losses}L after ${entry.total} ${itemLabel}${entry.total === 1 || itemLabel === "series" ? "" : "s"}</div>
     `;
     showChartTooltip(container, tooltip, html, xLocal, yLocal);
   };
@@ -2275,10 +2343,11 @@ function renderGoalsChart(matches) {
   const byYear = new Map();
   matches.forEach((match) => {
     if (!match.year) return;
-    const entry = byYear.get(match.year) || { goalsA: 0, goalsB: 0, games: 0 };
+    const entry = byYear.get(match.year) || { goalsA: 0, goalsB: 0, games: 0, totalGames: 0 };
     entry.goalsA += match.goals_a;
     entry.goalsB += match.goals_b;
     entry.games += 1;
+    entry.totalGames += match.total_games || 1;
     byYear.set(match.year, entry);
   });
   const years = Array.from(byYear.keys()).sort();
@@ -2288,11 +2357,16 @@ function renderGoalsChart(matches) {
   }
   const averages = years.map((year) => {
     const entry = byYear.get(year);
-    const games = entry.games || 1;
+    let divisor = 1;
+    if (isSeriesMode()) {
+      divisor = state.goalsMode === "match" ? (entry.totalGames || 1) : (entry.games || 1);
+    } else {
+      divisor = entry.games || 1;
+    }
     return {
       year,
-      avgA: entry.goalsA / games,
-      avgB: entry.goalsB / games,
+      avgA: entry.goalsA / divisor,
+      avgB: entry.goalsB / divisor,
     };
   });
   const maxAvg = Math.max(1, ...averages.map((item) => Math.max(item.avgA, item.avgB)));
@@ -2363,9 +2437,12 @@ function renderGoalsChart(matches) {
     const side = target.getAttribute("data-side");
     const value = target.getAttribute("data-value");
     const name = side === "b" ? state.playerB?.name || "Opponents" : state.playerA.name;
+    const suffix = isSeriesMode()
+      ? (state.goalsMode === "match" ? "avg goals per match" : "avg goals per series")
+      : "avg goals";
     const html = `
       <div class="tooltip-title">${escapeHtml(year)}</div>
-      <div class="tooltip-row">${escapeHtml(name)}: ${escapeHtml(value)} avg goals</div>
+      <div class="tooltip-row">${escapeHtml(name)}: ${escapeHtml(value)} ${suffix}</div>
     `;
     const rect = container.getBoundingClientRect();
     const x = event.clientX - rect.left;
@@ -2384,12 +2461,25 @@ function renderGoalsChart(matches) {
 function renderCharts(matches) {
   if (elements.recordChartTitle) {
     const title = elements.recordChartTitle.querySelector(".viz-title-text");
-    if (title) title.textContent = isSeriesMode() ? "Cumulative series record" : "Cumulative record";
+    if (title) title.textContent = isSeriesMode() ? "Running series win rate" : "Running win rate";
   }
   if (elements.goalsChartTitle) {
-    elements.goalsChartTitle.textContent = isSeriesMode()
-      ? "Average series goals by year"
-      : "Average goals by year";
+    const title = elements.goalsChartTitle.querySelector(".viz-title-text");
+    if (title) {
+      title.textContent = isSeriesMode()
+        ? (state.goalsMode === "match" ? "Average match goals by year" : "Average series goals by year")
+        : "Average goals by year";
+    }
+  }
+  if (elements.goalsModeToggle) {
+    elements.goalsModeToggle.hidden = !isSeriesMode();
+  }
+  if (elements.goalsModeButtons) {
+    elements.goalsModeButtons.forEach((button) => {
+      const isActive = button.dataset.goalsMode === state.goalsMode;
+      button.classList.toggle("is-active", isActive);
+      button.setAttribute("aria-pressed", isActive ? "true" : "false");
+    });
   }
   renderRecordChart(matches);
   renderGoalsChart(matches);
@@ -3753,6 +3843,16 @@ function initModeToggle() {
   });
 }
 
+function initGoalsModeToggle() {
+  if (!elements.goalsModeButtons) return;
+  elements.goalsModeButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      state.goalsMode = button.dataset.goalsMode || "series";
+      renderCharts(state.filteredMatches);
+    });
+  });
+}
+
 function initTableSorting() {
   if (!elements.matchesHeadRow) return;
   elements.matchesHeadRow.addEventListener("click", handleSortHeaderClick);
@@ -3863,6 +3963,7 @@ async function init() {
   initPagination();
   initTabs();
   initModeToggle();
+  initGoalsModeToggle();
   initTableSorting();
   initTableDetails();
 

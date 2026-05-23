@@ -12,7 +12,7 @@
     href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Manrope:wght@400;500;600;700&display=swap"
     rel="stylesheet" />
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-  <link rel="stylesheet" href="styles.css?v=20260520-draw-segment" />
+  <link rel="stylesheet" href="styles.css?v=20260522-runner-fix" />
 </head>
 
 <body>
@@ -150,22 +150,28 @@
       <div class="viz-grid">
         <div class="viz-block">
           <div id="record-chart-title" class="viz-title with-info">
-            <span class="viz-title-text">Cumulative record</span>
+            <span class="viz-title-text">Running win rate</span>
             <span class="info-wrap">
-              <button class="info-btn" type="button" aria-label="About cumulative record"
-                aria-describedby="cumulative-info" aria-expanded="false">
+              <button class="info-btn" type="button" aria-label="About running win rate"
+                aria-describedby="running-win-rate-info" aria-expanded="false">
                 i
               </button>
-              <span id="cumulative-info" class="info-tooltip" role="tooltip">
-                Shows the running balance of wins minus losses. If this is 1, it means that the first selected player
-                has won one more game than Player 2 and vice versa if it is -1.
+              <span id="running-win-rate-info" class="info-tooltip" role="tooltip">
+                Shows the first selected player's win percentage after each result. Draws stay in the total, and the
+                dashed line marks 50%.
               </span>
             </span>
           </div>
           <div id="record-chart" class="chart"></div>
         </div>
         <div class="viz-block">
-          <div id="goals-chart-title" class="viz-title">Average goals by year</div>
+          <div id="goals-chart-title" class="viz-title with-toggle">
+            <span class="viz-title-text">Average goals by year</span>
+            <div id="goals-mode-toggle" class="mode-toggle compact" hidden>
+              <button class="mode-btn is-active" type="button" data-goals-mode="series">Per series</button>
+              <button class="mode-btn" type="button" data-goals-mode="match">Per match</button>
+            </div>
+          </div>
           <div id="goals-chart" class="chart"></div>
         </div>
       </div>
