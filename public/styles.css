@@ -2935,6 +2935,7 @@ body[data-comparison-mode="single"][data-stats-mode="series"] #matches-table {
 .form-chips.has-generational-run {
   position: relative;
   padding-top: 46px;
+  overflow: visible;
   transition: padding-top 0.4s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
@@ -3015,7 +3016,7 @@ body[data-comparison-mode="single"][data-stats-mode="series"] #matches-table {
 .generational-run-text {
   position: absolute;
   top: 6px;
-  left: calc((var(--runner-start-x, 0px) + var(--runner-end-x, 0px)) / 2);
+  left: 50%;
   transform: translateX(-50%) translateY(4px) scale(0.9);
   opacity: 0;
   pointer-events: none;
@@ -3032,6 +3033,7 @@ body[data-comparison-mode="single"][data-stats-mode="series"] #matches-table {
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  white-space: nowrap;
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
   overflow: hidden;
   transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -3263,6 +3265,40 @@ body[data-theme="dark"] .generational-run-text {
     background: linear-gradient(135deg, #ffc837 0%, #ff8008 100%) !important;
     color: #ffffff !important;
     border-color: #ff8008 !important;
+  }
+}
+
+/* Mobile responsive adjustments for generational run */
+@media (max-width: 600px) {
+  .form-chips.has-generational-run {
+    padding-top: 40px;
+  }
+
+  .generational-track {
+    top: 30px;
+    height: 3px;
+    box-shadow: 0 0 6px var(--teal), 0 0 12px #38ef7d;
+  }
+
+  .generational-runner {
+    top: 22px;
+  }
+
+  .generational-runner .runner-flame {
+    font-size: 0.9rem;
+    left: -10px;
+  }
+
+  .generational-runner .runner-emoji {
+    font-size: 1.05rem;
+    text-shadow: -2px 0 3px var(--teal), -4px 0 6px #38ef7d;
+  }
+
+  .generational-run-text {
+    top: 4px;
+    font-size: 0.62rem;
+    padding: 3px 9px;
+    letter-spacing: 0.05em;
   }
 }
 
