@@ -12,7 +12,7 @@
     href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Manrope:wght@400;500;600;700&display=swap"
     rel="stylesheet" />
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-  <link rel="stylesheet" href="styles.css?v=20260523-overflow-fix" />
+  <link rel="stylesheet" href="styles.css?v=20260531-generational-streak-11" />
 </head>
 
 <body>
@@ -68,7 +68,14 @@
           <div id="player-a-list" class="typeahead" role="listbox" aria-label="Player 1 suggestions"></div>
         </div>
 
-        <button id="swap-btn" class="swap-btn" type="button">Swap</button>
+        <button id="swap-btn" class="swap-btn" type="button" aria-label="Swap players">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M17 3L21 7L17 11"></path>
+            <path d="M3 7H21"></path>
+            <path d="M7 21L3 17L7 13"></path>
+            <path d="M21 17H3"></path>
+          </svg>
+        </button>
 
         <div class="player-field" data-player="b">
           <label for="player-b">Player 2</label>
@@ -111,23 +118,70 @@
       </div>
       <div class="stage-tools">
         <div id="stage-meta" class="stage-meta"></div>
-        <button id="filter-toggle" class="ghost filter-toggle-btn" type="button" aria-controls="filter-menu"
-          aria-expanded="false">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <line x1="4" y1="21" x2="4" y2="14"></line>
-            <line x1="4" y1="10" x2="4" y2="3"></line>
-            <line x1="12" y1="21" x2="12" y2="12"></line>
-            <line x1="12" y1="8" x2="12" y2="3"></line>
-            <line x1="20" y1="21" x2="20" y2="16"></line>
-            <line x1="20" y1="12" x2="20" y2="3"></line>
-            <line x1="1" y1="14" x2="7" y2="14"></line>
-            <line x1="9" y1="8" x2="15" y2="8"></line>
-            <line x1="17" y1="16" x2="23" y2="16"></line>
-          </svg>
-          Filters
-          <span id="filter-count" class="filter-count" hidden></span>
-        </button>
+      </div>
+    </section>
+
+    <section id="filter-card" class="card filter-card">
+      <div id="filter-bar" class="filter-bar">
+        <div class="filter-bar-primary">
+          <div class="filter-bar-search">
+            <svg class="filter-bar-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input id="search-filter" type="search" placeholder="Search matches…" aria-label="Search matches" />
+          </div>
+          <div class="filter-bar-period">
+            <select id="year-from-filter" aria-label="From year"></select>
+            <span class="period-separator">–</span>
+            <select id="year-to-filter" aria-label="To year"></select>
+          </div>
+          <select id="tournament-filter" class="filter-bar-tournament" aria-label="Tournament"></select>
+          <button id="more-filters-toggle" class="ghost more-filters-btn" type="button" aria-expanded="false">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="4" y1="21" x2="4" y2="14"></line>
+              <line x1="4" y1="10" x2="4" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12" y2="3"></line>
+              <line x1="20" y1="21" x2="20" y2="16"></line>
+              <line x1="20" y1="12" x2="20" y2="3"></line>
+              <line x1="1" y1="14" x2="7" y2="14"></line>
+              <line x1="9" y1="8" x2="15" y2="8"></line>
+              <line x1="17" y1="16" x2="23" y2="16"></line>
+            </svg>
+            <span>More</span>
+          </button>
+        </div>
+        <div id="filter-bar-advanced" class="filter-bar-advanced" hidden>
+          <div class="filter-bar-advanced-inner">
+            <div class="filter-bar-group">
+              <label>Level</label>
+              <div id="tournament-level-options" class="multi-checks" role="group" aria-label="Tournament level"></div>
+            </div>
+            <div class="filter-bar-group">
+              <label for="stage-filter">Stage</label>
+              <select id="stage-filter"></select>
+            </div>
+            <div id="best-of-filter" class="filter-bar-group" hidden>
+              <label>Best of</label>
+              <div id="best-of-options" class="multi-checks"></div>
+            </div>
+            <div class="filter-bar-group">
+              <label>Options</label>
+              <div class="filter-bar-toggles">
+                <label class="toggle">
+                  <input id="ot-toggle" type="checkbox" />
+                  <span>Only overtime</span>
+                </label>
+                <label class="toggle">
+                  <input id="tight-toggle" type="checkbox" />
+                  <span>Only tight games</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="active-filters" class="active-filters" hidden></div>
       </div>
     </section>
 
@@ -177,65 +231,7 @@
       </div>
     </section>
 
-    <!-- Filter Menu Sidebar -->
-    <div id="filter-backdrop" class="filter-backdrop" hidden></div>
-    <div id="filter-menu" class="filter-menu" role="dialog" aria-modal="true" aria-labelledby="filter-title" hidden>
-      <div class="filter-header">
-        <h3 id="filter-title">Filters</h3>
-        <button id="filter-close" class="ghost icon-btn" type="button" aria-label="Close filters">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
-      </div>
-      <div class="filter-content">
-        <div class="filter">
-          <label for="search-filter">Search</label>
-          <input id="search-filter" type="search" placeholder="Tournament, level, or stage" />
-        </div>
-        <div class="filter">
-          <label>Period</label>
-          <div class="period-row">
-            <select id="year-from-filter" aria-label="From year"></select>
-            <span class="period-separator">–</span>
-            <select id="year-to-filter" aria-label="To year"></select>
-          </div>
-        </div>
-        <div class="filter">
-          <label for="tournament-filter">Tournament</label>
-          <select id="tournament-filter"></select>
-        </div>
-        <div class="filter">
-          <label>Tournament level</label>
-          <div id="tournament-level-options" class="multi-checks" role="group" aria-label="Tournament level"></div>
-        </div>
-        <div class="filter">
-          <label for="stage-filter">Stage detail</label>
-          <select id="stage-filter"></select>
-        </div>
-        <div id="best-of-filter" class="filter" hidden>
-          <label>Best of</label>
-          <div id="best-of-options" class="multi-checks"></div>
-          <p class="filter-hint">Available for playoff views.</p>
-        </div>
-        <div class="filter">
-          <label>Options</label>
-          <div class="toggle-group vertical">
-            <label class="toggle">
-              <input id="ot-toggle" type="checkbox" />
-              <span>Only overtime</span>
-            </label>
-            <label class="toggle">
-              <input id="tight-toggle" type="checkbox" />
-              <span>Only tight games</span>
-            </label>
-          </div>
-        </div>
-        <button id="clear-filters-btn" class="ghost clear-filters-btn" type="button">Clear filters</button>
-      </div>
-    </div>
+
 
     <section class="card matches-card">
       <div class="matches-header">
@@ -253,12 +249,23 @@
             </select>
           </div>
           <div class="pagination" id="pagination-top">
-            <button id="prev-page" class="ghost" type="button">Prev</button>
+            <button id="prev-page" class="ghost" type="button">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="15 18 9 12 15 6"></polyline>
+              </svg>
+              <span>Prev</span>
+            </button>
             <span id="page-info" class="page-info">Page 1 of 1</span>
-            <button id="next-page" class="ghost" type="button">Next</button>
+            <button id="next-page" class="ghost" type="button">
+              <span>Next</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </button>
           </div>
         </div>
       </div>
+
       <div class="table-wrap">
         <table id="matches-table">
           <thead>
@@ -277,9 +284,19 @@
         </table>
       </div>
       <div class="pagination" id="pagination-bottom">
-        <button id="prev-page-bottom" class="ghost" type="button">Prev</button>
+        <button id="prev-page-bottom" class="ghost" type="button">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+          <span>Prev</span>
+        </button>
         <span id="page-info-bottom" class="page-info">Page 1 of 1</span>
-        <button id="next-page-bottom" class="ghost" type="button">Next</button>
+        <button id="next-page-bottom" class="ghost" type="button">
+          <span>Next</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+        </button>
       </div>
     </section>
 
@@ -304,7 +321,7 @@
     </p>
   </footer>
 
-  <script src="app.js?v=20260523-padding-fix-2" defer></script>
+  <script src="app.js?v=20260531-generational-streak-11" defer></script>
 </body>
 
 </html>

@@ -90,12 +90,10 @@ const elements = {
   emptyState: document.getElementById("empty-state"),
   errorState: document.getElementById("error-state"),
   themeToggle: document.getElementById("theme-toggle"),
-  filterToggle: document.getElementById("filter-toggle"),
-  filterCount: document.getElementById("filter-count"),
-  filterMenu: document.getElementById("filter-menu"),
-  filterBackdrop: document.getElementById("filter-backdrop"),
-  filterClose: document.getElementById("filter-close"),
-  clearFiltersBtn: document.getElementById("clear-filters-btn"),
+  filterBar: document.getElementById("filter-bar"),
+  moreFiltersToggle: document.getElementById("more-filters-toggle"),
+  filterBarAdvanced: document.getElementById("filter-bar-advanced"),
+  activeFiltersContainer: document.getElementById("active-filters"),
   playerBLoader: document.getElementById("player-b-loader"),
   matchesHeadRow: document.getElementById("matches-head-row"),
 };
@@ -456,6 +454,26 @@ function setTheme(mode) {
     elements.themeToggle.title = isDark ? "Switch to light mode" : "Switch to dark mode";
     const label = elements.themeToggle.querySelector("span");
     if (label) label.textContent = isDark ? "Light mode" : "Dark mode";
+    const svgEl = elements.themeToggle.querySelector("svg");
+    if (svgEl) {
+      if (isDark) {
+        svgEl.innerHTML = `
+          <circle cx="12" cy="12" r="5"></circle>
+          <line x1="12" y1="1" x2="12" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="23"></line>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+          <line x1="1" y1="12" x2="3" y2="12"></line>
+          <line x1="21" y1="12" x2="23" y2="12"></line>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        `;
+      } else {
+        svgEl.innerHTML = `
+          <path d="M12 3a6 6 0 0 0 9 7.4A9 9 0 1 1 12 3z"></path>
+        `;
+      }
+    }
   }
   safeStorageSet(STORAGE_KEYS.theme, mode);
 }
@@ -641,18 +659,30 @@ function addRecent(p1, p2, p1Name, p2Name, p1Ids = [p1], p2Ids = [p2]) {
   renderRecent();
 }
 
-function updateUrl(p1, p2 = null, p1Ids = [p1], p2Ids = p2 ? [p2] : []) {
+function updateUrl(p1, p2 = null, p1Ids = [], p2Ids = []) {
+  const idA = p1 || resolvePlayerId(elements.playerA);
+  const idB = p2 || (p1 === null ? null : resolvePlayerId(elements.playerB));
+  const idsA = (p1Ids && p1Ids.length > 0) ? p1Ids : getSelectionIds(elements.playerA);
+  const idsB = (p2Ids && p2Ids.length > 0) ? p2Ids : (p1 === null ? [] : getSelectionIds(elements.playerB));
+
   const url = new URL(window.location.href);
-  url.searchParams.set("p1", p1);
-  const groupA = normalizeAliasIds(p1Ids);
+  if (!idA) {
+    ["p1", "p2", "p1g", "p2g", "stage", "playoffMode", "goalsMode", "search", "yearFrom", "yearTo", "tournament", "levels", "stageDetail", "ot", "tight", "bestOf"].forEach((key) => url.searchParams.delete(key));
+    window.history.replaceState({}, "", url);
+    return;
+  }
+
+  url.searchParams.set("p1", idA);
+  const groupA = normalizeAliasIds(idsA);
   if (groupA.length > 1) {
     url.searchParams.set("p1g", groupA.join(","));
   } else {
     url.searchParams.delete("p1g");
   }
-  if (p2) {
-    url.searchParams.set("p2", p2);
-    const groupB = normalizeAliasIds(p2Ids);
+
+  if (idB) {
+    url.searchParams.set("p2", idB);
+    const groupB = normalizeAliasIds(idsB);
     if (groupB.length > 1) {
       url.searchParams.set("p2g", groupB.join(","));
     } else {
@@ -662,8 +692,147 @@ function updateUrl(p1, p2 = null, p1Ids = [p1], p2Ids = p2 ? [p2] : []) {
     url.searchParams.delete("p2");
     url.searchParams.delete("p2g");
   }
+
+  if (state.stageTab && state.stageTab !== "overall") {
+    url.searchParams.set("stage", state.stageTab);
+  } else {
+    url.searchParams.delete("stage");
+  }
+
+  if (state.playoffMode && state.playoffMode !== "series") {
+    url.searchParams.set("playoffMode", state.playoffMode);
+  } else {
+    url.searchParams.delete("playoffMode");
+  }
+
+  if (state.goalsMode && state.goalsMode !== "series") {
+    url.searchParams.set("goalsMode", state.goalsMode);
+  } else {
+    url.searchParams.delete("goalsMode");
+  }
+
+  if (state.filters.search) {
+    url.searchParams.set("search", state.filters.search);
+  } else {
+    url.searchParams.delete("search");
+  }
+
+  if (state.filters.yearFrom && state.filters.yearFrom !== "all") {
+    url.searchParams.set("yearFrom", state.filters.yearFrom);
+  } else {
+    url.searchParams.delete("yearFrom");
+  }
+  if (state.filters.yearTo && state.filters.yearTo !== "all") {
+    url.searchParams.set("yearTo", state.filters.yearTo);
+  } else {
+    url.searchParams.delete("yearTo");
+  }
+
+  if (state.filters.tournament && state.filters.tournament !== "all") {
+    url.searchParams.set("tournament", state.filters.tournament);
+  } else {
+    url.searchParams.delete("tournament");
+  }
+
+  if (state.filters.tournamentLevels && state.filters.tournamentLevels.length > 0) {
+    url.searchParams.set("levels", state.filters.tournamentLevels.join(","));
+  } else {
+    url.searchParams.delete("levels");
+  }
+
+  if (state.filters.stage && state.filters.stage !== "all") {
+    url.searchParams.set("stageDetail", state.filters.stage);
+  } else {
+    url.searchParams.delete("stageDetail");
+  }
+
+  if (state.filters.otOnly) {
+    url.searchParams.set("ot", "true");
+  } else {
+    url.searchParams.delete("ot");
+  }
+
+  if (state.filters.tightOnly) {
+    url.searchParams.set("tight", "true");
+  } else {
+    url.searchParams.delete("tight");
+  }
+
+  if (state.filters.bestOf && state.filters.bestOf.length > 0) {
+    url.searchParams.set("bestOf", state.filters.bestOf.join(","));
+  } else {
+    url.searchParams.delete("bestOf");
+  }
+
   window.history.replaceState({}, "", url);
 }
+
+function restoreStateFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+
+  const stage = params.get("stage");
+  if (stage) {
+    state.stageTab = stage;
+  }
+
+  const playoffMode = params.get("playoffMode");
+  if (playoffMode) {
+    state.playoffMode = playoffMode;
+  }
+
+  const goalsMode = params.get("goalsMode");
+  if (goalsMode) {
+    state.goalsMode = goalsMode;
+  }
+
+  const search = params.get("search");
+  if (search) {
+    state.filters.search = search;
+    elements.searchFilter.value = search;
+  }
+
+  const yearFrom = params.get("yearFrom");
+  if (yearFrom) {
+    state.filters.yearFrom = yearFrom;
+  }
+  const yearTo = params.get("yearTo");
+  if (yearTo) {
+    state.filters.yearTo = yearTo;
+  }
+
+  const tournament = params.get("tournament");
+  if (tournament) {
+    state.filters.tournament = tournament;
+  }
+
+  const levels = params.get("levels");
+  if (levels) {
+    state.filters.tournamentLevels = levels.split(",");
+  }
+
+  const stageDetail = params.get("stageDetail");
+  if (stageDetail) {
+    state.filters.stage = stageDetail;
+  }
+
+  const ot = params.get("ot");
+  if (ot === "true") {
+    state.filters.otOnly = true;
+    elements.otToggle.checked = true;
+  }
+
+  const tight = params.get("tight");
+  if (tight === "true") {
+    state.filters.tightOnly = true;
+    elements.tightToggle.checked = true;
+  }
+
+  const bestOf = params.get("bestOf");
+  if (bestOf) {
+    state.filters.bestOf = bestOf.split(",");
+  }
+}
+
 
 function getUrlSelection() {
   const params = new URLSearchParams(window.location.search);
@@ -2150,15 +2319,28 @@ function renderForm(matches) {
     if (streak >= 10) {
       elements.formChips.classList.add("has-generational-run");
 
+      // Glowing Neon Track
+      const track = document.createElement("div");
+      track.className = "generational-track";
+      fragment.appendChild(track);
+
+      // Runner Emojis (Flame runner 🔥🏃‍♂️)
       const runner = document.createElement("span");
       runner.className = "generational-runner";
-      runner.innerHTML = `<span class="runner-emoji">🏃‍♂️</span>`;
+      runner.innerHTML = `
+        <span class="runner-flame">🔥</span>
+        <span class="runner-emoji">🏃‍♂️</span>
+      `;
       fragment.appendChild(runner);
 
+      // Upgraded Text Banner
       const runText = document.createElement("div");
       runText.className = "generational-run-text";
-      runText.textContent = "Generational run!";
+      runText.textContent = "👑 Generational run!";
       fragment.appendChild(runText);
+
+      // Mark the streak chip to celebrate at the end of the run
+      streakChip.classList.add("burst");
 
       const observer = new IntersectionObserver((entries) => {
         entries.forEach((entry) => {
@@ -2169,27 +2351,63 @@ function renderForm(matches) {
               const firstChip = winChips[0];
               const lastChip = winChips[winChips.length - 1];
               
-              const startX = firstChip.offsetLeft + (firstChip.offsetWidth / 2) - 10;
+               const startX = firstChip.offsetLeft + (firstChip.offsetWidth / 2) - 10;
               const endX = lastChip.offsetLeft + (lastChip.offsetWidth / 2) - 10;
               const runnerY = firstChip.offsetTop - 20;
 
               elements.formChips.style.setProperty("--runner-start-x", `${startX}px`);
               elements.formChips.style.setProperty("--runner-end-x", `${endX}px`);
               elements.formChips.style.setProperty("--runner-y", `${runnerY}px`);
+
+              let flameDropX = 35; // Default fallback
+              if (streakChip) {
+                const lastChipCenter = lastChip.offsetLeft + (lastChip.offsetWidth / 2);
+                const streakChipCenter = streakChip.offsetLeft + (streakChip.offsetWidth / 2);
+                flameDropX = streakChipCenter - lastChipCenter;
+              }
+              elements.formChips.style.setProperty("--flame-drop-x", `${flameDropX}px`);
+
+              // Add sequential lighting delay to each Win chip
+              winChips.forEach((chip, index) => {
+                // Stagger ignite based on horizontal position relative to the track length
+                const delay = (index / winChips.length) * 4.2;
+                chip.style.animationDelay = `${delay}s`;
+                chip.classList.add("ignite");
+              });
             }
 
+            // Start animations
+            track.classList.add("animate-run");
             runner.classList.add("animate-run");
             runText.classList.add("animate-run");
             observer.disconnect();
 
+            // Graceful cleanup after animations finish
             setTimeout(() => {
               runner.classList.add("animate-hide");
               runText.classList.add("animate-hide");
+              track.style.transition = "opacity 0.5s ease";
+              track.style.opacity = "0";
               setTimeout(() => {
                 runner.remove();
                 runText.remove();
+                track.remove();
+                
+                // Revert win chips back to original styles
+                winChips.forEach((chip) => {
+                  chip.classList.remove("ignite");
+                  chip.style.animationDelay = "";
+                });
+                
+                // Revert streak chip back to normal
+                if (streakChip) {
+                  streakChip.classList.remove("burst");
+                }
+
+                // Remove the generational class to restore normal layout padding and streak chip display
+                elements.formChips.classList.remove("has-generational-run");
               }, 500);
-            }, 5200);
+            }, 5500);
           }
         });
       }, { threshold: 0.1 });
@@ -2200,8 +2418,12 @@ function renderForm(matches) {
 }
 
 function renderRecordChart(matches) {
+  if (!state.playerA) {
+    renderChartPlaceholder(elements.recordChart, "No selection", "trend");
+    return;
+  }
   if (matches.length < 2) {
-    elements.recordChart.textContent = "Not enough data";
+    renderChartPlaceholder(elements.recordChart, "Not enough data to build trend.", "trend");
     return;
   }
   const ordered = getChronologicalItems(matches);
@@ -2336,8 +2558,12 @@ function renderRecordChart(matches) {
 }
 
 function renderGoalsChart(matches) {
+  if (!state.playerA) {
+    renderChartPlaceholder(elements.goalsChart, "No selection", "bar");
+    return;
+  }
   if (!matches.length) {
-    elements.goalsChart.textContent = "No data";
+    renderChartPlaceholder(elements.goalsChart, "No data available.", "bar");
     return;
   }
   const byYear = new Map();
@@ -2352,7 +2578,7 @@ function renderGoalsChart(matches) {
   });
   const years = Array.from(byYear.keys()).sort();
   if (!years.length) {
-    elements.goalsChart.textContent = "No data";
+    renderChartPlaceholder(elements.goalsChart, "No data available.", "bar");
     return;
   }
   const averages = years.map((year) => {
@@ -3223,6 +3449,13 @@ function syncFiltersFromControls() {
 }
 
 function populateSelect(selectEl, values, label, labelsMap) {
+  let targetValue = "all";
+  if (selectEl === elements.yearFromFilter) targetValue = state.filters.yearFrom;
+  else if (selectEl === elements.yearToFilter) targetValue = state.filters.yearTo;
+  else if (selectEl === elements.tournamentFilter) targetValue = state.filters.tournament;
+  else if (selectEl === elements.stageFilter) targetValue = state.filters.stage;
+  else targetValue = selectEl.value || "all";
+
   selectEl.innerHTML = "";
   values.forEach((value, index) => {
     const option = document.createElement("option");
@@ -3236,8 +3469,11 @@ function populateSelect(selectEl, values, label, labelsMap) {
     }
     selectEl.appendChild(option);
   });
-  if (values.includes(selectEl.value)) return;
-  selectEl.value = "all";
+  if (values.includes(targetValue)) {
+    selectEl.value = targetValue;
+  } else {
+    selectEl.value = "all";
+  }
 }
 
 function updateStageMeta() {
@@ -3289,25 +3525,103 @@ function getActiveFilterCount() {
 }
 
 function updateFilterCount() {
-  if (!elements.filterCount) return;
-  const count = getActiveFilterCount();
-  elements.filterCount.hidden = count === 0;
-  elements.filterCount.textContent = count ? String(count) : "";
+  renderActiveFilterChips();
+}
+
+function renderActiveFilterChips() {
+  const container = elements.activeFiltersContainer;
+  if (!container) return;
+  container.innerHTML = "";
+  const chips = [];
+
+  if (state.filters.search.trim()) {
+    chips.push({ label: `"${state.filters.search}"`, clear: () => { state.filters.search = ""; elements.searchFilter.value = ""; } });
+  }
+  if (state.filters.yearFrom !== "all" || state.filters.yearTo !== "all") {
+    const from = state.filters.yearFrom === "all" ? "Earliest" : state.filters.yearFrom;
+    const to = state.filters.yearTo === "all" ? "Latest" : state.filters.yearTo;
+    chips.push({ label: `${from} – ${to}`, clear: () => {
+      state.filters.yearFrom = "all"; state.filters.yearTo = "all";
+      elements.yearFromFilter.value = "all"; elements.yearToFilter.value = "all";
+    } });
+  }
+  if (state.filters.tournament !== "all") {
+    const opt = elements.tournamentFilter.querySelector(`option[value="${CSS.escape(state.filters.tournament)}"]`);
+    const label = opt ? opt.textContent : state.filters.tournament;
+    chips.push({ label: label, clear: () => { state.filters.tournament = "all"; elements.tournamentFilter.value = "all"; } });
+  }
+  if (state.filters.tournamentLevels.length) {
+    const labels = state.filters.tournamentLevels.map((v) => getTournamentLevelLabel(v)).join(", ");
+    chips.push({ label: `Level: ${labels}`, clear: () => {
+      state.filters.tournamentLevels = [];
+      if (elements.tournamentLevelOptions) {
+        elements.tournamentLevelOptions.querySelectorAll("input").forEach((input) => { input.checked = false; });
+      }
+    } });
+  }
+  if (state.filters.stage !== "all") {
+    chips.push({ label: `Stage: ${state.filters.stage}`, clear: () => { state.filters.stage = "all"; elements.stageFilter.value = "all"; } });
+  }
+  if (state.filters.otOnly) {
+    chips.push({ label: "Overtime only", clear: () => { state.filters.otOnly = false; elements.otToggle.checked = false; } });
+  }
+  if (state.filters.tightOnly) {
+    chips.push({ label: "Tight games", clear: () => { state.filters.tightOnly = false; elements.tightToggle.checked = false; } });
+  }
+  if (state.stageTab === "playoff" && state.filters.bestOf.length) {
+    const labels = state.filters.bestOf.map((v) => v === "1" ? "Single" : `Bo${v}`).join(", ");
+    chips.push({ label: labels, clear: () => {
+      state.filters.bestOf = [];
+      if (elements.bestOfOptions) {
+        elements.bestOfOptions.querySelectorAll("input").forEach((input) => { input.checked = false; });
+      }
+    } });
+  }
+
+  if (chips.length === 0) {
+    container.hidden = true;
+    return;
+  }
+  container.hidden = false;
+
+  chips.forEach((chip) => {
+    const el = document.createElement("span");
+    el.className = "active-filter-chip";
+    el.textContent = chip.label;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.setAttribute("aria-label", `Remove filter: ${chip.label}`);
+    btn.textContent = "✕";
+    btn.addEventListener("click", () => {
+      chip.clear();
+      state.page = 1;
+      updateView();
+    });
+    el.appendChild(btn);
+    container.appendChild(el);
+  });
+
+  const clearAllBtn = document.createElement("button");
+  clearAllBtn.type = "button";
+  clearAllBtn.className = "clear-all-filters-btn";
+  clearAllBtn.textContent = "Clear all";
+  clearAllBtn.addEventListener("click", () => {
+    resetFilters();
+    state.page = 1;
+    updateView();
+  });
+  container.appendChild(clearAllBtn);
 }
 
 function setDataControlsEnabled(enabled) {
   elements.tabs.forEach((tab) => {
     tab.disabled = !enabled;
   });
-  if (elements.filterToggle) {
-    elements.filterToggle.disabled = !enabled;
-    elements.filterToggle.setAttribute("aria-disabled", enabled ? "false" : "true");
-  }
 }
 
 function clearUrlSelection() {
   const url = new URL(window.location.href);
-  ["p1", "p2", "p1g", "p2g"].forEach((key) => url.searchParams.delete(key));
+  ["p1", "p2", "p1g", "p2g", "stage", "playoffMode", "goalsMode", "search", "yearFrom", "yearTo", "tournament", "levels", "stageDetail", "ot", "tight", "bestOf"].forEach((key) => url.searchParams.delete(key));
   window.history.replaceState({}, "", url);
 }
 
@@ -3319,6 +3633,36 @@ function setStageTabControls(stage = "overall") {
     tab.setAttribute("aria-selected", isActive ? "true" : "false");
   });
   updateModeControls();
+}
+
+function renderChartPlaceholder(containerEl, message, iconType) {
+  containerEl.replaceChildren();
+  const placeholder = document.createElement("div");
+  placeholder.className = "chart-placeholder";
+  
+  let svgInner = "";
+  if (iconType === "trend") {
+    svgInner = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+        <polyline points="17 6 23 6 23 12"></polyline>
+      </svg>
+    `;
+  } else if (iconType === "bar") {
+    svgInner = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <line x1="18" y1="20" x2="18" y2="10"></line>
+        <line x1="12" y1="20" x2="12" y2="4"></line>
+        <line x1="6" y1="20" x2="6" y2="14"></line>
+      </svg>
+    `;
+  }
+  
+  placeholder.innerHTML = `
+    ${svgInner}
+    <span>${message}</span>
+  `;
+  containerEl.appendChild(placeholder);
 }
 
 function renderIdleState() {
@@ -3340,8 +3684,18 @@ function renderIdleState() {
   formMessage.className = "muted";
   formMessage.textContent = selectedPlayer ? "No view loaded" : "No selection";
   elements.formChips.appendChild(formMessage);
-  elements.recordChart.textContent = selectedPlayer ? "Display this player to build the record." : "No selection";
-  elements.goalsChart.textContent = selectedPlayer ? "Display this player to see yearly scoring." : "No selection";
+
+  renderChartPlaceholder(
+    elements.recordChart,
+    selectedPlayer ? "Display this player to build the record." : "No selection",
+    "trend"
+  );
+  renderChartPlaceholder(
+    elements.goalsChart,
+    selectedPlayer ? "Display this player to see yearly scoring." : "No selection",
+    "bar"
+  );
+
   elements.matchCount.textContent = "0 matches";
   renderTableHeaders();
   elements.matchesBody.replaceChildren();
@@ -3404,6 +3758,7 @@ function updateView() {
   renderTable(state.filteredMatches);
   updatePagination(state.filteredMatches.length);
   updateFilterCount();
+  updateUrl();
 }
 
 function resetFilters() {
@@ -3453,7 +3808,7 @@ function setStageTab(stage) {
   updateView();
 }
 
-async function handleCompare() {
+async function handleCompare(options = {}) {
   const idA = resolvePlayerId(elements.playerA);
   const idB = resolvePlayerId(elements.playerB);
   const idsA = getSelectionIds(elements.playerA);
@@ -3517,17 +3872,28 @@ async function handleCompare() {
     state.sort = { key: "date", direction: "desc" };
     state.perPage = Number(elements.pageSize.value);
 
-    updateUrl(idA, isSingle ? null : idB, idsA, idsB);
-    safeStorageSet(STORAGE_KEYS.last, {
-      p1: idA,
-      p2: isSingle ? null : idB,
-      p1Ids: idsA,
-      p2Ids: isSingle ? [] : idsB,
-    });
-    if (!isSingle) addRecent(idA, idB, state.playerA.name, state.playerB.name, idsA, idsB);
-    updateStageMeta();
-    resetFilters();
-    setStageTab("overall");
+    if (options.restoreUrlState) {
+      elements.tabs.forEach((tab) => {
+        const isActive = tab.dataset.stage === state.stageTab;
+        tab.classList.toggle("is-active", isActive);
+        tab.setAttribute("aria-selected", isActive ? "true" : "false");
+      });
+      refreshFilterOptions(getActiveItems());
+      updateModeControls();
+      updateView();
+    } else {
+      updateUrl(idA, isSingle ? null : idB, idsA, idsB);
+      safeStorageSet(STORAGE_KEYS.last, {
+        p1: idA,
+        p2: isSingle ? null : idB,
+        p1Ids: idsA,
+        p2Ids: isSingle ? [] : idsB,
+      });
+      if (!isSingle) addRecent(idA, idB, state.playerA.name, state.playerB.name, idsA, idsB);
+      updateStageMeta();
+      resetFilters();
+      setStageTab("overall");
+    }
     setLoading(false);
     setStatus("");
   } catch (err) {
@@ -3740,42 +4106,13 @@ function initFilters() {
     });
   }
 
-  const toggleFilterMenu = (open) => {
-    if (open) {
-      if (elements.filterToggle?.disabled) return;
-      elements.filterMenu.hidden = false;
-      elements.filterBackdrop.hidden = false;
-      elements.filterToggle?.setAttribute("aria-expanded", "true");
-      requestAnimationFrame(() => {
-        elements.filterMenu.classList.add("is-open");
-        elements.filterBackdrop.classList.add("is-open");
-      });
-      window.setTimeout(() => elements.searchFilter?.focus(), 0);
-    } else {
-      elements.filterMenu.classList.remove("is-open");
-      elements.filterBackdrop.classList.remove("is-open");
-      elements.filterToggle?.setAttribute("aria-expanded", "false");
-      setTimeout(() => {
-        elements.filterMenu.hidden = true;
-        elements.filterBackdrop.hidden = true;
-      }, 300);
-      elements.filterToggle?.focus();
-    }
-  };
-
-  elements.filterToggle.addEventListener("click", () => toggleFilterMenu(true));
-  elements.filterClose.addEventListener("click", () => toggleFilterMenu(false));
-  elements.filterBackdrop.addEventListener("click", () => toggleFilterMenu(false));
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && !elements.filterMenu.hidden) {
-      toggleFilterMenu(false);
-    }
-  });
-  if (elements.clearFiltersBtn) {
-    elements.clearFiltersBtn.addEventListener("click", () => {
-      resetFilters();
-      state.page = 1;
-      updateView();
+  // More Filters toggle
+  if (elements.moreFiltersToggle) {
+    elements.moreFiltersToggle.addEventListener("click", () => {
+      const advanced = elements.filterBarAdvanced;
+      const isOpen = !advanced.hidden;
+      advanced.hidden = isOpen;
+      elements.moreFiltersToggle.setAttribute("aria-expanded", isOpen ? "false" : "true");
     });
   }
 
@@ -3849,6 +4186,7 @@ function initGoalsModeToggle() {
     button.addEventListener("click", () => {
       state.goalsMode = button.dataset.goalsMode || "series";
       renderCharts(state.filteredMatches);
+      updateUrl();
     });
   });
 }
@@ -3984,7 +4322,12 @@ async function init() {
       const player2 = { ...(getPlayerById(selection.p2) || { id: selection.p2, name: `Player ${selection.p2}` }), ids: p2Ids };
       setInputPlayer(elements.playerB, player2);
     }
-    handleCompare();
+    if (urlSelection) {
+      restoreStateFromUrl();
+      await handleCompare({ restoreUrlState: true });
+    } else {
+      await handleCompare();
+    }
   } else {
     resetCurrentResults({ message: "" });
   }

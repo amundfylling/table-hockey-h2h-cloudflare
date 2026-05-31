@@ -1,3 +1,22 @@
+# Dependencies
+node_modules/
+
+# Local cache & Cloudflare data
 .cache/
 public/data/
+.wrangler/
+
+# Virtual Environment & Python cache
 .venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+*.pyo
+*.pyd
+
+# macOS files
+.DS_Store
+
+# Agent and MCP tool folders
+.agent/
+.playwright-mcp/
