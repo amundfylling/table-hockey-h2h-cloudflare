@@ -5,9 +5,6 @@ from pathlib import Path
 
 import pandas as pd
 
-ROOT_DIR = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT_DIR))
-
 from scripts.build_h2h import (  # noqa: E402
     deduplicate_overlapping_source_matches,
     read_extra_matches_csv,
