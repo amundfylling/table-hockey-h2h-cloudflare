@@ -20,3 +20,6 @@ __pycache__/
 # Agent and MCP tool folders
 .agent/
 .playwright-mcp/
+dist/
+*.png
+
