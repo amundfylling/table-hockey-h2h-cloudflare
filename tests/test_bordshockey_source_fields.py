@@ -9,10 +9,10 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT_DIR))
 
 from scripts.build_h2h import (  # noqa: E402
-    _row_to_match,
     deduplicate_overlapping_source_matches,
     read_extra_matches_csv,
 )
+
 
 
 class TestBordshockeySourceFields(unittest.TestCase):
@@ -53,11 +53,9 @@ class TestBordshockeySourceFields(unittest.TestCase):
             "https://bordshockey.net/tavlingar/0102/overum-open/resultat/group/?matcher=1",
         )
 
-        payload = _row_to_match(next(matches.itertuples(index=False)))
-        self.assertEqual(payload["stage_type"], "round-robin")
-        self.assertEqual(payload["source"], "bordshockey.net")
-        self.assertEqual(payload["source_stage_id"], "7530")
-        self.assertEqual(payload["source_match_id"], "104160")
+        self.assertEqual(row.source_stage_id, "7530")
+        self.assertEqual(row.source_match_id, "104160")
+
 
     def test_overlapping_scorpion_match_is_replaced_by_bordshockey_match(self):
         matches = pd.DataFrame(

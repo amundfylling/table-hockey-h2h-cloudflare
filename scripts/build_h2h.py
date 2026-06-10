@@ -47,14 +47,6 @@ def to_int(series: pd.Series) -> pd.Series:
     return numeric.astype("Int64")
 
 
-def normalize_overtime(value: object) -> bool:
-    if pd.isna(value):
-        return False
-    text = str(value).strip().lower()
-    if not text or text in {"none", "nan", "null", "na", "0", "false", "no"}:
-        return False
-    return True
-
 
 def write_json(path: Path, payload: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -227,6 +219,21 @@ EXTRA_MATCHES_URL = (
     "refs/heads/main/bordshockey_results.csv"
 )
 
+def ensure_int_column(df: pd.DataFrame, name: str) -> None:
+    if name in df:
+        df[name] = to_int(df[name])
+    else:
+        df[name] = pd.Series([pd.NA] * len(df), index=df.index)
+
+
+def ensure_string_column(df: pd.DataFrame, name: str, default: str = "", lower: bool = False) -> None:
+    if name in df:
+        val = df[name].fillna("").astype(str).str.strip()
+        df[name] = val.str.lower() if lower else val
+    else:
+        df[name] = default
+
+
 def process_matches_df(matches: pd.DataFrame) -> pd.DataFrame:
     matches["player1_id"] = pd.to_numeric(matches["player1_id"], errors="coerce")
     matches["player2_id"] = pd.to_numeric(matches["player2_id"], errors="coerce")
@@ -234,28 +241,11 @@ def process_matches_df(matches: pd.DataFrame) -> pd.DataFrame:
     matches["player1_id"] = matches["player1_id"].astype(int)
     matches["player2_id"] = matches["player2_id"].astype(int)
 
-    if "stage_id" in matches:
-        matches["stage_id"] = to_int(matches["stage_id"])
-    else:
-        matches["stage_id"] = pd.Series([pd.NA] * len(matches), index=matches.index)
-    if "stage_sequence" in matches:
-        matches["stage_sequence"] = to_int(matches["stage_sequence"])
-    else:
-        matches["stage_sequence"] = pd.Series([pd.NA] * len(matches), index=matches.index)
-    if "round_number" in matches:
-        matches["round_number"] = to_int(matches["round_number"])
-    else:
-        matches["round_number"] = pd.Series([pd.NA] * len(matches), index=matches.index)
-    if "playoff_game_number" in matches:
-        matches["playoff_game_number"] = to_int(matches["playoff_game_number"])
-    else:
-        matches["playoff_game_number"] = pd.Series(
-            [pd.NA] * len(matches), index=matches.index
-        )
-    if "tournament_id" in matches:
-        matches["tournament_id"] = to_int(matches["tournament_id"])
-    else:
-        matches["tournament_id"] = pd.Series([pd.NA] * len(matches), index=matches.index)
+    ensure_int_column(matches, "stage_id")
+    ensure_int_column(matches, "stage_sequence")
+    ensure_int_column(matches, "round_number")
+    ensure_int_column(matches, "playoff_game_number")
+    ensure_int_column(matches, "tournament_id")
 
     matches["goals_player1"] = (
         pd.to_numeric(matches["goals_player1"], errors="coerce").fillna(0).astype(int)
@@ -269,28 +259,12 @@ def process_matches_df(matches: pd.DataFrame) -> pd.DataFrame:
     matches["date_dt"] = pd.to_datetime(matches["date_raw"], errors="coerce")
     matches["date"] = matches["date_dt"].dt.strftime("%Y-%m-%d")
 
-    if "tournament_name" in matches:
-        matches["tournament_name"] = matches["tournament_name"].fillna("")
-    else:
-        matches["tournament_name"] = ""
-    if "stage" in matches:
-        matches["stage"] = matches["stage"].fillna("")
-    else:
-        matches["stage"] = ""
-    if "stage_type" in matches:
-        matches["stage_type"] = (
-            matches["stage_type"].fillna("").astype(str).str.strip().str.lower()
-        )
-    else:
-        matches["stage_type"] = ""
-    if "player1_name" in matches:
-        matches["player1_name"] = matches["player1_name"].fillna("")
-    else:
-        matches["player1_name"] = ""
-    if "player2_name" in matches:
-        matches["player2_name"] = matches["player2_name"].fillna("")
-    else:
-        matches["player2_name"] = ""
+    ensure_string_column(matches, "tournament_name")
+    ensure_string_column(matches, "stage")
+    ensure_string_column(matches, "stage_type", lower=True)
+    ensure_string_column(matches, "player1_name")
+    ensure_string_column(matches, "player2_name")
+
     for column in [
         "source",
         "source_url",
@@ -301,10 +275,7 @@ def process_matches_df(matches: pd.DataFrame) -> pd.DataFrame:
         "source_stage_id",
         "source_match_id",
     ]:
-        if column in matches:
-            matches[column] = matches[column].fillna("").astype(str).str.strip()
-        else:
-            matches[column] = ""
+        ensure_string_column(matches, column)
 
     matches["id1"] = matches["player1_id"].where(
         matches["player1_id"] <= matches["player2_id"], matches["player2_id"]
@@ -317,6 +288,7 @@ def process_matches_df(matches: pd.DataFrame) -> pd.DataFrame:
     matches["goals_id2"] = matches["goals_player2"].where(is_p1_id1, matches["goals_player1"])
 
     return matches
+
 
 
 OVERLAP_DEDUPE_COLUMNS = [
@@ -465,54 +437,6 @@ def read_extra_matches_csv(csv_path: Path) -> pd.DataFrame:
 
     return process_matches_df(matches)
 
-
-def _row_to_match(row) -> dict:
-    date_value = row.date if pd.notna(row.date) else None
-    return {
-        "date": date_value,
-        "tournament_id": int(row.tournament_id) if pd.notna(row.tournament_id) else None,
-        "tournament_name": row.tournament_name,
-        "tournament_level": (
-            normalize_tournament_level(row.tournament_level)
-            if hasattr(row, "tournament_level")
-            else None
-        ),
-        "stage": row.stage,
-        "stage_type": clean_optional_string(row.stage_type) if hasattr(row, "stage_type") else "",
-        "stage_id": int(row.stage_id) if pd.notna(row.stage_id) else None,
-        "stage_sequence": int(row.stage_sequence) if pd.notna(row.stage_sequence) else None,
-        "round_number": int(row.round_number) if pd.notna(row.round_number) else None,
-        "playoff_game_number": (
-            int(row.playoff_game_number) if pd.notna(row.playoff_game_number) else None
-        ),
-        "goals_id1": int(row.goals_id1),
-        "goals_id2": int(row.goals_id2),
-        "overtime": bool(row.overtime),
-        "source": clean_optional_string(row.source) if hasattr(row, "source") else "",
-        "source_url": clean_optional_string(row.source_url) if hasattr(row, "source_url") else "",
-        "stage_url": clean_optional_string(row.stage_url) if hasattr(row, "stage_url") else "",
-        "result_url": clean_optional_string(row.result_url) if hasattr(row, "result_url") else "",
-        "tournament_url": (
-            clean_optional_string(row.tournament_url)
-            if hasattr(row, "tournament_url")
-            else ""
-        ),
-        "source_tournament_id": (
-            clean_optional_string(row.source_tournament_id)
-            if hasattr(row, "source_tournament_id")
-            else ""
-        ),
-        "source_stage_id": (
-            clean_optional_string(row.source_stage_id)
-            if hasattr(row, "source_stage_id")
-            else ""
-        ),
-        "source_match_id": (
-            clean_optional_string(row.source_match_id)
-            if hasattr(row, "source_match_id")
-            else ""
-        ),
-    }
 
 
 def filter_players(players: Iterable[dict], eligible_ids: set[int]) -> Tuple[Iterable[dict], Dict[int, str]]:
@@ -839,6 +763,18 @@ def build_player_files(matches: pd.DataFrame, player_names: Dict[int, str]) -> N
         write_json(H2H_DIR / f"{pid}.json", payload)
 
 
+def download_cached(url: str, path: Path) -> None:
+    dl.download(
+        url,
+        path,
+        etag_path=CACHE_DIR / f"{path.stem}.etag",
+        last_modified_path=CACHE_DIR / f"{path.stem}.last_modified",
+        retries=5,
+        backoff=1.5,
+        timeout=120,
+    )
+
+
 def main() -> int:
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -865,66 +801,19 @@ def main() -> int:
     ranking_path = CACHE_DIR / "ranking.txt"
 
     print("Downloading source data...")
-    dl.download(
-        matches_url,
-        matches_path,
-        etag_path=CACHE_DIR / "scraped_matches.etag",
-        last_modified_path=CACHE_DIR / "scraped_matches.last_modified",
-        retries=5,
-        backoff=1.5,
-        timeout=120,
-    )
-    dl.download(
-        EXTRA_MATCHES_URL,
-        extra_matches_path,
-        etag_path=CACHE_DIR / "extra_matches.etag",
-        last_modified_path=CACHE_DIR / "extra_matches.last_modified",
-        retries=5,
-        backoff=1.5,
-        timeout=120,
-    )
-    dl.download(
-        players_url,
-        players_path,
-        etag_path=CACHE_DIR / "players_data.etag",
-        last_modified_path=CACHE_DIR / "players_data.last_modified",
-        retries=5,
-        backoff=1.5,
-        timeout=120,
-    )
-    dl.download(
-        tournaments_url,
-        tournaments_path,
-        etag_path=CACHE_DIR / "tournament_data.etag",
-        last_modified_path=CACHE_DIR / "tournament_data.last_modified",
-        retries=5,
-        backoff=1.5,
-        timeout=120,
-    )
-    dl.download(
-        tournament_metadata_url,
-        tournament_metadata_path,
-        etag_path=CACHE_DIR / "tournament_metadata.etag",
-        last_modified_path=CACHE_DIR / "tournament_metadata.last_modified",
-        retries=5,
-        backoff=1.5,
-        timeout=120,
-    )
+    download_cached(matches_url, matches_path)
+    download_cached(EXTRA_MATCHES_URL, extra_matches_path)
+    download_cached(players_url, players_path)
+    download_cached(tournaments_url, tournaments_path)
+    download_cached(tournament_metadata_url, tournament_metadata_path)
     try:
-        dl.download(
-            ranking_url,
-            ranking_path,
-            etag_path=CACHE_DIR / "ranking.etag",
-            last_modified_path=CACHE_DIR / "ranking.last_modified",
-            retries=5,
-            backoff=1.5,
-            timeout=120,
-        )
+        download_cached(ranking_url, ranking_path)
     except RuntimeError as exc:
         if ranking_path.exists():
             print(f"Warning: failed to refresh ranking; using cached file. {exc}")
         else:
             print(f"Warning: failed to download ranking; continuing without it. {exc}")
+
 
     print("Loading players...")
     rankings = load_rankings(ranking_path) if ranking_path.exists() else {}
