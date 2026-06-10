@@ -98,51 +98,54 @@ const elements = {
   matchesHeadRow: document.getElementById("matches-head-row"),
 };
 
-const GAME_TABLE_COLUMNS = [
-  { label: "", key: null },
-  { label: "Date", key: "date", defaultDirection: "desc" },
-  { label: "Tournament", key: "tournament", defaultDirection: "asc" },
-  { label: "Stage", key: "stage", defaultDirection: "asc" },
-  { label: "Round", key: "round", defaultDirection: "asc" },
-  { label: "Score", key: "score", defaultDirection: "desc" },
-  { label: "OT", key: "ot", defaultDirection: "desc" },
-  { label: "Winner", key: "winner", defaultDirection: "asc" },
-];
+const COL_INFO = { label: "", key: null };
+const COL_DATE = { label: "Date", key: "date", defaultDirection: "desc" };
+const COL_OPPONENT = { label: "Opponent", key: "opponent", defaultDirection: "asc" };
+const COL_TOURNAMENT = { label: "Tournament", key: "tournament", defaultDirection: "asc" };
+const COL_STAGE = { label: "Stage", key: "stage", defaultDirection: "asc" };
+const COL_ROUND = { label: "Round", key: "round", defaultDirection: "asc" };
+const COL_SCORE = { label: "Score", key: "score", defaultDirection: "desc" };
+const COL_OT = { label: "OT", key: "ot", defaultDirection: "desc" };
+const COL_WINNER = { label: "Winner", key: "winner", defaultDirection: "asc" };
+const COL_SERIES = { label: "Series", key: "series", defaultDirection: "asc" };
+const COL_GAMES = { label: "Games", key: "games", defaultDirection: "desc" };
+const COL_GOALS = { label: "Goals", key: "goals", defaultDirection: "desc" };
 
-const SINGLE_TABLE_COLUMNS = [
-  { label: "", key: null },
-  { label: "Date", key: "date", defaultDirection: "desc" },
-  { label: "Opponent", key: "opponent", defaultDirection: "asc" },
-  { label: "Tournament", key: "tournament", defaultDirection: "asc" },
-  { label: "Stage", key: "stage", defaultDirection: "asc" },
-  { label: "Round", key: "round", defaultDirection: "asc" },
-  { label: "Score", key: "score", defaultDirection: "desc" },
-  { label: "OT", key: "ot", defaultDirection: "desc" },
-  { label: "Winner", key: "winner", defaultDirection: "asc" },
-];
+const GAME_TABLE_COLUMNS = [COL_INFO, COL_DATE, COL_TOURNAMENT, COL_STAGE, COL_ROUND, COL_SCORE, COL_OT, COL_WINNER];
+const SINGLE_TABLE_COLUMNS = [COL_INFO, COL_DATE, COL_OPPONENT, COL_TOURNAMENT, COL_STAGE, COL_ROUND, COL_SCORE, COL_OT, COL_WINNER];
+const SERIES_TABLE_COLUMNS = [COL_INFO, COL_DATE, COL_TOURNAMENT, COL_STAGE, COL_SERIES, COL_GAMES, COL_GOALS, COL_WINNER];
+const SINGLE_SERIES_TABLE_COLUMNS = [COL_INFO, COL_DATE, COL_OPPONENT, COL_TOURNAMENT, COL_STAGE, COL_SERIES, COL_GAMES, COL_GOALS, COL_WINNER];
 
-const SERIES_TABLE_COLUMNS = [
-  { label: "", key: null },
-  { label: "Date", key: "date", defaultDirection: "desc" },
-  { label: "Tournament", key: "tournament", defaultDirection: "asc" },
-  { label: "Stage", key: "stage", defaultDirection: "asc" },
-  { label: "Series", key: "series", defaultDirection: "asc" },
-  { label: "Games", key: "games", defaultDirection: "desc" },
-  { label: "Goals", key: "goals", defaultDirection: "desc" },
-  { label: "Winner", key: "winner", defaultDirection: "asc" },
-];
+const URL_PARAM_KEYS = ["p1", "p2", "p1g", "p2g", "stage", "playoffMode", "goalsMode", "search", "yearFrom", "yearTo", "tournament", "levels", "stageDetail", "ot", "tight", "bestOf"];
 
-const SINGLE_SERIES_TABLE_COLUMNS = [
-  { label: "", key: null },
-  { label: "Date", key: "date", defaultDirection: "desc" },
-  { label: "Opponent", key: "opponent", defaultDirection: "asc" },
-  { label: "Tournament", key: "tournament", defaultDirection: "asc" },
-  { label: "Stage", key: "stage", defaultDirection: "asc" },
-  { label: "Series", key: "series", defaultDirection: "asc" },
-  { label: "Games", key: "games", defaultDirection: "desc" },
-  { label: "Goals", key: "goals", defaultDirection: "desc" },
-  { label: "Winner", key: "winner", defaultDirection: "asc" },
-];
+const SVG_SUN = `
+  <circle cx="12" cy="12" r="5"></circle>
+  <line x1="12" y1="1" x2="12" y2="3"></line>
+  <line x1="12" y1="21" x2="12" y2="23"></line>
+  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+  <line x1="1" y1="12" x2="3" y2="12"></line>
+  <line x1="21" y1="12" x2="23" y2="12"></line>
+  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+`;
+const SVG_MOON = `
+  <path d="M12 3a6 6 0 0 0 9 7.4A9 9 0 1 1 12 3z"></path>
+`;
+
+const SVG_TREND = `
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+    <polyline points="17 6 23 6 23 12"></polyline>
+  </svg>
+`;
+const SVG_BAR_CHART = `
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <line x1="18" y1="20" x2="18" y2="10"></line>
+    <line x1="12" y1="20" x2="12" y2="4"></line>
+    <line x1="6" y1="20" x2="6" y2="14"></line>
+  </svg>
+`;
 
 function normalizeText(text) {
   if (!text) return "";
@@ -187,48 +190,15 @@ function normalizePlayerRecord(player) {
   };
 }
 
-const COUNTRY_FLAGS = new Map(
-  [
-    ["Belarus", "🇧🇾"],
-    ["Canada", "🇨🇦"],
-    ["Chile", "🇨🇱"],
-    ["Czech Republic", "🇨🇿"],
-    ["Denmark", "🇩🇰"],
-    ["Estonia", "🇪🇪"],
-    ["Finland", "🇫🇮"],
-    ["France", "🇫🇷"],
-    ["Germany", "🇩🇪"],
-    ["Hungary", "🇭🇺"],
-    ["Iceland", "🇮🇸"],
-    ["Ireland", "🇮🇪"],
-    ["Israel", "🇮🇱"],
-    ["Italy", "🇮🇹"],
-    ["Kazakhstan", "🇰🇿"],
-    ["kazakistan", "🇰🇿"],
-    ["Kyrgyzstan", "🇰🇬"],
-    ["Latvia", "🇱🇻"],
-    ["Netherlands", "🇳🇱"],
-    ["Norway", "🇳🇴"],
-    ["Pakistan", "🇵🇰"],
-    ["Portugal", "🇵🇹"],
-    ["Republic of Lithuania", "🇱🇹"],
-    ["Russia", "🇷🇺"],
-    ["Россия", "🇷🇺"],
-    ["Serbia", "🇷🇸"],
-    ["Slovakia", "🇸🇰"],
-    ["Slovenia", "🇸🇮"],
-    ["Spain", "🇪🇸"],
-    ["Sri Lanka", "🇱🇰"],
-    ["Sweden", "🇸🇪"],
-    ["Sweden / Portugal", "🇸🇪/🇵🇹"],
-    ["Switzerland", "🇨🇭"],
-    ["Syria", "🇸🇾"],
-    ["Tajikistan", "🇹🇯"],
-    ["Ukraine", "🇺🇦"],
-    ["United Kingdom", "🇬🇧"],
-    ["United States of America", "🇺🇸"],
-  ].map(([country, flag]) => [normalizeText(country), flag])
-);
+const COUNTRY_FLAGS = new Map(Object.entries({
+  "belarus":"🇧🇾","canada":"🇨🇦","chile":"🇨🇱","czech republic":"🇨🇿","denmark":"🇩🇰","estonia":"🇪🇪",
+  "finland":"🇫🇮","france":"🇫🇷","germany":"🇩🇪","hungary":"🇭🇺","iceland":"🇮🇸","ireland":"🇮🇪",
+  "israel":"🇮🇱","italy":"🇮🇹","kazakhstan":"🇰🇿","kazakistan":"🇰🇿","kyrgyzstan":"🇰🇬","latvia":"🇱🇻",
+  "netherlands":"🇳🇱","norway":"🇳🇴","pakistan":"🇵🇰","portugal":"🇵🇹","republic of lithuania":"🇱🇹",
+  "russia":"🇷🇺","россия":"🇷🇺","serbia":"🇷🇸","slovakia":"🇸🇰","slovenia":"🇸🇮","spain":"🇪🇸",
+  "sri lanka":"🇱🇰","sweden":"🇸🇪","sweden / portugal":"🇸🇪/🇵🇹","switzerland":"🇨🇭","syria":"🇸🇾",
+  "tajikistan":"🇹🇯","ukraine":"🇺🇦","united kingdom":"🇬🇧","united states of america":"🇺🇸"
+}).map(([k, v]) => [normalizeText(k), v]));
 
 function getCountryFlag(country) {
   return COUNTRY_FLAGS.get(normalizeText(country)) || "";
@@ -456,23 +426,7 @@ function setTheme(mode) {
     if (label) label.textContent = isDark ? "Light mode" : "Dark mode";
     const svgEl = elements.themeToggle.querySelector("svg");
     if (svgEl) {
-      if (isDark) {
-        svgEl.innerHTML = `
-          <circle cx="12" cy="12" r="5"></circle>
-          <line x1="12" y1="1" x2="12" y2="3"></line>
-          <line x1="12" y1="21" x2="12" y2="23"></line>
-          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-          <line x1="1" y1="12" x2="3" y2="12"></line>
-          <line x1="21" y1="12" x2="23" y2="12"></line>
-          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-        `;
-      } else {
-        svgEl.innerHTML = `
-          <path d="M12 3a6 6 0 0 0 9 7.4A9 9 0 1 1 12 3z"></path>
-        `;
-      }
+      svgEl.innerHTML = isDark ? SVG_SUN : SVG_MOON;
     }
   }
   safeStorageSet(STORAGE_KEYS.theme, mode);
@@ -667,7 +621,7 @@ function updateUrl(p1, p2 = null, p1Ids = [], p2Ids = []) {
 
   const url = new URL(window.location.href);
   if (!idA) {
-    ["p1", "p2", "p1g", "p2g", "stage", "playoffMode", "goalsMode", "search", "yearFrom", "yearTo", "tournament", "levels", "stageDetail", "ot", "tight", "bestOf"].forEach((key) => url.searchParams.delete(key));
+    URL_PARAM_KEYS.forEach((key) => url.searchParams.delete(key));
     window.history.replaceState({}, "", url);
     return;
   }
@@ -1288,16 +1242,7 @@ function normalizeMatchBase(raw) {
   };
 }
 
-function normalizePairMatch(raw, aIsId1) {
-  const goalsId1 = toNumber(
-    raw.goals_id1 ?? raw.goals_for_id1 ?? raw.goalsPlayer1 ?? raw.goals_player1 ?? raw.goals_player ?? 0
-  );
-  const goalsId2 = toNumber(
-    raw.goals_id2 ?? raw.goals_for_id2 ?? raw.goalsPlayer2 ?? raw.goals_player2 ?? raw.goals_opponent ?? 0
-  );
-  const goalsA = aIsId1 ? goalsId1 : goalsId2;
-  const goalsB = aIsId1 ? goalsId2 : goalsId1;
-
+function finishMatchNormalization(raw, goalsA, goalsB) {
   const base = normalizeMatchBase(raw);
   const overtime = parseOvertime(raw.overtime ?? raw.Overtime ?? raw.overtime_raw);
   const diff = goalsA - goalsB;
@@ -1313,25 +1258,20 @@ function normalizePairMatch(raw, aIsId1) {
   };
 }
 
+function normalizePairMatch(raw, aIsId1) {
+  const goalsId1 = toNumber(
+    raw.goals_id1 ?? raw.goals_for_id1 ?? raw.goalsPlayer1 ?? raw.goals_player1 ?? raw.goals_player ?? 0
+  );
+  const goalsId2 = toNumber(
+    raw.goals_id2 ?? raw.goals_for_id2 ?? raw.goalsPlayer2 ?? raw.goals_player2 ?? raw.goals_opponent ?? 0
+  );
+  return finishMatchNormalization(raw, aIsId1 ? goalsId1 : goalsId2, aIsId1 ? goalsId2 : goalsId1);
+}
+
 function normalizePlayerMatch(raw, isPlayerA) {
   const goalsFor = toNumber(raw.goals_for_player ?? raw.goals_player ?? raw.goals_id1 ?? 0);
   const goalsOpp = toNumber(raw.goals_for_opponent ?? raw.goals_opponent ?? raw.goals_id2 ?? 0);
-  const goalsA = isPlayerA ? goalsFor : goalsOpp;
-  const goalsB = isPlayerA ? goalsOpp : goalsFor;
-
-  const base = normalizeMatchBase(raw);
-  const overtime = parseOvertime(raw.overtime ?? raw.Overtime ?? raw.overtime_raw);
-  const diff = goalsA - goalsB;
-
-  return {
-    ...base,
-    goals_a: goalsA,
-    goals_b: goalsB,
-    goal_diff: diff,
-    goal_abs: Math.abs(diff),
-    overtime,
-    result: diff > 0 ? "A" : diff < 0 ? "B" : "D",
-  };
+  return finishMatchNormalization(raw, isPlayerA ? goalsFor : goalsOpp, isPlayerA ? goalsOpp : goalsFor);
 }
 
 function normalizeSinglePlayerMatch(raw, opponentId, opponentPlayer) {
@@ -2276,6 +2216,108 @@ function createCurrentStreakChip(items) {
   return chip;
 }
 
+function setupGenerationalRun(matches, streakChip, fragment) {
+  const streak = getCurrentWinStreak(matches);
+  if (streak < 10) return;
+
+  elements.formChips.classList.add("has-generational-run");
+
+  // Glowing Neon Track
+  const track = document.createElement("div");
+  track.className = "generational-track";
+  fragment.appendChild(track);
+
+  // Runner Emojis (Flame runner 🔥🏃‍♂️)
+  const runner = document.createElement("span");
+  runner.className = "generational-runner";
+  runner.innerHTML = `
+    <span class="runner-flame">🔥</span>
+    <span class="runner-emoji">🏃‍♂️</span>
+  `;
+  fragment.appendChild(runner);
+
+  // Upgraded Text Banner
+  const runText = document.createElement("div");
+  runText.className = "generational-run-text";
+  runText.textContent = "👑 Generational run!";
+  fragment.appendChild(runText);
+
+  // Mark the streak chip to celebrate at the end of the run
+  streakChip.classList.add("burst");
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        // Find win chips inside formChips container
+        const winChips = elements.formChips.querySelectorAll(".chip.win");
+        if (winChips.length > 0) {
+          const firstChip = winChips[0];
+          const lastChip = winChips[winChips.length - 1];
+          
+          const startX = firstChip.offsetLeft + (firstChip.offsetWidth / 2) - 10;
+          const endX = lastChip.offsetLeft + (lastChip.offsetWidth / 2) - 10;
+          const runnerY = firstChip.offsetTop - 20;
+
+          elements.formChips.style.setProperty("--runner-start-x", `${startX}px`);
+          elements.formChips.style.setProperty("--runner-end-x", `${endX}px`);
+          elements.formChips.style.setProperty("--runner-y", `${runnerY}px`);
+
+          let flameDropX = 35; // Default fallback
+          if (streakChip) {
+            const lastChipCenter = lastChip.offsetLeft + (lastChip.offsetWidth / 2);
+            const streakChipCenter = streakChip.offsetLeft + (streakChip.offsetWidth / 2);
+            flameDropX = streakChipCenter - lastChipCenter;
+          }
+          elements.formChips.style.setProperty("--flame-drop-x", `${flameDropX}px`);
+
+          // Add sequential lighting delay to each Win chip
+          winChips.forEach((chip, index) => {
+            // Stagger ignite based on horizontal position relative to the track length
+            const delay = (index / winChips.length) * 4.2;
+            chip.style.animationDelay = `${delay}s`;
+            chip.classList.add("ignite");
+          });
+        }
+
+        // Start animations
+        track.classList.add("animate-run");
+        runner.classList.add("animate-run");
+        runText.classList.add("animate-run");
+        observer.disconnect();
+
+        // Graceful cleanup after animations finish
+        setTimeout(() => {
+          runner.classList.add("animate-hide");
+          runText.classList.add("animate-hide");
+          track.style.transition = "opacity 0.5s ease";
+          track.style.opacity = "0";
+          setTimeout(() => {
+            runner.remove();
+            runText.remove();
+            track.remove();
+            
+            // Revert win chips back to original styles
+            const winChips = elements.formChips.querySelectorAll(".chip.win");
+            winChips.forEach((chip) => {
+              chip.classList.remove("ignite");
+              chip.style.animationDelay = "";
+            });
+            
+            // Revert streak chip back to normal
+            if (streakChip) {
+              streakChip.classList.remove("burst");
+            }
+
+            // Remove the generational class to restore normal layout padding and streak chip display
+            elements.formChips.classList.remove("has-generational-run");
+          }, 500);
+        }, 5500);
+      }
+    });
+  }, { threshold: 0.1 });
+  observer.observe(streakChip);
+}
+
 function formatMatchCountText(start, end, total) {
   return `Showing ${start + 1}-${end} of ${total} matches`;
 }
@@ -2315,104 +2357,7 @@ function renderForm(matches) {
   const streakChip = createCurrentStreakChip(matches);
   if (streakChip) {
     fragment.appendChild(streakChip);
-    const streak = getCurrentWinStreak(matches);
-    if (streak >= 10) {
-      elements.formChips.classList.add("has-generational-run");
-
-      // Glowing Neon Track
-      const track = document.createElement("div");
-      track.className = "generational-track";
-      fragment.appendChild(track);
-
-      // Runner Emojis (Flame runner 🔥🏃‍♂️)
-      const runner = document.createElement("span");
-      runner.className = "generational-runner";
-      runner.innerHTML = `
-        <span class="runner-flame">🔥</span>
-        <span class="runner-emoji">🏃‍♂️</span>
-      `;
-      fragment.appendChild(runner);
-
-      // Upgraded Text Banner
-      const runText = document.createElement("div");
-      runText.className = "generational-run-text";
-      runText.textContent = "👑 Generational run!";
-      fragment.appendChild(runText);
-
-      // Mark the streak chip to celebrate at the end of the run
-      streakChip.classList.add("burst");
-
-      const observer = new IntersectionObserver((entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            // Find win chips inside formChips container
-            const winChips = elements.formChips.querySelectorAll(".chip.win");
-            if (winChips.length > 0) {
-              const firstChip = winChips[0];
-              const lastChip = winChips[winChips.length - 1];
-              
-               const startX = firstChip.offsetLeft + (firstChip.offsetWidth / 2) - 10;
-              const endX = lastChip.offsetLeft + (lastChip.offsetWidth / 2) - 10;
-              const runnerY = firstChip.offsetTop - 20;
-
-              elements.formChips.style.setProperty("--runner-start-x", `${startX}px`);
-              elements.formChips.style.setProperty("--runner-end-x", `${endX}px`);
-              elements.formChips.style.setProperty("--runner-y", `${runnerY}px`);
-
-              let flameDropX = 35; // Default fallback
-              if (streakChip) {
-                const lastChipCenter = lastChip.offsetLeft + (lastChip.offsetWidth / 2);
-                const streakChipCenter = streakChip.offsetLeft + (streakChip.offsetWidth / 2);
-                flameDropX = streakChipCenter - lastChipCenter;
-              }
-              elements.formChips.style.setProperty("--flame-drop-x", `${flameDropX}px`);
-
-              // Add sequential lighting delay to each Win chip
-              winChips.forEach((chip, index) => {
-                // Stagger ignite based on horizontal position relative to the track length
-                const delay = (index / winChips.length) * 4.2;
-                chip.style.animationDelay = `${delay}s`;
-                chip.classList.add("ignite");
-              });
-            }
-
-            // Start animations
-            track.classList.add("animate-run");
-            runner.classList.add("animate-run");
-            runText.classList.add("animate-run");
-            observer.disconnect();
-
-            // Graceful cleanup after animations finish
-            setTimeout(() => {
-              runner.classList.add("animate-hide");
-              runText.classList.add("animate-hide");
-              track.style.transition = "opacity 0.5s ease";
-              track.style.opacity = "0";
-              setTimeout(() => {
-                runner.remove();
-                runText.remove();
-                track.remove();
-                
-                // Revert win chips back to original styles
-                winChips.forEach((chip) => {
-                  chip.classList.remove("ignite");
-                  chip.style.animationDelay = "";
-                });
-                
-                // Revert streak chip back to normal
-                if (streakChip) {
-                  streakChip.classList.remove("burst");
-                }
-
-                // Remove the generational class to restore normal layout padding and streak chip display
-                elements.formChips.classList.remove("has-generational-run");
-              }, 500);
-            }, 5500);
-          }
-        });
-      }, { threshold: 0.1 });
-      observer.observe(streakChip);
-    }
+    setupGenerationalRun(matches, streakChip, fragment);
   }
   elements.formChips.appendChild(fragment);
 }
@@ -3621,7 +3566,7 @@ function setDataControlsEnabled(enabled) {
 
 function clearUrlSelection() {
   const url = new URL(window.location.href);
-  ["p1", "p2", "p1g", "p2g", "stage", "playoffMode", "goalsMode", "search", "yearFrom", "yearTo", "tournament", "levels", "stageDetail", "ot", "tight", "bestOf"].forEach((key) => url.searchParams.delete(key));
+  URL_PARAM_KEYS.forEach((key) => url.searchParams.delete(key));
   window.history.replaceState({}, "", url);
 }
 
@@ -3642,20 +3587,9 @@ function renderChartPlaceholder(containerEl, message, iconType) {
   
   let svgInner = "";
   if (iconType === "trend") {
-    svgInner = `
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
-        <polyline points="17 6 23 6 23 12"></polyline>
-      </svg>
-    `;
+    svgInner = SVG_TREND;
   } else if (iconType === "bar") {
-    svgInner = `
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <line x1="18" y1="20" x2="18" y2="10"></line>
-        <line x1="12" y1="20" x2="12" y2="4"></line>
-        <line x1="6" y1="20" x2="6" y2="14"></line>
-      </svg>
-    `;
+    svgInner = SVG_BAR_CHART;
   }
   
   placeholder.innerHTML = `
