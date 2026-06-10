@@ -838,17 +838,30 @@ function withGroupedDuplicateSuggestions(items) {
 
 function buildSuggestions(query) {
   const value = normalizeText(query);
-  if (value.length < 2) return [];
-  const results = [];
-  for (const player of state.players) {
-    if (!player.name) continue;
-    if (player.search_key && player.search_key.includes(value)) {
-      results.push(player);
+  let results = [];
+  if (value.length < 2) {
+    results = [...state.players];
+  } else {
+    for (const player of state.players) {
+      if (!player.name) continue;
+      if (player.search_key && player.search_key.includes(value)) {
+        results.push(player);
+      }
     }
-    if (results.length >= 12) break;
   }
-  return results;
+
+  results.sort((a, b) => {
+    const rA = getWorldRank(a);
+    const rB = getWorldRank(b);
+    if (rA !== null && rB !== null) return rA - rB;
+    if (rA !== null) return -1;
+    if (rB !== null) return 1;
+    return a.name.localeCompare(b.name);
+  });
+
+  return results.slice(0, 20);
 }
+
 
 function buildOpponentSuggestions(query) {
   if (!state.opponentsOfA.size) return [];
@@ -1078,7 +1091,7 @@ function setupTypeahead(inputEl, listEl, options = {}) {
   });
 
   inputEl.addEventListener("focus", () => {
-    if (isPlayerB && state.opponentsOfA.size && !inputEl.dataset.playerId) {
+    if (!isPlayerB || (state.opponentsOfA.size && !inputEl.dataset.playerId)) {
       updateList();
     }
   });
