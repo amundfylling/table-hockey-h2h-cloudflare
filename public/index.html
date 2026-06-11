@@ -95,7 +95,6 @@
       </div>
 
       <div class="selection-actions">
-        <button id="copy-link-btn" class="ghost" type="button">Copy link</button>
         <p id="status" class="status" role="status" aria-live="polite"></p>
       </div>
 
@@ -190,7 +189,30 @@
           <h2 id="headline">Pick two players</h2>
           <p id="subhead">Matchup stats and filters appear once you compare.</p>
         </div>
-        <div id="record" class="record"></div>
+        <div class="summary-header-actions">
+          <button id="copy-link-btn" class="ghost copy-link-btn" type="button"
+            aria-label="Copy link to this matchup" disabled>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round"
+              stroke-linejoin="round" aria-hidden="true">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+            </svg>
+            <span>Copy link</span>
+          </button>
+          <button id="share-image-btn" class="ghost share-image-btn" type="button"
+            aria-label="Share matchup as image" disabled>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round"
+              stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <circle cx="8.5" cy="8.5" r="1.5"></circle>
+              <polyline points="21 15 16 10 5 21"></polyline>
+            </svg>
+            <span>Share image</span>
+          </button>
+          <div id="record" class="record"></div>
+        </div>
       </div>
       <div class="form-strip">
         <div id="form-title" class="viz-title">Recent form</div>

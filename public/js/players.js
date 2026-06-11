@@ -172,4 +172,7 @@ export function updateSelectionControls() {
   if (elements.copyLinkBtn) {
     elements.copyLinkBtn.disabled = !resolvePlayerId(elements.playerA);
   }
+  if (elements.shareImageBtn) {
+    elements.shareImageBtn.disabled = !resolvePlayerId(elements.playerA);
+  }
 }

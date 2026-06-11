@@ -47,6 +47,7 @@ import {
   sortMatches,
 } from "./table.js";
 import { setTheme, toggleTheme, initInfoPopovers } from "./theme.js";
+import { handleShareImage } from "./share.js";
 
 // Global functions that were in app.js
 let compareRequestToken = 0;
@@ -465,16 +466,17 @@ export function handleCopyLink() {
   updateUrl(idA, idB || null, idsA, idsB);
   const link = window.location.href;
   const btn = elements.copyLinkBtn;
-  const originalText = btn.textContent;
+  const textEl = btn.querySelector("span") || btn;
+  const originalText = textEl.textContent;
   if (navigator.clipboard) {
     navigator.clipboard.writeText(link).then(
       () => {
-        btn.textContent = "✓ Copied!";
+        textEl.textContent = "✓ Copied!";
         btn.style.borderColor = "var(--teal)";
         btn.style.color = "var(--teal)";
         btn.style.background = "var(--teal-soft)";
         setTimeout(() => {
-          btn.textContent = originalText;
+          textEl.textContent = originalText;
           btn.style.borderColor = "";
           btn.style.color = "";
           btn.style.background = "";
@@ -882,6 +884,7 @@ export async function init() {
 
   if (elements.swapBtn) elements.swapBtn.addEventListener("click", handleSwap);
   if (elements.copyLinkBtn) elements.copyLinkBtn.addEventListener("click", handleCopyLink);
+  if (elements.shareImageBtn) elements.shareImageBtn.addEventListener("click", handleShareImage);
   if (elements.recentList) elements.recentList.addEventListener("click", handleRecentClick);
 
   initFilters(updateView);

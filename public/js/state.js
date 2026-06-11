@@ -50,6 +50,7 @@ export const elements = {
   compareBtn: document.getElementById("compare-btn"),
   swapBtn: document.getElementById("swap-btn"),
   copyLinkBtn: document.getElementById("copy-link-btn"),
+  shareImageBtn: document.getElementById("share-image-btn"),
   status: document.getElementById("status"),
   recentList: document.getElementById("recent-list"),
   tabs: document.querySelectorAll(".tab"),
