@@ -3,6 +3,7 @@ import { toNumber, formatDateRange, normalizeText, escapeHtml } from "./utils.js
 import { enrichPlayerRecord, formatWorldRank, formatRankingTitle } from "./players.js";
 import { formatSeriesLength, formatSeriesScore, computeSeriesSummary } from "./series.js";
 import { updateFormTitle } from "./form.js";
+import { getItemSourceUrl, createExternalIcon } from "./table.js";
 
 const DASH = "—";
 
@@ -223,7 +224,7 @@ export function createScoreRow(label, leftValue, rightValue, options = {}) {
 
 export function getHighlightInfo(match, side) {
   if (!match) {
-    return { score: DASH, date: DASH, opponent: DASH, tournament: DASH };
+    return { score: DASH, date: DASH, opponent: DASH, tournament: DASH, url: "" };
   }
   if (isSinglePlayerMode()) {
     return {
@@ -231,6 +232,7 @@ export function getHighlightInfo(match, side) {
       date: match.date || DASH,
       opponent: match.opponent_name || DASH,
       tournament: match.tournament_name || DASH,
+      url: getItemSourceUrl(match) || "",
     };
   }
   const score = side === "b" ? `${match.goals_b}-${match.goals_a}` : scoreFormat(match);
@@ -240,6 +242,7 @@ export function getHighlightInfo(match, side) {
     date: match.date || DASH,
     opponent: opponent || DASH,
     tournament: match.tournament_name || DASH,
+    url: getItemSourceUrl(match) || "",
   };
 }
 
@@ -274,9 +277,20 @@ export function createHighlightBlock(label, info, side, tooltip = "") {
   const date = info.date !== DASH ? info.date : DASH;
   meta.textContent = hasResult ? `${opponent} | ${date}` : "For this selection";
 
-  const tour = document.createElement("div");
-  tour.className = "highlight-tour";
-  tour.textContent = hasResult ? info.tournament : "";
+  let tour;
+  if (hasResult && info.url) {
+    tour = document.createElement("a");
+    tour.href = info.url;
+    tour.target = "_blank";
+    tour.rel = "noopener";
+    tour.className = "highlight-tour highlight-tour--link";
+    tour.appendChild(document.createTextNode(info.tournament));
+    tour.appendChild(createExternalIcon());
+  } else {
+    tour = document.createElement("div");
+    tour.className = "highlight-tour";
+    tour.textContent = hasResult ? info.tournament : "";
+  }
   if (hasResult && info.tournament && info.tournament !== DASH) {
     tour.title = info.tournament;
   }
@@ -316,7 +330,7 @@ export function getCanonRivalryTooltip(winItem, lossItem) {
 
 export function getSeriesHighlightInfo(series, side) {
   if (!series) {
-    return { score: DASH, date: DASH, opponent: DASH, tournament: DASH };
+    return { score: DASH, date: DASH, opponent: DASH, tournament: DASH, url: "" };
   }
   if (isSinglePlayerMode()) {
     return {
@@ -324,6 +338,7 @@ export function getSeriesHighlightInfo(series, side) {
       date: formatDateRange(series.date, series.end_date),
       opponent: series.opponent_name || DASH,
       tournament: `${series.tournament_name || DASH} | ${formatSeriesLength(series)} | goals ${series.goals_a}-${series.goals_b}`,
+      url: getItemSourceUrl(series) || "",
     };
   }
   const score =
@@ -336,6 +351,7 @@ export function getSeriesHighlightInfo(series, side) {
     date: formatDateRange(series.date, series.end_date),
     opponent: side === "b" ? state.playerA?.name : state.playerB?.name,
     tournament: `${series.tournament_name || DASH} | ${formatSeriesLength(series)} | goals ${goalScore}`,
+    url: getItemSourceUrl(series) || "",
   };
 }
 
