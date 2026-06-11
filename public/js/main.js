@@ -49,6 +49,8 @@ import {
 import { setTheme, toggleTheme, initInfoPopovers } from "./theme.js";
 
 // Global functions that were in app.js
+let compareRequestToken = 0;
+
 export function setStatus(message) {
   if (elements.status) elements.status.textContent = message;
 }
@@ -173,7 +175,7 @@ export function renderIdleState() {
   }
   if (elements.subhead) {
     elements.subhead.textContent = selectedPlayer
-      ? "Choose an opponent, or display all games for this player."
+      ? "Choose an opponent to compare, or view all games below."
       : "Search for a player to start.";
   }
   if (elements.record) {
@@ -205,12 +207,12 @@ export function renderIdleState() {
 
   renderPlaceholder(
     elements.recordChart,
-    selectedPlayer ? "Display this player to build the record." : "No selection",
+    selectedPlayer ? "Select a player to build the record." : "No selection",
     "trend"
   );
   renderPlaceholder(
     elements.goalsChart,
-    selectedPlayer ? "Display this player to see yearly scoring." : "No selection",
+    selectedPlayer ? "Select a player to see yearly scoring." : "No selection",
     "bar"
   );
 
@@ -225,7 +227,7 @@ export function renderIdleState() {
     row.className = "empty-table-row";
     const cell = document.createElement("td");
     cell.colSpan = getTableColumns().length;
-    cell.textContent = selectedPlayer ? "Display this player or choose an opponent." : "Select a player to show matches.";
+    cell.textContent = selectedPlayer ? "Select a player to show matches." : "Select a player to show matches.";
     row.appendChild(cell);
     elements.matchesBody.appendChild(row);
   }
@@ -268,6 +270,10 @@ export async function handleCompare(options = {}) {
     return;
   }
 
+  // Increment token to invalidate any previous running comparison request
+  compareRequestToken += 1;
+  const currentToken = compareRequestToken;
+
   setLoading(true);
   setStatus(isSingle ? "Loading player stats..." : "Loading matchup...");
   state.baseMatches = [];
@@ -283,11 +289,17 @@ export async function handleCompare(options = {}) {
   try {
     const data = isSingle
       ? await loadPlayerStats(idA, (current, total) => {
+          if (currentToken !== compareRequestToken) return;
           setStatus(`Loading player files ${current}/${total}...`);
         }, idsA)
       : await loadMatchup(idA, idB, (current, total) => {
+          if (currentToken !== compareRequestToken) return;
           setStatus(`Loading chunks ${current}/${total}...`);
         }, idsA, idsB);
+
+    if (currentToken !== compareRequestToken) {
+      return;
+    }
 
     state.playerA = getSelectionPlayer(elements.playerA, idA) || data?.playerA || { id: idA, name: `Player ${idA}` };
     state.playerB = isSingle
@@ -342,6 +354,7 @@ export async function handleCompare(options = {}) {
     setLoading(false);
     setStatus("");
   } catch (err) {
+    if (currentToken !== compareRequestToken) return;
     console.error(err);
     setLoading(false);
     renderIdleState();
@@ -808,6 +821,7 @@ async function onPlayerASelected(player) {
   clearInputPlayer(elements.playerB, elements.listB);
   resetCurrentResults({ keepPlayerA: true, message: "" });
   await loadOpponentsForPlayer(player.id, player.ids || [player.id]);
+  await handleCompare();
 }
 
 export async function init() {
@@ -834,7 +848,7 @@ export async function init() {
   });
 
   document.querySelectorAll("[data-clear]").forEach((button) => {
-    button.addEventListener("click", () => {
+    button.addEventListener("click", async () => {
       const target = button.dataset.clear === "a" ? elements.playerA : elements.playerB;
       const list = button.dataset.clear === "a" ? elements.listA : elements.listB;
       clearInputPlayer(target, list);
@@ -857,13 +871,15 @@ export async function init() {
         }
         resetCurrentResults({
           keepPlayerA: Boolean(idA),
-          message: idA ? "Opponent cleared. Display to show all games." : "",
+          message: "",
         });
+        if (idA) {
+          await handleCompare();
+        }
       }
     });
   });
 
-  if (elements.compareBtn) elements.compareBtn.addEventListener("click", handleCompare);
   if (elements.swapBtn) elements.swapBtn.addEventListener("click", handleSwap);
   if (elements.copyLinkBtn) elements.copyLinkBtn.addEventListener("click", handleCopyLink);
   if (elements.recentList) elements.recentList.addEventListener("click", handleRecentClick);

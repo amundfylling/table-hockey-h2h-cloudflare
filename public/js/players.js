@@ -153,8 +153,9 @@ export function hasInputValue(inputEl) {
 }
 
 export function updatePrimaryActionLabel() {
-  if (!elements.compareBtn) return;
-  elements.compareBtn.textContent = resolvePlayerId(elements.playerB) ? "Compare" : "Display";
+  if (elements.compareBtn) {
+    elements.compareBtn.textContent = resolvePlayerId(elements.playerB) ? "Compare" : "Display";
+  }
   if (elements.swapBtn) {
     elements.swapBtn.disabled = !resolvePlayerId(elements.playerB);
   }

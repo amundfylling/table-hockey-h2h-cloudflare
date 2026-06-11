@@ -286,6 +286,9 @@ export function setupTypeahead(inputEl, listEl, options = {}) {
         if (!isPlayerB && options.onPlayerSelect) {
           options.onPlayerSelect(selected);
         }
+        if (isPlayerB && options.onCompare) {
+          options.onCompare();
+        }
       }
     } else if (event.key === "Escape") {
       closeList();
@@ -307,6 +310,9 @@ export function setupTypeahead(inputEl, listEl, options = {}) {
       closeList();
       if (!isPlayerB && options.onPlayerSelect) {
         options.onPlayerSelect(player);
+      }
+      if (isPlayerB && options.onCompare) {
+        options.onCompare();
       }
     }
   });
