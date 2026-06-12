@@ -4,6 +4,7 @@ node_modules/
 # Local cache & Cloudflare data
 .cache/
 public/data/
+public/h2h/
 .wrangler/
 
 # Virtual Environment & Python cache
@@ -22,4 +23,5 @@ __pycache__/
 .playwright-mcp/
 dist/
 *.png
+!public/og-default.png
 

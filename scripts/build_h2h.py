@@ -761,6 +761,8 @@ def build_player_files(matches: pd.DataFrame, player_names: Dict[int, str]) -> N
 
     for pid, payload in player_payloads.items():
         write_json(H2H_DIR / f"{pid}.json", payload)
+    return player_payloads
+
 
 
 def download_cached(url: str, path: Path) -> None:
@@ -863,7 +865,8 @@ def main() -> int:
     write_json(DATA_DIR / "players.json", players)
 
     print("Building H2H player files...")
-    build_player_files(matches, player_names)
+    player_payloads = build_player_files(matches, player_names)
+
 
     print("Build completed.")
     return 0
