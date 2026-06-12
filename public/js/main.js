@@ -37,7 +37,7 @@ import {
   updateFilterCount,
 } from "./filters.js";
 import { setupTypeahead } from "./typeahead.js";
-import { renderSummary } from "./summary.js";
+import { renderSummary, renderSinglePlayerPanels } from "./summary.js";
 import { renderForm } from "./form.js";
 import { renderCharts } from "./charts.js";
 import {
@@ -119,6 +119,7 @@ export function updateView() {
     renderForm([]);
     renderCharts([]);
     renderTable([]);
+    if (elements.singlePlayerSection) elements.singlePlayerSection.hidden = true;
     return;
   }
 
@@ -135,6 +136,14 @@ export function updateView() {
   renderForm(state.filteredMatches);
   renderCharts(state.filteredMatches);
   renderTable(state.filteredMatches);
+
+  if (isSinglePlayerMode()) {
+    if (elements.singlePlayerSection) elements.singlePlayerSection.hidden = false;
+    renderSinglePlayerPanels(state.filteredMatches);
+  } else {
+    if (elements.singlePlayerSection) elements.singlePlayerSection.hidden = true;
+  }
+
   updateFilterCount();
   updateUrl();
 }
@@ -166,6 +175,7 @@ export function setStageTabControls(stage = "overall") {
 }
 
 export function renderIdleState() {
+  if (elements.singlePlayerSection) elements.singlePlayerSection.hidden = true;
   const selectedId = resolvePlayerId(elements.playerA);
   const selectedPlayer = selectedId ? getSelectionPlayer(elements.playerA, selectedId) : null;
 
@@ -235,6 +245,7 @@ export function renderIdleState() {
 }
 
 export function resetCurrentResults(options = {}) {
+  if (elements.singlePlayerSection) elements.singlePlayerSection.hidden = true;
   const keepPlayerA = Boolean(options.keepPlayerA);
   state.baseMatches = [];
   state.stageMatches = [];

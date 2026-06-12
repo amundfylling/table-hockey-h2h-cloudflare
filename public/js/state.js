@@ -97,6 +97,12 @@ export const elements = {
   activeFiltersContainer: document.getElementById("active-filters"),
   playerBLoader: document.getElementById("player-b-loader"),
   matchesHeadRow: document.getElementById("matches-head-row"),
+  singlePlayerSection: document.getElementById("single-player-section"),
+  topOpponentsBody: document.getElementById("top-opponents-body"),
+  opponentsHeadRow: document.getElementById("opponents-head-row"),
+  minGamesSlider: document.getElementById("min-games-slider"),
+  minGamesValue: document.getElementById("min-games-value"),
+  opponentsCount: document.getElementById("opponents-count"),
 };
 
 export function safeStorageGet(key, fallback) {

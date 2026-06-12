@@ -221,6 +221,42 @@
       <div id="summary-grid" class="summary-grid"></div>
     </section>
 
+    <section id="single-player-section" class="card viz-card" hidden>
+      <div class="opponents-panel">
+        <div class="opponents-header">
+          <div class="viz-title">Opponents</div>
+          <div class="opponents-filter">
+            <label for="min-games-slider" class="opponents-filter-label">
+              Min. games: <span id="min-games-value">10</span>
+            </label>
+            <input type="range" id="min-games-slider" min="1" max="50"
+              value="10" class="opponents-slider" />
+          </div>
+        </div>
+        <div class="table-wrap opponents-table-wrap">
+          <table class="compact-table opponents-table">
+            <thead>
+              <tr id="opponents-head-row">
+                <th class="opp-col-name sortable-col" data-sort="name">
+                  Opponent <span class="sort-indicator"></span>
+                </th>
+                <th class="opp-col-numeric sortable-col active-sort"
+                  data-sort="games">
+                  Games <span class="sort-indicator">▼</span>
+                </th>
+                <th class="opp-col-record">W-D-L</th>
+                <th class="opp-col-numeric sortable-col" data-sort="winPct">
+                  Win % <span class="sort-indicator"></span>
+                </th>
+              </tr>
+            </thead>
+            <tbody id="top-opponents-body"></tbody>
+          </table>
+        </div>
+        <div id="opponents-count" class="opponents-count"></div>
+      </div>
+    </section>
+
     <section class="card viz-card">
       <div class="viz-grid">
         <div class="viz-block">

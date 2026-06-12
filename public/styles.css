@@ -237,6 +237,8 @@ body[data-theme="dark"] .grid {
 .selection-card {
   display: grid;
   gap: 20px;
+  position: relative;
+  z-index: 12;
 }
 
 .selection-grid {
@@ -3413,4 +3415,213 @@ body[data-theme="light"] .chart-placeholder {
   background: transparent;
 }
 
+/* ── Opponents Panel (single-player view) ─────────────────────────── */
+.opponents-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.opponents-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.opponents-filter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.opponents-filter-label {
+  font-size: 0.8rem;
+  color: var(--muted);
+  white-space: nowrap;
+  min-width: 90px;
+}
+
+.opponents-filter-label span {
+  font-weight: 700;
+  color: var(--fg);
+  display: inline-block;
+  min-width: 1.6em;
+  text-align: right;
+}
+
+/* Range slider */
+.opponents-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 120px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+  outline: none;
+  cursor: pointer;
+}
+.opponents-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--teal);
+  border: 2px solid var(--bg);
+  box-shadow: 0 1px 3px hsla(0, 0%, 0%, 0.2);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+.opponents-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+.opponents-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--teal);
+  border: 2px solid var(--bg);
+  cursor: pointer;
+}
+
+/* Table layout */
+.opponents-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.opponents-table-wrap {
+  max-height: 480px;
+  overflow: auto;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  -webkit-overflow-scrolling: touch;
+}
+
+.opponents-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bg-alt);
+}
+
+.opponents-table thead th {
+  padding: 8px 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  user-select: none;
+}
+
+/* Sortable column headers */
+.sortable-col {
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+.sortable-col:hover {
+  color: var(--fg);
+}
+.sortable-col.active-sort {
+  color: var(--teal);
+}
+
+.sort-indicator {
+  font-size: 0.65rem;
+  margin-left: 2px;
+  opacity: 0.7;
+}
+
+/* Column alignments */
+.opp-col-name { text-align: left; }
+.opp-col-numeric { text-align: right; }
+.opp-col-record { text-align: center; }
+
+/* Cell styles */
+.opp-cell-name {
+  padding: 8px 6px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+.opp-cell-numeric {
+  padding: 8px 6px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.opp-cell-record {
+  padding: 8px 6px;
+  text-align: center;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Row styles */
+.top-opponents-row {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  border-bottom: 1px solid var(--border);
+}
+.top-opponents-row:last-child {
+  border-bottom: none;
+}
+.top-opponents-row:hover {
+  background: var(--rink-cream-pressed) !important;
+}
+body[data-theme="dark"] .top-opponents-row:hover {
+  background: var(--night-surface) !important;
+}
+
+/* Count indicator */
+.opponents-count {
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-align: right;
+  padding: 0 2px;
+}
+
+/* Responsive adjustments for mobile screens */
+@media (max-width: 480px) {
+  .opponents-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  
+  .opponents-filter {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .opponents-slider {
+    flex-grow: 1;
+    max-width: 180px;
+  }
+
+  .opponents-table {
+    font-size: 0.78rem;
+  }
+
+  .opponents-table thead th {
+    padding: 6px 4px;
+    font-size: 0.65rem;
+  }
+
+  .opp-cell-name,
+  .opp-cell-numeric,
+  .opp-cell-record {
+    padding: 6px 4px;
+  }
+
+  .opp-cell-name {
+    max-width: 100px;
+  }
+}
 

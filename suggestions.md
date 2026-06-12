@@ -333,54 +333,49 @@ win rate over time, and tournament history — without selecting a second player
 
 ### Agent Prompt
 
-> **Goal:** Add a single-player profile view that activates when only Player 1 is
-> selected and the "Display" button is clicked (no Player 2).
+> **Goal:** Enhance the single-player profile view that automatically activates when only Player 1 is selected (and Player 2 is empty/cleared).
 >
-> **This functionality partially exists already** — the `handleCompare` function
-> calls `loadPlayerStats` when only Player 1 is selected, and `isSinglePlayerMode()`
-> already governs some UI branching. The task is to expand and polish this mode.
+> **Architecture Context:**
+> - The application automatically triggers comparisons/profile views upon player selection (`handleCompare()` is called in `onPlayerASelected` or when Player B is cleared).
+> - `isSinglePlayerMode()` (checks `state.comparisonMode === "single"`) already governs UI branching.
+> - Data for Player 1 is loaded via `loadPlayerStats(idA)` in `public/js/data.js`, which returns `{ playerA, playerB: { id: null, name: "Opponents" }, matches }`.
 >
-> **Profile view should display:**
+> **Requirements & Features:**
 >
-> 1. **Player header:** Name, country flag, world ranking, city (from player record).
+> 1. **Enhanced Player Header:**
+>    - Render player profile details (Name, country/flag, world ranking, city) using data from the player record.
+>    - Place this cleanly in the `headline` and `subhead` sections or at the top of the summary card.
 >
-> 2. **Career summary stats card:**
->    - Total games played
->    - Overall W-D-L record and win percentage
->    - Total goals scored / conceded and goal difference
->    - Overtime game count and OT win rate
->    - Date range (first game – last game)
+> 2. **Career Summary Stats Card (`public/js/summary.js`):**
+>    - In `renderSummary()`, when `isSinglePlayerMode()` is true, display:
+>      - Overall W-D-L record (with win percentage)
+>      - Goals scored / conceded (with goal difference)
+>      - Overtime game count and OT win rate
+>      - Career date range (First game date – Last game date)
 >
-> 3. **Top 10 opponents table:** Sorted by total games played against that opponent.
->    Columns: Opponent name, Games, W-D-L, Win %, Goal diff. Each row should be
->    clickable to trigger a full H2H comparison with that opponent.
+> 3. **Top 10 Opponents Panel:**
+>    - Create a new UI card/section (e.g., dynamically inserted or via a toggleable container in `index.html`) displaying a table of the top 10 opponents.
+>    - Sort opponents by the total number of games played against them.
+>    - Columns: Opponent, Games, Record (W-D-L), Win %, Goal Diff.
+>    - **Interactivity:** Make each row clickable. Clicking an opponent must update the Player B input with their name/ID, trigger the normal selection flow, and automatically run `handleCompare()` to load the full H2H comparison with that opponent.
 >
-> 4. **Win rate over time chart:** Reuse the existing running win-rate chart from
->    `renderCharts`, adapted for single-player mode (all opponents combined).
+> 4. **Tournament Breakdown Panel:**
+>    - Display a collapsible or scrollable list of unique tournaments played, showing the game count and W-D-L record per tournament.
 >
-> 5. **Tournament breakdown:** A collapsible list of unique tournaments played,
->    with game count and W-D-L per tournament.
+> 5. **Win Rate Chart Integration (`public/js/charts.js`):**
+>    - Adapt the running win rate chart in `renderCharts` so that it handles all opponents combined in single-player mode.
 >
-> **UI requirements:**
-> - Reuse existing card, scoreboard, and chart components/styles.
-> - The scoreboard header should show only Player A (teal side) with "All opponents"
->   or "Career stats" on the right side.
-> - All existing filters (year, tournament, stage, OT, tight) should still work.
-> - The match table should include an "Opponent" column (already handled by
->   `SINGLE_TABLE_COLUMNS`).
+> **UI and Integration Rules:**
+> - Avoid introducing raw gray colors or complex layouts; conform to `DESIGN.md` guidelines (e.g., use translucent `.card` styles, Manrope for data tables, and Fraunces for display headings).
+> - Responsive layout: Ensure the new panels (Top 10 Opponents, Tournament Breakdown) stack neatly on mobile screens and align alongside other widgets on desktop.
+> - Ensure all existing filters (year, tournament level, stage, OT, tight) still work and correctly filter the career matches, updating the summary card, win-rate chart, and opponents table dynamically.
 >
-> **Rules:**
-> - Follow DESIGN.md and PRODUCT.md principles. No new colors or fonts.
-> - Data comes from the existing `data/h2h/{playerId}.json` files — no build
->   changes needed.
-> - Follow existing code style and module patterns.
->
-> **Verification:**
-> 1. Select only Player 1 and click "Display." Confirm the profile view renders.
-> 2. Verify the top opponents table is populated and clicking a row loads the H2H.
-> 3. Apply a year filter and confirm stats/charts/table all update.
-> 4. Test with a player who has many opponents (e.g., a top-ranked player).
-> 5. Confirm no regressions in two-player H2H mode.
+> **Verification Steps:**
+> 1. Select a player for Player 1, and ensure Player 2 is empty. Verify that the career stats, win-rate chart, and top opponents list load automatically.
+> 2. Verify that clicking an opponent from the Top 10 list loads the H2H comparison view for both players, updating inputs and url parameters.
+> 3. Apply a year filter and confirm stats, charts, and table rows react and update.
+> 4. Check the layout on mobile viewport sizes to ensure no horizontal scrolling or overlapping text.
+> 5. Confirm that two-player H2H comparison remains fully functional with zero regressions.
 
 ---
 
