@@ -93,6 +93,9 @@ export function formatDateRange(start, end) {
 export function classifyStage(stage) {
   const text = normalizeText(stage);
   if (!text) return "other";
+  if (text.includes("team")) {
+    return "round-robin";
+  }
   if (
     text.includes("playoff") ||
     text.includes("knockout") ||
@@ -113,6 +116,10 @@ export function classifyStage(stage) {
 }
 
 export function normalizeStageType(value, stage) {
+  const stageText = normalizeText(stage);
+  if (stageText.includes("team")) {
+    return "round-robin";
+  }
   const text = normalizeText(value).replace(/_/g, "-");
   if (text === "playoff") return "playoff";
   if (text === "round-robin" || text === "round robin") return "round-robin";
