@@ -115,15 +115,29 @@ export function classifyStage(stage) {
   return "other";
 }
 
-export function normalizeStageType(value, stage) {
+export function normalizeStageType(value, stage, tournamentName) {
   const stageText = normalizeText(stage);
-  if (stageText.includes("team")) {
+  const tournText = normalizeText(tournamentName);
+  if (stageText.includes("team") || tournText.includes("team")) {
     return "round-robin";
   }
   const text = normalizeText(value).replace(/_/g, "-");
   if (text === "playoff") return "playoff";
   if (text === "round-robin" || text === "round robin") return "round-robin";
   return classifyStage(stage);
+}
+
+export function normalizeStageName(stage, stageType) {
+  if (!stage) return "";
+  if (stageType === "round-robin") {
+    const lowerStage = stage.toLowerCase();
+    if (lowerStage === "playoff" || lowerStage === "playoffs") {
+      return "Round-Robin";
+    } else if (lowerStage.includes("playoff")) {
+      return stage.replace(/playoffs?/gi, "Round-Robin");
+    }
+  }
+  return stage;
 }
 
 export function debounce(fn, delay) {

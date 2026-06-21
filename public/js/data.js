@@ -6,6 +6,7 @@ import {
   normalizeTournamentLevel,
   parseOvertime,
   normalizeStageType,
+  normalizeStageName,
 } from "./utils.js";
 import {
   normalizePlayerRecord,
@@ -91,6 +92,9 @@ export function normalizeMatchBase(raw) {
   const sourceStageId = raw.source_stage_id ?? raw.SourceStageID ?? "";
   const sourceMatchId = raw.source_match_id ?? raw.SourceMatchID ?? "";
 
+  const stageType = normalizeStageType(raw.stage_type ?? raw.StageType ?? "", stage, tournamentName);
+  const displayStage = normalizeStageName(stage, stageType);
+
   return {
     date,
     ts: Number.isFinite(ts) ? ts : 0,
@@ -99,8 +103,8 @@ export function normalizeMatchBase(raw) {
     tournament_id: tournamentId !== null ? Number(tournamentId) : null,
     tournament_key: tournamentId != null ? `id:${tournamentId}` : `name:${tournamentName || "unknown"}`,
     tournament_level: tournamentLevel,
-    stage,
-    stage_type: normalizeStageType(raw.stage_type ?? raw.StageType ?? "", stage),
+    stage: displayStage,
+    stage_type: stageType,
     stage_id: stageId != null ? Number(stageId) : null,
     stage_sequence: stageSequence != null ? Number(stageSequence) : null,
     round_number: roundNumber != null ? Number(roundNumber) : null,
