@@ -12,19 +12,22 @@ exploration interface with zero runtime database queries.
 * `.github/` - Houses GitHub Action workflows for weekly automated and push-triggered builds.
 * `.cache/` - Local cache directory used by build scripts to store downloaded source files.
 * `design-system/` - Contains design resource directories and specifications.
+* `functions/` - Cloudflare Pages Functions (dynamic OG tags and redirects for shared matchup links).
+* `prompts/` - Historical feature prompts kept as project records.
 * `public/` - The static web root containing the HTML, CSS, and vanilla JS frontend application.
+* `public/js/` - Frontend ES modules (see "Frontend Module Map" below).
 * `scripts/` - Ingestion, caching, and processing Python scripts used to build the static dataset.
 * `tests/` - Automated Python integration and validation tests verifying match counts and data sanity.
 
 ## Build & Development Commands
 
 ```bash
-# Setup Virtual Environment
+# Setup Virtual Environment (use python3; `python` is not aliased on macOS)
 python3 -m venv .venv
 source .venv/bin/activate
 
 # Install Dependencies
-pip install pandas pyarrow requests
+pip install -r requirements.txt
 
 # Build H2H Static Data (local run)
 python3 scripts/build_h2h.py
@@ -33,10 +36,10 @@ python3 scripts/build_h2h.py
 MIN_MATCHES=1000 python3 scripts/build_h2h.py
 
 # Run Local Web Server
-python -m http.server --directory public 8000
+python3 -m http.server --directory public 8000
 
-# Run Tests
-python -m unittest -v
+# Run Tests (discovery is required; bare `python -m unittest -v` runs 0 tests)
+python -m unittest discover -s tests -v
 ```
 
 ## Code Style & Conventions
@@ -84,6 +87,49 @@ zero-runtime static application served by Cloudflare Pages that dynamically fetc
 pre-computed JSON files from `public/data/` using standard AJAX requests, preventing database
 overhead and ensuring instant loading times on mobile and desktop.
 
+## Frontend Module Map
+
+The frontend is vanilla ES modules under `public/js/`, loaded from `index.html` via
+`<script type="module" src="js/main.js">`:
+
+* `main.js` - Orchestration: init, compare flow, stage/mode tabs, swap, idle/loading states,
+  data-freshness footer, copy link.
+* `state.js` - Shared mutable state, the `elements` DOM registry, localStorage helpers, mode helpers.
+* `constants.js` - Table column definitions, URL param keys, inline SVGs, country flags.
+* `utils.js` - Pure helpers (text/date/stage normalization, HTML escaping).
+* `data.js` - JSON fetching, matchup/player/opponents loaders.
+* `players.js` - Player record helpers, input selection state, alias/ID resolution.
+* `typeahead.js` - Player search dropdowns (combobox ARIA pattern).
+* `url-state.js` - URL <-> app-state sync (query params, restore, clear).
+* `recent.js` - Recent-matchup chips + first-visit suggestions (`initRecent({ onCompare })`).
+* `filters.js` - Filter bar, advanced panel, active-filter chips.
+* `summary.js` - H2H scoreboard + highlight cards.
+* `opponents.js` - Single-player opponents table (sortable, min-games slider).
+* `charts.js` - SVG charts + the chart tooltip system.
+* `table.js` - Match table (sorting, pagination, expandable rows, series detail panels).
+* `form.js` - Recent-form chips strip.
+* `series.js` - Playoff series aggregation.
+* `share.js` - Share-image generation.
+* `theme.js` - Dark/light theme + info popovers.
+
+## Frontend Conventions
+
+* **Cache busting**: bump the `styles.css?v=` query in `index.html` whenever CSS ships.
+* **Module wiring**: modules that need a callback into `main.js` use dependency injection
+  (`initTable(updateView)`, `initFilters(updateView)`, `initRecent({ onCompare })`) instead of
+  importing `main.js` - do not introduce import cycles.
+* **Design tokens**: radius scale is 6/8/10/12px (scoreboard family uses 12px); form controls never
+  go below `1rem` (iOS Safari zooms on smaller); small orange text uses `--accent-dark` (WCAG AA),
+  bright `--accent` is reserved for large text, fills and graphics; breakpoints are 600px (mobile
+  card layout), 800px (match-table column fold) and 900px (stacked layout).
+* **Chart tooltips**: bound via `bindChartTooltip` (pointer events; touch taps persist ~2.5s).
+  Placement must never cover the hovered element - anchored to the hovered region and placed
+  side -> above -> below in that preference order.
+* **ARIA**: typeaheads use the combobox pattern with `aria-activedescendant`; tab sets use roving
+  tabindex with arrow-key navigation.
+* **Browser audits**: serve `public/` locally, then drive headless Chrome with Playwright
+  (installed in `.venv`) for visual regression checks; screenshots go to `/tmp`.
+
 ## Testing Strategy
 
 The testing suite consists of integration and verification tests under `tests/` using Python's
@@ -91,7 +137,7 @@ standard `unittest` framework.
 
 * **Local Test Execution**:
   ```bash
-  python -m unittest -v
+  python -m unittest discover -s tests -v
   ```
 * **CI Pipeline Execution**:
   The test suite runs automatically in the GitHub Actions `Validate H2H data` job during the `build`

@@ -47,7 +47,6 @@ export const elements = {
   playerB: document.getElementById("player-b"),
   listA: document.getElementById("player-a-list"),
   listB: document.getElementById("player-b-list"),
-  compareBtn: document.getElementById("compare-btn"),
   swapBtn: document.getElementById("swap-btn"),
   copyLinkBtn: document.getElementById("copy-link-btn"),
   shareImageBtn: document.getElementById("share-image-btn"),

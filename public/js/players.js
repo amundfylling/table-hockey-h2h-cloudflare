@@ -105,7 +105,7 @@ export function resolvePlayerId(inputEl) {
   if (stored) return Number(stored);
   const value = inputEl.value.trim();
   if (!value) return null;
-  const idMatch = value.match(/\((\d+)\)\s*$/) || value.match(/\b(\d+)\s*$/);
+  const idMatch = value.match(/\(#?(\d+)\)\s*$/) || value.match(/\b(\d+)\s*$/);
   if (idMatch) {
     return Number.parseInt(idMatch[1], 10);
   }
@@ -153,9 +153,6 @@ export function hasInputValue(inputEl) {
 }
 
 export function updatePrimaryActionLabel() {
-  if (elements.compareBtn) {
-    elements.compareBtn.textContent = resolvePlayerId(elements.playerB) ? "Compare" : "Display";
-  }
   if (elements.swapBtn) {
     elements.swapBtn.disabled = !resolvePlayerId(elements.playerB);
   }

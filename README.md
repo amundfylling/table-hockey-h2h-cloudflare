@@ -18,7 +18,7 @@ Raw URLs (overridable via env vars):
 
 ## Build-time slicing
 
-`python scripts/build_h2h.py`:
+`python3 scripts/build_h2h.py`:
 
 - Downloads raw data into `.cache/`.
 - Converts and normalizes types.
@@ -28,6 +28,7 @@ Raw URLs (overridable via env vars):
 - Generates static JSON into `public/data/`:
   - `players.json` (50+ matches only)
   - `tournaments.json`
+  - `meta.json` (build timestamp + player/match counts; powers the footer "Data updated" line)
   - `h2h/{playerId}.json` (one file per player; opponents nested)
 
 No Parquet/CSV source files are stored in this repo, and generated JSON is a build artifact deployed to Pages.
@@ -37,12 +38,18 @@ No Parquet/CSV source files are stored in this repo, and generated JSON is a bui
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install pandas pyarrow requests
+pip install -r requirements.txt
 python3 scripts/build_h2h.py
-python -m http.server --directory public 8000
+python3 -m http.server --directory public 8000
 ```
 
 Open `http://localhost:8000`.
+
+Run the data validation tests with:
+
+```bash
+python -m unittest discover -s tests -v
+```
 
 For a smaller local H2H build, raise the match threshold:
 
@@ -70,5 +77,5 @@ export PLAYERS_CSV_URL="https://raw.githubusercontent.com/your-org/your-repo/mai
 export TOURNAMENTS_CSV_URL="https://raw.githubusercontent.com/your-org/your-repo/main/data/tournament_data.csv"
 export TOURNAMENT_METADATA_CSV_URL="https://raw.githubusercontent.com/your-org/your-repo/main/data/tournament_metadata.csv"
 export RANKING_TXT_URL="https://example.com/ranking.txt"
-python scripts/build_h2h.py
+python3 scripts/build_h2h.py
 ```

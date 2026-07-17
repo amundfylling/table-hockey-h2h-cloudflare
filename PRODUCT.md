@@ -14,7 +14,7 @@ Table Hockey H2H helps users quickly answer how two table hockey players have pe
 
 Success means a user can pick two players, understand the overall record, filter to the matches that matter, and inspect the underlying game list without feeling like they are working in a spreadsheet.
 
-Future comparison work should support playoff series context as well as individual games. Playoffs are often best of 3, 5, or 7, so the product should eventually distinguish single-game results from series-level outcomes and make both useful without confusing the core head-to-head view.
+Playoff series context is supported alongside individual games. Playoffs are often best of 3, 5, or 7, so the product distinguishes single-game results from series-level outcomes (Series/Games toggle in the playoff stage) without confusing the core head-to-head view.
 
 ## Brand Personality
 
@@ -35,7 +35,7 @@ Avoid visual patterns that make the data feel templated or corporate: identical 
 3. Fast scanning beats decoration: hierarchy, spacing, and contrast should help users find the winning record, stage split, dates, tournaments, and outlier matches quickly.
 4. Serious but not sterile: the app should carry the energy of competitive sport while preserving analytical clarity.
 5. Mobile is a primary workflow: player selection, filters, charts, and match rows must remain usable on small screens with comfortable tap targets and no horizontal guesswork.
-6. Series-aware over time: future playoff features should make best-of series legible without burying individual game evidence.
+6. Series-aware over time: playoff features should make best-of series legible without burying individual game evidence.
 
 ## Accessibility & Inclusion
 

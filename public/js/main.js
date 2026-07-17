@@ -5,11 +5,9 @@ import {
   safeStorageGet,
   safeStorageSet,
   safeStorageRemove,
-  isSeriesMode,
   isSinglePlayerMode,
   getStatsMode,
 } from "./state.js";
-import { URL_PARAM_KEYS } from "./constants.js";
 import {
   normalizeAliasIds,
   resolvePlayerId,
@@ -18,11 +16,9 @@ import {
   getSelectionPlayer,
   getSelectionIds,
   getPlayerById,
-  getWorldRank,
   parseIdList,
   normalizePlayerRecord,
 } from "./players.js";
-import { decodeHtmlEntities } from "./utils.js";
 import {
   loadPlayerStats,
   loadMatchup,
@@ -38,7 +34,20 @@ import {
   updateFilterCount,
 } from "./filters.js";
 import { setupTypeahead } from "./typeahead.js";
-import { renderSummary, renderSinglePlayerPanels } from "./summary.js";
+import { renderSummary } from "./summary.js";
+import { renderSinglePlayerPanels } from "./opponents.js";
+import {
+  updateUrl,
+  restoreStateFromUrl,
+  getUrlSelection,
+  clearUrlSelection,
+} from "./url-state.js";
+import {
+  renderRecent,
+  addRecent,
+  handleRecentClick,
+  initRecent,
+} from "./recent.js";
 import { renderForm } from "./form.js";
 import { renderCharts } from "./charts.js";
 import {
@@ -60,7 +69,6 @@ export function setStatus(message) {
 export function setLoading(isLoading) {
   state.loading = isLoading;
   document.body.classList.toggle("is-loading", isLoading);
-  if (elements.compareBtn) elements.compareBtn.disabled = isLoading;
 }
 
 export function updateStageMeta() {
@@ -157,12 +165,6 @@ export function setDataControlsEnabled(enabled) {
       tab.disabled = !enabled;
     });
   }
-}
-
-export function clearUrlSelection() {
-  const url = new URL(window.location.href);
-  URL_PARAM_KEYS.forEach((key) => url.searchParams.delete(key));
-  window.history.replaceState({}, "", url);
 }
 
 export function setStageTabControls(stage = "overall") {
@@ -522,73 +524,6 @@ export function handleCopyLink() {
   }
 }
 
-export async function handleRecentClick(event) {
-  const button = event.target.closest("button");
-  if (!button) return;
-  const p1 = Number(button.dataset.p1);
-  const p2 = Number(button.dataset.p2);
-  if (!p1 || !p2) return;
-  const p1Ids = parseIdList(button.dataset.p1Ids || p1);
-  const p2Ids = parseIdList(button.dataset.p2Ids || p2);
-  const player1 = { ...(getPlayerById(p1) || { id: p1, name: `Player ${p1}` }), ids: p1Ids };
-  const player2 = { ...(getPlayerById(p2) || { id: p2, name: `Player ${p2}` }), ids: p2Ids };
-  setInputPlayer(elements.playerA, player1);
-  elements.playerB.disabled = false;
-  await loadOpponentsForPlayer(p1, p1Ids);
-  setInputPlayer(elements.playerB, player2);
-  handleCompare();
-}
-
-function createMatchupChip(p1Id, p2Id, p1Name, p2Name, p1Ids, p2Ids) {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.textContent = `${decodeHtmlEntities(p1Name)} vs ${decodeHtmlEntities(p2Name)}`;
-  button.dataset.p1 = p1Id;
-  button.dataset.p2 = p2Id;
-  if (p1Ids?.length > 1) button.dataset.p1Ids = p1Ids.join(",");
-  if (p2Ids?.length > 1) button.dataset.p2Ids = p2Ids.join(",");
-  return button;
-}
-
-function getAliasIds(playerId) {
-  return state.aliasMap.get(playerId) || [playerId];
-}
-
-export function renderRecent() {
-  const recent = safeStorageGet(STORAGE_KEYS.recent, []);
-  if (!elements.recentList) return;
-  elements.recentList.innerHTML = "";
-  if (!recent.length) {
-    const ranked = state.players
-      .filter((player) => player.name && getWorldRank(player) !== null)
-      .sort((a, b) => getWorldRank(a) - getWorldRank(b));
-    const pairs = [];
-    if (ranked.length >= 2) pairs.push([ranked[0], ranked[1]]);
-    if (ranked.length >= 4) pairs.push([ranked[2], ranked[3]]);
-    if (!pairs.length) {
-      elements.recentList.innerHTML = "<span class=\"muted\">No recent matchups</span>";
-      return;
-    }
-    const note = document.createElement("span");
-    note.className = "muted recent-note";
-    note.textContent = "No recent matchups yet — try:";
-    elements.recentList.appendChild(note);
-    pairs.forEach(([playerA, playerB]) => {
-      elements.recentList.appendChild(
-        createMatchupChip(playerA.id, playerB.id, playerA.name, playerB.name, getAliasIds(playerA.id), getAliasIds(playerB.id))
-      );
-    });
-    return;
-  }
-  const fragment = document.createDocumentFragment();
-  recent.forEach((item) => {
-    fragment.appendChild(
-      createMatchupChip(item.p1Id, item.p2Id, item.p1Name, item.p2Name, item.p1Ids, item.p2Ids)
-    );
-  });
-  elements.recentList.appendChild(fragment);
-}
-
 export async function renderDataFreshness() {
   const el = document.getElementById("data-freshness");
   if (!el) return;
@@ -598,209 +533,6 @@ export async function renderDataFreshness() {
   if (Number.isNaN(date.getTime())) return;
   el.textContent = `Data updated ${date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}`;
   el.hidden = false;
-}
-
-export function addRecent(p1, p2, p1Name, p2Name, p1Ids = [p1], p2Ids = [p2]) {
-  const recent = safeStorageGet(STORAGE_KEYS.recent, []);
-  const filtered = recent.filter((item) => !(item.p1Id === p1 && item.p2Id === p2));
-  filtered.unshift({
-    p1Id: p1,
-    p2Id: p2,
-    p1Ids: normalizeAliasIds(p1Ids),
-    p2Ids: normalizeAliasIds(p2Ids),
-    p1Name,
-    p2Name,
-    ts: Date.now(),
-  });
-  safeStorageSet(STORAGE_KEYS.recent, filtered.slice(0, 5));
-  renderRecent();
-}
-
-export function updateUrl(p1, p2 = null, p1Ids = [], p2Ids = []) {
-  const idA = p1 || resolvePlayerId(elements.playerA);
-  const idB = p2 || (p1 === null ? null : resolvePlayerId(elements.playerB));
-  const idsA = (p1Ids && p1Ids.length > 0) ? p1Ids : getSelectionIds(elements.playerA);
-  const idsB = (p2Ids && p2Ids.length > 0) ? p2Ids : (p1 === null ? [] : getSelectionIds(elements.playerB));
-
-  const url = new URL(window.location.href);
-  if (!idA) {
-    URL_PARAM_KEYS.forEach((key) => url.searchParams.delete(key));
-    window.history.replaceState({}, "", url);
-    return;
-  }
-
-  url.searchParams.set("p1", idA);
-  const groupA = normalizeAliasIds(idsA);
-  if (groupA.length > 1) {
-    url.searchParams.set("p1g", groupA.join(","));
-  } else {
-    url.searchParams.delete("p1g");
-  }
-
-  if (idB) {
-    url.searchParams.set("p2", idB);
-    const groupB = normalizeAliasIds(idsB);
-    if (groupB.length > 1) {
-      url.searchParams.set("p2g", groupB.join(","));
-    } else {
-      url.searchParams.delete("p2g");
-    }
-  } else {
-    url.searchParams.delete("p2");
-    url.searchParams.delete("p2g");
-  }
-
-  if (state.stageTab && state.stageTab !== "overall") {
-    url.searchParams.set("stage", state.stageTab);
-  } else {
-    url.searchParams.delete("stage");
-  }
-
-  if (state.playoffMode && state.playoffMode !== "series") {
-    url.searchParams.set("playoffMode", state.playoffMode);
-  } else {
-    url.searchParams.delete("playoffMode");
-  }
-
-  if (state.goalsMode && state.goalsMode !== "series") {
-    url.searchParams.set("goalsMode", state.goalsMode);
-  } else {
-    url.searchParams.delete("goalsMode");
-  }
-
-  if (state.filters.search) {
-    url.searchParams.set("search", state.filters.search);
-  } else {
-    url.searchParams.delete("search");
-  }
-
-  if (state.filters.yearFrom && state.filters.yearFrom !== "all") {
-    url.searchParams.set("yearFrom", state.filters.yearFrom);
-  } else {
-    url.searchParams.delete("yearFrom");
-  }
-  if (state.filters.yearTo && state.filters.yearTo !== "all") {
-    url.searchParams.set("yearTo", state.filters.yearTo);
-  } else {
-    url.searchParams.delete("yearTo");
-  }
-
-  if (state.filters.tournament && state.filters.tournament !== "all") {
-    url.searchParams.set("tournament", state.filters.tournament);
-  } else {
-    url.searchParams.delete("tournament");
-  }
-
-  if (state.filters.tournamentLevels && state.filters.tournamentLevels.length > 0) {
-    url.searchParams.set("levels", state.filters.tournamentLevels.join(","));
-  } else {
-    url.searchParams.delete("levels");
-  }
-
-  if (state.filters.stage && state.filters.stage !== "all") {
-    url.searchParams.set("stageDetail", state.filters.stage);
-  } else {
-    url.searchParams.delete("stageDetail");
-  }
-
-  if (state.filters.otOnly) {
-    url.searchParams.set("ot", "true");
-  } else {
-    url.searchParams.delete("ot");
-  }
-
-  if (state.filters.tightOnly) {
-    url.searchParams.set("tight", "true");
-  } else {
-    url.searchParams.delete("tight");
-  }
-
-  if (state.filters.bestOf && state.filters.bestOf.length > 0) {
-    url.searchParams.set("bestOf", state.filters.bestOf.join(","));
-  } else {
-    url.searchParams.delete("bestOf");
-  }
-
-  window.history.replaceState({}, "", url);
-}
-
-export function restoreStateFromUrl() {
-  const params = new URLSearchParams(window.location.search);
-
-  const stage = params.get("stage");
-  if (stage) {
-    state.stageTab = stage;
-  }
-
-  const playoffMode = params.get("playoffMode");
-  if (playoffMode) {
-    state.playoffMode = playoffMode;
-  }
-
-  const goalsMode = params.get("goalsMode");
-  if (goalsMode) {
-    state.goalsMode = goalsMode;
-  }
-
-  const search = params.get("search");
-  if (search) {
-    state.filters.search = search;
-    if (elements.searchFilter) elements.searchFilter.value = search;
-  }
-
-  const yearFrom = params.get("yearFrom");
-  if (yearFrom) {
-    state.filters.yearFrom = yearFrom;
-  }
-  const yearTo = params.get("yearTo");
-  if (yearTo) {
-    state.filters.yearTo = yearTo;
-  }
-
-  const tournament = params.get("tournament");
-  if (tournament) {
-    state.filters.tournament = tournament;
-  }
-
-  const levels = params.get("levels");
-  if (levels) {
-    state.filters.tournamentLevels = levels.split(",");
-  }
-
-  const stageDetail = params.get("stageDetail");
-  if (stageDetail) {
-    state.filters.stage = stageDetail;
-  }
-
-  const ot = params.get("ot");
-  if (ot === "true") {
-    state.filters.otOnly = true;
-    if (elements.otToggle) elements.otToggle.checked = true;
-  }
-
-  const tight = params.get("tight");
-  if (tight === "true") {
-    state.filters.tightOnly = true;
-    if (elements.tightToggle) elements.tightToggle.checked = true;
-  }
-
-  const bestOf = params.get("bestOf");
-  if (bestOf) {
-    state.filters.bestOf = bestOf.split(",");
-  }
-}
-
-export function getUrlSelection() {
-  const params = new URLSearchParams(window.location.search);
-  const p1 = params.get("p1");
-  const p2 = params.get("p2");
-  if (!p1) return null;
-  const id1 = Number(p1);
-  const id2 = p2 ? Number(p2) : null;
-  if (!Number.isFinite(id1) || (p2 && !Number.isFinite(id2))) return null;
-  const p1Ids = normalizeAliasIds([id1, ...parseIdList(params.get("p1g"))]);
-  const p2Ids = id2 ? normalizeAliasIds([id2, ...parseIdList(params.get("p2g"))]) : [];
-  return { p1: id1, p2: id2, p1Ids, p2Ids };
 }
 
 export function initTabs() {
@@ -981,6 +713,7 @@ export async function init() {
   if (elements.shareImageBtn) elements.shareImageBtn.addEventListener("click", handleShareImage);
   if (elements.recentList) elements.recentList.addEventListener("click", handleRecentClick);
 
+  initRecent({ onCompare: handleCompare });
   initFilters(updateView);
   initTable(updateView);
   initTabs();

@@ -147,6 +147,7 @@ body[data-theme="dark"] .grid {
   background-image: radial-gradient(rgba(243, 245, 247, 0.08) 1px, transparent 1px);
 }
 
+/* ── Layout & site header ─────────────────────────────────────────── */
 .site-header {
   max-width: 1200px;
   margin: 0 auto;
@@ -234,6 +235,7 @@ body[data-theme="dark"] .grid {
   min-width: 0;
 }
 
+/* ── Selection card (player inputs, swap, recent matchups) ────────── */
 .selection-card {
   display: grid;
   gap: 20px;
@@ -507,41 +509,6 @@ body[data-theme="dark"] .grid {
   gap: 12px;
 }
 
-.primary {
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
-  color: #fff;
-  border: none;
-  border-radius: 999px;
-  padding: 12px 24px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.primary::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, transparent 0%, rgba(255, 255, 255, 0.1) 100%);
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.primary:hover {
-  transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 14px 30px rgba(239, 108, 68, 0.35);
-}
-
-.primary:hover::before {
-  opacity: 1;
-}
-
-.primary:active {
-  transform: translateY(0) scale(0.98);
-}
-
 .ghost {
   border: 1px solid var(--border);
   background: transparent;
@@ -629,6 +596,12 @@ body[data-theme="dark"] .recent-list button:focus-visible {
   border-color: rgba(255, 255, 255, 0.3);
 }
 
+.recent-note {
+  font-size: 0.85rem;
+  align-self: center;
+}
+
+/* ── Stage tabs & mode controls ───────────────────────────────────── */
 .stage-card {
   display: grid;
   grid-template-columns: auto auto 1fr;
@@ -732,6 +705,7 @@ body[data-theme="dark"] .tab:hover:not(.is-active) {
 }
 
 
+/* ── Summary section & scoreboard ─────────────────────────────────── */
 .summary-section {
   display: grid;
   gap: 14px;
@@ -1266,6 +1240,7 @@ body[data-theme="dark"] .h2h-scoreboard {
   }
 }
 
+/* ── Charts & tooltips ────────────────────────────────────────────── */
 .viz-card {
   padding: 20px;
 }
@@ -1571,7 +1546,7 @@ body[data-theme="dark"] .h2h-scoreboard {
 }
 
 
-/* Inline Filter Bar */
+/* ── Filters (bar, advanced panel, active chips) ──────────────────── */
 .filter-bar {
   display: grid;
   gap: 12px;
@@ -1808,6 +1783,7 @@ body[data-theme="dark"] .h2h-scoreboard {
   background: var(--bg-alt);
 }
 
+/* ── Match list & table ───────────────────────────────────────────── */
 /* Matches Header */
 .matches-header {
   display: flex;
@@ -2154,13 +2130,6 @@ body[data-comparison-mode="single"][data-stats-mode="series"] #matches-table {
   border-bottom: 1px solid var(--border);
 }
 
-.series-games-header-name {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .series-games-list {
   display: grid;
   gap: 0;
@@ -2287,6 +2256,11 @@ body[data-comparison-mode="single"][data-stats-mode="series"] #matches-table {
   text-decoration: underline;
 }
 
+.data-freshness {
+  font-size: 0.8rem;
+  margin-bottom: 6px;
+}
+
 .skeleton {
   position: relative;
   color: transparent !important;
@@ -2309,6 +2283,7 @@ body[data-comparison-mode="single"][data-stats-mode="series"] #matches-table {
   }
 }
 
+/* ── Responsive breakpoints: 900px stacked layout, 600px mobile cards ── */
 @media (max-width: 900px) {
   .selection-grid {
     grid-template-columns: 1fr;
@@ -3719,17 +3694,6 @@ body[data-theme="dark"] .top-opponents-row:hover {
   body[data-stats-mode="games"] .match-score .ot-inline {
     display: inline-flex;
   }
-}
-
-/* ── First-visit suggestions & footer freshness ── */
-.recent-note {
-  font-size: 0.85rem;
-  align-self: center;
-}
-
-.data-freshness {
-  font-size: 0.8rem;
-  margin-bottom: 6px;
 }
 
 /* ── Print: scoreboard-first output ── */

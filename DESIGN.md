@@ -118,6 +118,8 @@ The palette is a restrained sports-stat palette: warm rink neutrals, one puck-or
 
 **The Two-Player Color Rule.** Orange and teal must carry matchup meaning first. Do not spend them on unrelated decoration when a player comparison is present.
 
+**The Small Orange Text Rule.** Bright puck orange (`#ef6c44`) measures ~3:1 on white — fine for large text, fills, and graphics, but below WCAG AA for small text. Orange text under ~18px bold (winner badges, score values, chips, links) uses Deep Puck Orange (`#cc5132`, `var(--accent-dark)`) instead. Dark mode redefines `--accent-dark` to a lighter orange, so the same variable keeps both themes compliant.
+
 **The No Spreadsheet Gray Rule.** Neutral surfaces should stay warm or tinted. Avoid flat white-gray table dumps that make the app feel like exported data.
 
 ## 3. Typography
@@ -140,6 +142,8 @@ The palette is a restrained sports-stat palette: warm rink neutrals, one puck-or
 **The Stats Stay Readable Rule.** Use Manrope for dense data and controls. Fraunces is for hierarchy, not table cells or chart labels.
 
 **The No Tiny Evidence Rule.** Match evidence on mobile must stay readable at 0.85rem or larger unless it is a badge or compact label.
+
+**The No Zoom Rule.** Form controls never go below 1rem (16px); iOS Safari auto-zooms on focus for smaller text. Reclaim density with padding, not font size.
 
 ## 4. Elevation
 
@@ -171,7 +175,7 @@ The system uses a hybrid of tonal layering, translucent cards, borders, and soft
 - **State:** Form chips are compact circles. Winner badges and match-score pills are compact but must remain legible on mobile.
 
 ### Cards / Containers
-- **Corner Style:** Tight rounded surfaces (`8px` default card radius, `8px` nested block radius).
+- **Corner Style:** Tight rounded surfaces (`8px` default card radius, `8px` nested block radius, `12px` for the scoreboard family: scoreboard head, score rows, highlight columns).
 - **Background:** Use translucent card backgrounds for top-level cards and tonal backgrounds for nested functional groups.
 - **Shadow Strategy:** Top-level surfaces may use ambient shadows; static cards should not lift on hover. Nested blocks should prefer borders and tonal background.
 - **Border:** Use `1px` borders from the current border token. Do not introduce colored side stripes.
@@ -197,6 +201,10 @@ The scoreboard is the signature component. It should make the current comparison
 ### Charts
 
 Charts are compact evidence panels, not decorative illustrations. Use teal/orange legends, visible tooltips, and restrained motion. Preserve enough whitespace for labels and hover targets on mobile.
+
+### Chart Tooltips
+
+Tooltips are compact evidence cards, not ornaments: a muted uppercase caption (date or period), one row per player with a teal/orange dot and a right-aligned tabular value, a hairline divider, then muted/bold key-value rows. Placement must never cover the hovered element: anchor to the hovered region and place beside it first, above it second, below it last, always clamped inside the chart card. On touch, a tap shows the tooltip and it persists about 2.5s after the finger lifts.
 
 ### Filter Drawer
 
