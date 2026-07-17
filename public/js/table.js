@@ -222,6 +222,12 @@ export function renderGameTable(matches) {
     const scoreSpan = document.createElement("span");
     scoreSpan.className = "match-score";
     scoreSpan.textContent = `${match.goals_a} - ${match.goals_b}`;
+    if (match.overtime) {
+      const otInline = document.createElement("span");
+      otInline.className = "badge ot-inline";
+      otInline.textContent = "OT";
+      scoreSpan.appendChild(otInline);
+    }
     scoreCell.appendChild(scoreSpan);
 
     const otCell = document.createElement("td");

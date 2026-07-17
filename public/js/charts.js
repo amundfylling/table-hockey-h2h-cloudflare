@@ -1,9 +1,8 @@
 import { state, elements, isSeriesMode } from "./state.js";
 import { getChronologicalItems } from "./form.js";
 import { formatPercent } from "./summary.js";
-import { escapeHtml } from "./utils.js";
+import { escapeHtml, formatDateRange } from "./utils.js";
 import { SVG_TREND, SVG_BAR_CHART } from "./constants.js";
-import { formatSeriesScore } from "./series.js";
 
 export function formatAxisValue(value) {
   if (!Number.isFinite(value)) return "0";
@@ -20,14 +19,46 @@ export function ensureChartTooltip(container) {
   return tooltip;
 }
 
-export function showChartTooltip(container, tooltip, html, x, y) {
+export function showChartTooltip(container, tooltip, html, anchorX1, anchorX2, y, options = {}) {
   tooltip.innerHTML = html;
+  // Reset to the origin before measuring so the box reports its natural size,
+  // not a size constrained by the previous position.
+  tooltip.style.left = "0px";
+  tooltip.style.top = "0px";
   tooltip.classList.add("is-visible");
   const bounds = container.getBoundingClientRect();
   const width = tooltip.offsetWidth;
   const height = tooltip.offsetHeight;
-  const left = Math.max(width / 2 + 8, Math.min(x, bounds.width - width / 2 - 8));
-  const top = Math.max(height + 8, y);
+  const margin = 8;
+  const gap = 14;
+  const maxLeft = Math.max(margin, bounds.width - width - margin);
+  const maxTop = Math.max(margin, bounds.height - height - margin);
+  const centerX = (anchorX1 + anchorX2) / 2;
+  const fitsRight = anchorX2 + gap + width <= bounds.width - margin;
+  const fitsLeft = anchorX1 - gap - width >= margin;
+  const fitsAbove = y - height - 6 >= margin;
+
+  let left;
+  let top;
+  // Beside the hovered region keeps the point/bars visible; above is the fallback.
+  const placeSide = () => {
+    if (fitsRight) left = anchorX2 + gap;
+    else if (fitsLeft) left = anchorX1 - gap - width;
+    top = Math.min(Math.max(y - height / 2, margin), maxTop);
+    return fitsRight || fitsLeft;
+  };
+  const placeAbove = () => {
+    left = Math.min(Math.max(centerX - width / 2, margin), maxLeft);
+    top = fitsAbove ? y - height - 6 : Math.min(y + 20, maxTop);
+  };
+
+  if (options.prefer === "side") {
+    if (!placeSide()) placeAbove();
+  } else if (fitsAbove) {
+    placeAbove();
+  } else if (!placeSide()) {
+    placeAbove();
+  }
   tooltip.style.left = `${left}px`;
   tooltip.style.top = `${top}px`;
 }
@@ -35,6 +66,41 @@ export function showChartTooltip(container, tooltip, html, x, y) {
 export function hideChartTooltip(tooltip) {
   if (!tooltip) return;
   tooltip.classList.remove("is-visible");
+}
+
+// Binds tooltip handlers to a chart svg. Mouse: hover to show, leave to hide.
+// Touch: tap/drag to show, keep visible 2.5s after lift so it can be read.
+export function bindChartTooltip(svg, handleMove, handleLeave) {
+  let touchMode = false;
+  let hideTimer = null;
+  const cancelHideTimer = () => {
+    if (hideTimer) {
+      clearTimeout(hideTimer);
+      hideTimer = null;
+    }
+  };
+  svg.addEventListener("pointerdown", (event) => {
+    touchMode = event.pointerType === "touch";
+    cancelHideTimer();
+    handleMove(event);
+  });
+  svg.addEventListener("pointermove", (event) => {
+    if (event.pointerType !== "touch") touchMode = false;
+    cancelHideTimer();
+    handleMove(event);
+  });
+  svg.addEventListener("pointerup", () => {
+    if (!touchMode) return;
+    cancelHideTimer();
+    hideTimer = setTimeout(handleLeave, 2500);
+  });
+  svg.addEventListener("pointerleave", () => {
+    if (!touchMode) handleLeave();
+  });
+  svg.addEventListener("pointercancel", () => {
+    touchMode = false;
+    handleLeave();
+  });
 }
 
 export function renderChartPlaceholder(containerEl, message, iconType) {
@@ -111,7 +177,6 @@ export function renderRecordChart(matches) {
   });
   const endValue = values[values.length - 1];
   const endColor = endValue.winRate >= referenceValue ? "var(--teal)" : "var(--accent)";
-  const itemLabel = isSeriesMode() ? "series" : "game";
   const leadLabel = `Current ${formatPercent(endValue.winRate)} win rate`;
   const opponentSeriesLabel = state.playerB?.name || "Opponents";
   const firstLabel = ordered[0]?.date?.slice(0, 4) || "";
@@ -173,17 +238,25 @@ export function renderRecordChart(matches) {
     const containerRect = container.getBoundingClientRect();
     const xLocal = (xPos / width) * rect.width + (rect.left - containerRect.left);
     const yLocal = (yPos / height) * rect.height + (rect.top - containerRect.top);
-    const scoreLine =
-      match.type === "series"
-        ? `${state.playerA.name} ${formatSeriesScore(match)} ${match.opponent_name || opponentSeriesLabel} (${match.goals_a}-${match.goals_b} goals)`
-        : `${state.playerA.name} ${match.goals_a}-${match.goals_b} ${match.opponent_name || opponentSeriesLabel}`;
+    const isSeries = match.type === "series";
+    const title = isSeries ? formatDateRange(match.date, match.end_date) : match.date || "Unknown date";
+    const valueA = isSeries ? match.game_wins_a : match.goals_a;
+    const valueB = isSeries ? match.game_wins_b : match.goals_b;
+    const sideRow = (side, name, value) => `
+      <div class="tooltip-side${match.result === side ? " is-winner" : ""}">
+        <span class="tooltip-side-label"><i class="tooltip-dot ${side.toLowerCase()}"></i>${escapeHtml(name)}</span>
+        <span class="tooltip-side-value">${escapeHtml(String(value ?? "—"))}</span>
+      </div>`;
     const html = `
-      <div class="tooltip-title">${escapeHtml(match.type === "series" ? formatDateRange(match.date, match.end_date) : match.date || "Unknown date")}</div>
-      <div class="tooltip-row">${escapeHtml(scoreLine)}</div>
-      <div class="tooltip-row">Win rate: ${formatPercent(entry.winRate)}</div>
-      <div class="tooltip-row">Record: ${entry.wins}W ${entry.draws}D ${entry.losses}L after ${entry.total} ${itemLabel}${entry.total === 1 || itemLabel === "series" ? "" : "s"}</div>
+      <div class="tooltip-title">${escapeHtml(title)}</div>
+      ${sideRow("A", state.playerA.name, valueA)}
+      ${sideRow("B", match.opponent_name || opponentSeriesLabel, valueB)}
+      <div class="tooltip-divider"></div>
+      <div class="tooltip-kv"><span>Win rate</span><strong>${formatPercent(entry.winRate)}</strong></div>
+      <div class="tooltip-kv"><span>Record</span><strong>${entry.wins}W · ${entry.draws}D · ${entry.losses}L</strong></div>
+      ${isSeries ? `<div class="tooltip-kv"><span>Goals</span><strong>${match.goals_a}–${match.goals_b}</strong></div>` : ""}
     `;
-    showChartTooltip(container, tooltip, html, xLocal, yLocal);
+    showChartTooltip(container, tooltip, html, xLocal, xLocal, yLocal, { prefer: "side" });
   };
 
   const handleLeave = () => {
@@ -192,10 +265,7 @@ export function renderRecordChart(matches) {
     hoverPoint.setAttribute("opacity", "0");
   };
 
-  svg.addEventListener("pointermove", handleMove);
-  svg.addEventListener("pointerdown", handleMove);
-  svg.addEventListener("pointerleave", handleLeave);
-  svg.addEventListener("pointercancel", handleLeave);
+  bindChartTooltip(svg, handleMove, handleLeave);
 }
 
 export function renderGoalsChart(matches) {
@@ -245,6 +315,7 @@ export function renderGoalsChart(matches) {
   const barWidth = Math.max(8, groupWidth * 0.35);
   const labelStep = Math.max(1, Math.ceil(years.length / 6));
   let bars = "";
+  let hits = "";
   let labels = "";
   let grid = "";
   let yLabels = "";
@@ -271,6 +342,7 @@ export function renderGoalsChart(matches) {
       <rect x="${aX}" y="${aY}" width="${barWidth}" height="${aHeight}" rx="3" fill="var(--teal)" data-year="${item.year}" data-side="a" data-value="${aValue}" />
       <rect x="${bX}" y="${bY}" width="${barWidth}" height="${bHeight}" rx="3" fill="var(--accent)" data-year="${item.year}" data-side="b" data-value="${bValue}" />
     `;
+    hits += `<rect class="bar-hit" x="${xBase}" y="${padding}" width="${groupWidth}" height="${chartHeight}" fill="transparent" data-year="${item.year}" data-a="${aValue}" data-b="${bValue}" data-top="${Math.min(aY, bY)}" data-x="${xBase}" data-w="${groupWidth}" />`;
     if (idx % labelStep === 0 || idx === years.length - 1) {
       labels += `<text x="${xBase + groupWidth * 0.5}" y="${height - 6}" fill="var(--muted)" font-size="10" text-anchor="middle">${item.year}</text>`;
     }
@@ -284,8 +356,10 @@ export function renderGoalsChart(matches) {
     <svg viewBox="0 0 ${width} ${height}" aria-label="Average goals by year chart">
       ${grid}
       ${yLabels}
+      <text x="${padding - 6}" y="${padding - 12}" fill="var(--muted)" font-size="10" text-anchor="end">goals</text>
       <line x1="${padding}" y1="${height - padding}" x2="${width - padding}" y2="${height - padding}" stroke="var(--muted)" stroke-width="1" />
       ${bars}
+      ${hits}
       ${labels}
     </svg>
   `;
@@ -301,30 +375,60 @@ export function renderGoalsChart(matches) {
       return;
     }
     const year = target.getAttribute("data-year");
-    const side = target.getAttribute("data-side");
-    const value = target.getAttribute("data-value");
-    const name = side === "b" ? state.playerB?.name || "Opponents" : state.playerA.name;
+    if (!year) {
+      hideChartTooltip(tooltip);
+      return;
+    }
     const suffix = isSeriesMode()
       ? (state.goalsMode === "match" ? "avg goals per match" : "avg goals per series")
       : "avg goals";
+    const sideRow = (side, name, value) => `
+      <div class="tooltip-side">
+        <span class="tooltip-side-label"><i class="tooltip-dot ${side}"></i>${escapeHtml(name)}</span>
+        <span class="tooltip-side-value">${escapeHtml(value)}</span>
+      </div>`;
+    let rows = "";
+    if (target.classList.contains("bar-hit")) {
+      rows = sideRow("a", state.playerA.name, target.getAttribute("data-a"))
+        + sideRow("b", state.playerB?.name || "Opponents", target.getAttribute("data-b"));
+    } else {
+      const side = target.getAttribute("data-side");
+      const value = target.getAttribute("data-value");
+      const name = side === "b" ? state.playerB?.name || "Opponents" : state.playerA.name;
+      rows = sideRow(side === "b" ? "b" : "a", name, value);
+    }
     const html = `
-      <div class="tooltip-title">${escapeHtml(year)}</div>
-      <div class="tooltip-row">${escapeHtml(name)}: ${escapeHtml(value)} ${suffix}</div>
+      <div class="tooltip-title">${escapeHtml(year)} · ${escapeHtml(suffix)}</div>
+      ${rows}
     `;
-    const rect = container.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
-    showChartTooltip(container, tooltip, html, x, y);
+    const containerRect = container.getBoundingClientRect();
+    let x1 = event.clientX - containerRect.left;
+    let x2 = x1;
+    let y = event.clientY - containerRect.top;
+    if (target.classList.contains("bar-hit")) {
+      // Anchor to the group bounds and the taller bar's top so the tooltip
+      // neither chases cursor Y nor covers the hovered bars
+      const svgRect = svg.getBoundingClientRect();
+      const toLocalX = (viewX) => (viewX / width) * svgRect.width + (svgRect.left - containerRect.left);
+      const groupX = Number(target.getAttribute("data-x"));
+      const groupW = Number(target.getAttribute("data-w"));
+      if (Number.isFinite(groupX) && Number.isFinite(groupW)) {
+        x1 = toLocalX(groupX);
+        x2 = toLocalX(groupX + groupW);
+      }
+      const barTop = Number(target.getAttribute("data-top"));
+      if (Number.isFinite(barTop)) {
+        y = (barTop / height) * svgRect.height + (svgRect.top - containerRect.top);
+      }
+    }
+    showChartTooltip(container, tooltip, html, x1, x2, y);
   };
 
   const handleLeave = () => {
     hideChartTooltip(tooltip);
   };
 
-  svg.addEventListener("pointermove", handleMove);
-  svg.addEventListener("pointerdown", handleMove);
-  svg.addEventListener("pointerleave", handleLeave);
-  svg.addEventListener("pointercancel", handleLeave);
+  bindChartTooltip(svg, handleMove, handleLeave);
 }
 
 export function renderCharts(matches) {

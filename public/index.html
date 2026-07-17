@@ -9,10 +9,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
-    href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Manrope:wght@400;500;600;700&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Manrope:wght@400;500;600;700;800&display=swap"
     rel="stylesheet" />
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-  <link rel="stylesheet" href="styles.css?v=20260717-ui-polish" />
+  <link rel="stylesheet" href="styles.css?v=20260717-tooltip-v2" />
 </head>
 
 <body>
@@ -157,7 +157,7 @@
               <div id="tournament-level-options" class="multi-checks" role="group" aria-label="Tournament level"></div>
             </div>
             <div class="filter-bar-group">
-              <label for="stage-filter">Stage</label>
+              <label for="stage-filter">Stage name</label>
               <select id="stage-filter"></select>
             </div>
             <div id="best-of-filter" class="filter-bar-group" hidden>
@@ -367,6 +367,7 @@
   </main>
 
   <footer class="site-footer">
+    <p id="data-freshness" class="data-freshness" hidden></p>
     <p>
       Data sourced from
       <a href="https://github.com/amundfylling/Scorpion-Scraper-2.0" target="_blank" rel="noopener">Scorpion Scraper</a>

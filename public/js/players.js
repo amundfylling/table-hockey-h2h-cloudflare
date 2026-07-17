@@ -81,7 +81,7 @@ export function setInputPlayer(inputEl, player) {
   const ids = normalizeAliasIds([primaryId, ...(player.ids || [])]);
   const id = Number.isFinite(primaryId) ? primaryId : ids[0];
   const name = decodeHtmlEntities(player.name);
-  inputEl.value = ids.length > 1 ? `${name} (${ids.length} IDs)` : `${name} (${id})`;
+  inputEl.value = ids.length > 1 ? `${name} (${ids.length} IDs)` : `${name} (#${id})`;
   inputEl.dataset.playerId = id;
   inputEl.dataset.playerIds = ids.length > 1 ? ids.join(",") : "";
   inputEl.dataset.playerName = name;

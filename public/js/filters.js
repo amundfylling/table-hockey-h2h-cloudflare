@@ -305,7 +305,7 @@ export function renderActiveFilterChips() {
     } });
   }
   if (state.filters.stage !== "all") {
-    chips.push({ label: `Stage: ${state.filters.stage}`, clear: () => { state.filters.stage = "all"; elements.stageFilter.value = "all"; } });
+    chips.push({ label: `Stage name: ${state.filters.stage}`, clear: () => { state.filters.stage = "all"; elements.stageFilter.value = "all"; } });
   }
   if (state.filters.otOnly) {
     chips.push({ label: "Overtime only", clear: () => { state.filters.otOnly = false; elements.otToggle.checked = false; } });

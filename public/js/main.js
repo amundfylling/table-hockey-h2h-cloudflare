@@ -18,6 +18,7 @@ import {
   getSelectionPlayer,
   getSelectionIds,
   getPlayerById,
+  getWorldRank,
   parseIdList,
   normalizePlayerRecord,
 } from "./players.js";
@@ -171,6 +172,7 @@ export function setStageTabControls(stage = "overall") {
       const isActive = tab.dataset.stage === stage;
       tab.classList.toggle("is-active", isActive);
       tab.setAttribute("aria-selected", isActive ? "true" : "false");
+      tab.tabIndex = isActive ? 0 : -1;
     });
   }
   updateModeControls();
@@ -363,6 +365,7 @@ export async function handleCompare(options = {}) {
           const isActive = tab.dataset.stage === state.stageTab;
           tab.classList.toggle("is-active", isActive);
           tab.setAttribute("aria-selected", isActive ? "true" : "false");
+          tab.tabIndex = isActive ? 0 : -1;
         });
       }
       refreshFilterOptions(getActiveItems());
@@ -536,26 +539,65 @@ export async function handleRecentClick(event) {
   handleCompare();
 }
 
+function createMatchupChip(p1Id, p2Id, p1Name, p2Name, p1Ids, p2Ids) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.textContent = `${decodeHtmlEntities(p1Name)} vs ${decodeHtmlEntities(p2Name)}`;
+  button.dataset.p1 = p1Id;
+  button.dataset.p2 = p2Id;
+  if (p1Ids?.length > 1) button.dataset.p1Ids = p1Ids.join(",");
+  if (p2Ids?.length > 1) button.dataset.p2Ids = p2Ids.join(",");
+  return button;
+}
+
+function getAliasIds(playerId) {
+  return state.aliasMap.get(playerId) || [playerId];
+}
+
 export function renderRecent() {
   const recent = safeStorageGet(STORAGE_KEYS.recent, []);
   if (!elements.recentList) return;
   elements.recentList.innerHTML = "";
   if (!recent.length) {
-    elements.recentList.innerHTML = "<span class=\"muted\">No recent matchups</span>";
+    const ranked = state.players
+      .filter((player) => player.name && getWorldRank(player) !== null)
+      .sort((a, b) => getWorldRank(a) - getWorldRank(b));
+    const pairs = [];
+    if (ranked.length >= 2) pairs.push([ranked[0], ranked[1]]);
+    if (ranked.length >= 4) pairs.push([ranked[2], ranked[3]]);
+    if (!pairs.length) {
+      elements.recentList.innerHTML = "<span class=\"muted\">No recent matchups</span>";
+      return;
+    }
+    const note = document.createElement("span");
+    note.className = "muted recent-note";
+    note.textContent = "No recent matchups yet — try:";
+    elements.recentList.appendChild(note);
+    pairs.forEach(([playerA, playerB]) => {
+      elements.recentList.appendChild(
+        createMatchupChip(playerA.id, playerB.id, playerA.name, playerB.name, getAliasIds(playerA.id), getAliasIds(playerB.id))
+      );
+    });
     return;
   }
   const fragment = document.createDocumentFragment();
   recent.forEach((item) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.textContent = `${decodeHtmlEntities(item.p1Name)} vs ${decodeHtmlEntities(item.p2Name)}`;
-    button.dataset.p1 = item.p1Id;
-    button.dataset.p2 = item.p2Id;
-    if (item.p1Ids?.length > 1) button.dataset.p1Ids = item.p1Ids.join(",");
-    if (item.p2Ids?.length > 1) button.dataset.p2Ids = item.p2Ids.join(",");
-    fragment.appendChild(button);
+    fragment.appendChild(
+      createMatchupChip(item.p1Id, item.p2Id, item.p1Name, item.p2Name, item.p1Ids, item.p2Ids)
+    );
   });
   elements.recentList.appendChild(fragment);
+}
+
+export async function renderDataFreshness() {
+  const el = document.getElementById("data-freshness");
+  if (!el) return;
+  const meta = await fetchJson("data/meta.json");
+  if (!meta || !meta.generated_at) return;
+  const date = new Date(meta.generated_at);
+  if (Number.isNaN(date.getTime())) return;
+  el.textContent = `Data updated ${date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}`;
+  el.hidden = false;
 }
 
 export function addRecent(p1, p2, p1Name, p2Name, p1Ids = [p1], p2Ids = [p2]) {
@@ -762,13 +804,34 @@ export function getUrlSelection() {
 }
 
 export function initTabs() {
-  if (elements.tabs) {
-    elements.tabs.forEach((tab) => {
-      tab.addEventListener("click", () => {
-        setStageTab(tab.dataset.stage);
-      });
+  if (!elements.tabs || !elements.tabs.length) return;
+  const tabList = Array.from(elements.tabs);
+  const focusTab = (index) => {
+    const next = tabList[index];
+    if (!next) return;
+    next.focus();
+    setStageTab(next.dataset.stage);
+  };
+  tabList.forEach((tab, index) => {
+    tab.addEventListener("click", () => {
+      setStageTab(tab.dataset.stage);
     });
-  }
+    tab.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowRight") {
+        event.preventDefault();
+        focusTab((index + 1) % tabList.length);
+      } else if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        focusTab((index - 1 + tabList.length) % tabList.length);
+      } else if (event.key === "Home") {
+        event.preventDefault();
+        focusTab(0);
+      } else if (event.key === "End") {
+        event.preventDefault();
+        focusTab(tabList.length - 1);
+      }
+    });
+  });
 }
 
 export function initModeToggle() {
@@ -806,6 +869,7 @@ export function setStageTab(stage) {
       const isActive = tab.dataset.stage === stage;
       tab.classList.toggle("is-active", isActive);
       tab.setAttribute("aria-selected", isActive ? "true" : "false");
+      tab.tabIndex = isActive ? 0 : -1;
     });
   }
   updateModeControls();
@@ -925,6 +989,7 @@ export async function init() {
 
   await loadPlayers();
   renderRecent();
+  renderDataFreshness();
 
   const urlSelection = getUrlSelection();
   const lastSelection = safeStorageGet(STORAGE_KEYS.last, null);

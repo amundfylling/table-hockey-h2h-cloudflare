@@ -66,6 +66,7 @@ graph TD
     subgraph Deployed Pages Artifacts
         F -->|players.json| G[public/data/]
         F -->|tournaments.json| G
+        F -->|meta.json| G
         F -->|h2h/ID.json| G
     end
     subgraph Zero-Runtime Client

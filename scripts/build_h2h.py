@@ -6,6 +6,7 @@ import sys
 import shutil
 import unicodedata
 from collections import deque
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Iterable, Optional, Tuple
 
@@ -867,6 +868,14 @@ def main() -> int:
     print("Building H2H player files...")
     player_payloads = build_player_files(matches, player_names)
 
+    write_json(
+        DATA_DIR / "meta.json",
+        {
+            "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "players": len(players),
+            "matches": int(len(matches)),
+        },
+    )
 
     print("Build completed.")
     return 0
