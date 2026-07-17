@@ -97,6 +97,8 @@ export const elements = {
   activeFiltersContainer: document.getElementById("active-filters"),
   playerBLoader: document.getElementById("player-b-loader"),
   matchesHeadRow: document.getElementById("matches-head-row"),
+  stageCard: document.querySelector(".stage-card"),
+  filterCard: document.getElementById("filter-card"),
   singlePlayerSection: document.getElementById("single-player-section"),
   topOpponentsBody: document.getElementById("top-opponents-body"),
   opponentsHeadRow: document.getElementById("opponents-head-row"),

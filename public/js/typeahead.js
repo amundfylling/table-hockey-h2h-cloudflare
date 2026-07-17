@@ -153,6 +153,7 @@ export function setupTypeahead(inputEl, listEl, options = {}) {
     activeIndex = -1;
     currentItems = [];
     inputEl.setAttribute("aria-expanded", "false");
+    inputEl.removeAttribute("aria-activedescendant");
   };
 
   const openList = () => {
@@ -194,6 +195,9 @@ export function setupTypeahead(inputEl, listEl, options = {}) {
       btn.dataset.id = player.id;
       if (player.ids?.length > 1) btn.dataset.ids = player.ids.join(",");
       btn.dataset.index = idx;
+      btn.id = `${listEl.id}-option-${idx}`;
+      btn.setAttribute("role", "option");
+      btn.setAttribute("aria-selected", idx === activeIndex ? "true" : "false");
       btn.appendChild(createSuggestionIdentity(player));
       if (player.isGroup) {
         const groupMeta = document.createElement("span");
@@ -226,6 +230,14 @@ export function setupTypeahead(inputEl, listEl, options = {}) {
       fragment.appendChild(btn);
     });
     listEl.appendChild(fragment);
+    if (activeIndex >= 0) {
+      const activeId = `${listEl.id}-option-${activeIndex}`;
+      inputEl.setAttribute("aria-activedescendant", activeId);
+      const activeOption = listEl.querySelector(`#${activeId}`);
+      if (activeOption) activeOption.scrollIntoView({ block: "nearest" });
+    } else {
+      inputEl.removeAttribute("aria-activedescendant");
+    }
     openList();
   };
 

@@ -192,8 +192,10 @@ export function renderRecordChart(matches) {
     hoverPoint.setAttribute("opacity", "0");
   };
 
-  svg.addEventListener("mousemove", handleMove);
-  svg.addEventListener("mouseleave", handleLeave);
+  svg.addEventListener("pointermove", handleMove);
+  svg.addEventListener("pointerdown", handleMove);
+  svg.addEventListener("pointerleave", handleLeave);
+  svg.addEventListener("pointercancel", handleLeave);
 }
 
 export function renderGoalsChart(matches) {
@@ -319,8 +321,10 @@ export function renderGoalsChart(matches) {
     hideChartTooltip(tooltip);
   };
 
-  svg.addEventListener("mousemove", handleMove);
-  svg.addEventListener("mouseleave", handleLeave);
+  svg.addEventListener("pointermove", handleMove);
+  svg.addEventListener("pointerdown", handleMove);
+  svg.addEventListener("pointerleave", handleLeave);
+  svg.addEventListener("pointercancel", handleLeave);
 }
 
 export function renderCharts(matches) {

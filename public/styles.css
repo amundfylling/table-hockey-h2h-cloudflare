@@ -1744,21 +1744,14 @@ body[data-theme="dark"] .h2h-scoreboard {
   background: var(--bg-alt);
 }
 
-.toggle-group.vertical {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-/* Matches Header Updates */
+/* Matches Header */
 .matches-header {
   display: flex;
-  align-items: flex-end;
-  /* Align bottom to match pagination buttons */
   justify-content: space-between;
-  margin-bottom: 24px;
-  gap: 16px;
+  align-items: center;
+  gap: 12px;
   flex-wrap: wrap;
+  margin-bottom: 24px;
 }
 
 .header-controls {
@@ -1795,58 +1788,15 @@ body[data-theme="dark"] .h2h-scoreboard {
     justify-content: space-between;
   }
 
-  /* Adjust pagination for mobile if needed */
   #pagination-top {
     margin-left: auto;
   }
-}
-
-.filters-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-}
-
-.filter {
-  display: grid;
-  gap: 8px;
-}
-
-.period-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.period-row select {
-  flex: 1;
-  min-width: 0;
 }
 
 .period-separator {
   color: var(--muted);
   font-weight: 600;
   flex-shrink: 0;
-}
-
-.filter label {
-  font-size: 0.85rem;
-  color: var(--muted);
-  font-weight: 600;
-}
-
-.filter select,
-.filter input {
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 10px 12px;
-  background: var(--card);
-  color: var(--text);
-}
-
-.toggle-group {
-  display: grid;
-  gap: 8px;
 }
 
 .toggle {
@@ -1862,22 +1812,17 @@ body[data-theme="dark"] .h2h-scoreboard {
   gap: 16px;
 }
 
-.clear-filters-btn {
-  justify-content: center;
-  width: 100%;
-}
-
-.matches-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
 .table-wrap {
   width: 100%;
   overflow-x: auto;
+}
+
+/* Desktop: scroll long match lists internally so the sticky header works */
+@media (min-width: 601px) {
+  .matches-card .table-wrap {
+    max-height: 72vh;
+    overflow: auto;
+  }
 }
 
 #matches-table {
@@ -2039,6 +1984,7 @@ body[data-comparison-mode="single"][data-stats-mode="series"] #matches-table {
 }
 
 .expand-btn {
+  position: relative;
   border: none;
   background: transparent;
   cursor: pointer;
@@ -2049,6 +1995,13 @@ body[data-comparison-mode="single"][data-stats-mode="series"] #matches-table {
   place-items: center;
   border-radius: 4px;
   transition: background 0.15s ease, transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Invisible larger tap target (>=36px) without changing the visual size */
+.expand-btn::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
 }
 
 .expand-btn:hover {
@@ -3444,7 +3397,7 @@ body[data-theme="light"] .chart-placeholder {
 
 .opponents-filter-label span {
   font-weight: 700;
-  color: var(--fg);
+  color: var(--text);
   display: inline-block;
   min-width: 1.6em;
   text-align: right;
@@ -3525,13 +3478,13 @@ body[data-theme="light"] .chart-placeholder {
   transition: color 0.15s ease;
 }
 .sortable-col:hover {
-  color: var(--fg);
+  color: var(--text);
 }
 .sortable-col.active-sort {
   color: var(--teal);
 }
 
-.sort-indicator {
+.opponents-table .sort-indicator {
   font-size: 0.65rem;
   margin-left: 2px;
   opacity: 0.7;
@@ -3573,10 +3526,10 @@ body[data-theme="light"] .chart-placeholder {
   border-bottom: none;
 }
 .top-opponents-row:hover {
-  background: var(--rink-cream-pressed) !important;
+  background: var(--bg-alt) !important;
 }
 body[data-theme="dark"] .top-opponents-row:hover {
-  background: var(--night-surface) !important;
+  background: var(--card) !important;
 }
 
 /* Count indicator */

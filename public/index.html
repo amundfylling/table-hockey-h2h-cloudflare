@@ -12,7 +12,7 @@
     href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Manrope:wght@400;500;600;700&display=swap"
     rel="stylesheet" />
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-  <link rel="stylesheet" href="styles.css?v=20260531-generational-streak-12" />
+  <link rel="stylesheet" href="styles.css?v=20260717-ui-polish" />
 </head>
 
 <body>
@@ -56,7 +56,7 @@
         <div class="player-field" data-player="a">
           <label for="player-a">Player 1</label>
           <div class="input-shell">
-            <input id="player-a" type="text" autocomplete="off" placeholder="Search player" />
+            <input id="player-a" type="text" autocomplete="off" placeholder="Search player" role="combobox" />
             <button class="icon-btn clear-btn" type="button" data-clear="a" aria-label="Clear Player 1" hidden>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                 stroke-linejoin="round" aria-hidden="true">
@@ -80,7 +80,7 @@
         <div class="player-field" data-player="b">
           <label for="player-b">Player 2</label>
           <div class="input-shell">
-            <input id="player-b" type="text" autocomplete="off" placeholder="Select Player 1 first" disabled />
+            <input id="player-b" type="text" autocomplete="off" placeholder="Select Player 1 first" role="combobox" disabled />
             <span id="player-b-loader" class="input-loader" hidden></span>
             <button class="icon-btn clear-btn" type="button" data-clear="b" aria-label="Clear Player 2" hidden>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
@@ -104,7 +104,7 @@
       </div>
     </section>
 
-    <section class="card stage-card">
+    <section class="card stage-card" hidden>
       <div class="tabs" role="tablist" aria-label="Stage filter">
         <button class="tab is-active" role="tab" aria-selected="true" data-stage="overall">Overall</button>
         <button class="tab" role="tab" aria-selected="false" data-stage="round-robin">Round-robin</button>
@@ -119,7 +119,7 @@
       </div>
     </section>
 
-    <section id="filter-card" class="card filter-card">
+    <section id="filter-card" class="card filter-card" hidden>
       <div id="filter-bar" class="filter-bar">
         <div class="filter-bar-primary">
           <div class="filter-bar-search">
@@ -183,7 +183,7 @@
       </div>
     </section>
 
-    <section class="summary-section">
+    <section id="summary-section" class="summary-section">
       <div class="summary-header">
         <div>
           <h2 id="headline">Pick two players</h2>

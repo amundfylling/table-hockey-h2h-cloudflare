@@ -113,6 +113,7 @@ function applyStageTab(matches, stageTab) {
 export function updateView() {
   if (!state.baseMatches.length) {
     setDataControlsEnabled(false);
+    setStageFilterCardsVisible(false);
     updateModeControls();
     updateFilterCount();
     renderSummary([]);
@@ -124,6 +125,7 @@ export function updateView() {
   }
 
   setDataControlsEnabled(true);
+  setStageFilterCardsVisible(true);
   updateModeControls();
   state.stageMatches = getActiveItems();
   const filtered = applyFilters(state.stageMatches);
@@ -176,6 +178,7 @@ export function setStageTabControls(stage = "overall") {
 
 export function renderIdleState() {
   if (elements.singlePlayerSection) elements.singlePlayerSection.hidden = true;
+  setStageFilterCardsVisible(false);
   const selectedId = resolvePlayerId(elements.playerA);
   const selectedPlayer = selectedId ? getSelectionPlayer(elements.playerA, selectedId) : null;
 
@@ -266,6 +269,20 @@ export function resetCurrentResults(options = {}) {
   if (options.message != null) setStatus(options.message);
 }
 
+function setStageFilterCardsVisible(visible) {
+  if (elements.stageCard) elements.stageCard.hidden = !visible;
+  if (elements.filterCard) elements.filterCard.hidden = !visible;
+}
+
+function maybeScrollToResults(options = {}) {
+  if (options.restoreUrlState || options.scrollToResults === false) return;
+  if (!window.matchMedia("(max-width: 900px)").matches) return;
+  const target = document.getElementById("summary-section");
+  if (!target) return;
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  target.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "start" });
+}
+
 export async function handleCompare(options = {}) {
   const idA = resolvePlayerId(elements.playerA);
   const idB = resolvePlayerId(elements.playerB);
@@ -325,6 +342,7 @@ export async function handleCompare(options = {}) {
       state.filteredMatches = [];
       if (elements.stageMeta) elements.stageMeta.textContent = "";
       setDataControlsEnabled(false);
+      setStageFilterCardsVisible(false);
       renderSummary([]);
       renderForm([]);
       renderCharts([]);
@@ -365,6 +383,7 @@ export async function handleCompare(options = {}) {
     }
     setLoading(false);
     setStatus("");
+    maybeScrollToResults(options);
   } catch (err) {
     if (currentToken !== compareRequestToken) return;
     console.error(err);
@@ -925,7 +944,7 @@ export async function init() {
       restoreStateFromUrl();
       await handleCompare({ restoreUrlState: true });
     } else {
-      await handleCompare();
+      await handleCompare({ scrollToResults: false });
     }
   } else {
     resetCurrentResults({ message: "" });
