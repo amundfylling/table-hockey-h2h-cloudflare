@@ -283,25 +283,61 @@ export function renderGameTable(matches) {
     detailCell.colSpan = colSpan;
     const detailGrid = document.createElement("div");
     detailGrid.className = "detail-grid";
+    const sourceUrl = getItemSourceUrl(match);
     const detailItems = [
       ...(isSingle ? [{ label: "Opponent", value: match.opponent_name || match.opponent_id }] : []),
       { label: "Stage ID", value: match.stage_id },
       { label: "Tournament ID", value: match.tournament_id },
-      { label: "Tournament level", value: getTournamentLevelLabel(getTournamentLevelKey(match)) },
+      { label: "Tournament level", value: getTournamentLevelLabel(getTournamentLevelKey(match)), pill: true },
       { label: "Stage sequence", value: match.stage_sequence },
       { label: "Round number", value: match.round_number },
       { label: "Playoff game", value: match.playoff_game_number },
       { label: "Source", value: match.source || "sportscorpion" },
-      { label: "Source URL", value: getItemSourceUrl(match) },
     ];
     detailItems.forEach((item) => {
+      if (item.value == null || item.value === "") return;
       const block = document.createElement("div");
-      const label = document.createElement("strong");
-      label.textContent = `${item.label}:`;
+      block.className = "detail-item";
+      const label = document.createElement("span");
+      label.className = "detail-label";
+      label.textContent = item.label;
+      const value = document.createElement("span");
+      value.className = "detail-value";
+      if (item.pill) {
+        const pill = document.createElement("span");
+        pill.className = "badge";
+        pill.textContent = String(item.value);
+        value.appendChild(pill);
+      } else {
+        value.textContent = String(item.value);
+      }
       block.appendChild(label);
-      block.appendChild(document.createTextNode(` ${item.value ?? "-"}`));
+      block.appendChild(value);
       detailGrid.appendChild(block);
     });
+    if (sourceUrl) {
+      const block = document.createElement("div");
+      block.className = "detail-item detail-item--link";
+      const label = document.createElement("span");
+      label.className = "detail-label";
+      label.textContent = "Source URL";
+      const link = document.createElement("a");
+      link.href = sourceUrl;
+      link.target = "_blank";
+      link.rel = "noopener";
+      link.className = "table-link detail-source-link";
+      let linkText = sourceUrl;
+      try {
+        linkText = new URL(sourceUrl).hostname;
+      } catch (err) {
+        // keep the raw URL as link text
+      }
+      link.appendChild(document.createTextNode(linkText));
+      link.appendChild(createExternalIcon());
+      block.appendChild(label);
+      block.appendChild(link);
+      detailGrid.appendChild(block);
+    }
     detailCell.appendChild(detailGrid);
     detailRow.appendChild(detailCell);
 
@@ -446,36 +482,61 @@ export function createSeriesDetailPanel(series) {
   const opponentName = isSinglePlayerMode()
     ? series.opponent_name || "Opponent"
     : state.playerB?.name || "Player B";
+  const nameA = state.playerA?.name || "Player A";
 
   const header = document.createElement("div");
   header.className = "series-detail-head";
 
-  const titleWrap = document.createElement("div");
-  const title = document.createElement("h4");
-  title.textContent = "Series games";
-  const meta = document.createElement("p");
-  meta.textContent = `${formatDateRange(series.date, series.end_date)} | ${formatSeriesLength(series)} | ${getTournamentLevelLabel(getTournamentLevelKey(series))} | ${series.stage || "Playoff"}`;
-  titleWrap.appendChild(title);
-  titleWrap.appendChild(meta);
+  const caption = document.createElement("span");
+  caption.className = "series-detail-caption";
+  caption.textContent = `${formatDateRange(series.date, series.end_date)} · ${series.stage || "Playoff"}`;
 
-  const summary = document.createElement("div");
-  summary.className = "series-detail-summary";
-  const score = document.createElement("strong");
-  score.textContent = formatSeriesScore(series);
-  const goals = document.createElement("span");
-  goals.textContent = `${series.goals_a}-${series.goals_b} goals`;
-  summary.appendChild(score);
-  summary.appendChild(goals);
+  const players = document.createElement("div");
+  players.className = "series-detail-players";
+  const playerA = document.createElement("span");
+  playerA.className = "series-detail-player a";
+  playerA.title = nameA;
+  const dotA = document.createElement("i");
+  dotA.className = "side-dot a";
+  const nameSpanA = document.createElement("span");
+  nameSpanA.className = "series-detail-player-name";
+  nameSpanA.textContent = nameA;
+  playerA.appendChild(dotA);
+  playerA.appendChild(nameSpanA);
+  const scoreEl = document.createElement("strong");
+  scoreEl.className = "series-detail-score";
+  scoreEl.textContent = formatSeriesScore(series);
+  const playerB = document.createElement("span");
+  playerB.className = "series-detail-player b";
+  playerB.title = opponentName;
+  const dotB = document.createElement("i");
+  dotB.className = "side-dot b";
+  const nameSpanB = document.createElement("span");
+  nameSpanB.className = "series-detail-player-name";
+  nameSpanB.textContent = opponentName;
+  playerB.appendChild(dotB);
+  playerB.appendChild(nameSpanB);
+  players.appendChild(playerA);
+  players.appendChild(scoreEl);
+  players.appendChild(playerB);
 
-  header.appendChild(titleWrap);
-  header.appendChild(summary);
+  const pills = document.createElement("div");
+  pills.className = "series-detail-pills";
+  [
+    formatSeriesLength(series),
+    getTournamentLevelLabel(getTournamentLevelKey(series)),
+    `${series.goals_a}–${series.goals_b} goals`,
+  ].forEach((text) => {
+    const pill = document.createElement("span");
+    pill.className = "badge";
+    pill.textContent = text;
+    pills.appendChild(pill);
+  });
+
+  header.appendChild(caption);
+  header.appendChild(players);
+  header.appendChild(pills);
   panel.appendChild(header);
-
-  // Header row with player names shown once
-  const namesHeader = document.createElement("div");
-  namesHeader.className = "series-games-header";
-  namesHeader.textContent = `${state.playerA?.name || "Player A"} vs ${opponentName}`;
-  panel.appendChild(namesHeader);
 
   const list = document.createElement("div");
   list.className = "series-games-list";
@@ -495,47 +556,52 @@ export function createSeriesGameRow(game, runningA, runningB) {
   const resultClass = game.result === "A" ? "a" : game.result === "B" ? "b" : "d";
   item.className = `series-game series-game--${resultClass}`;
 
-  const marker = document.createElement("div");
-  marker.className = "series-game-marker";
-  marker.textContent = game.playoff_game_number != null ? String(game.playoff_game_number) : "-";
+  const top = document.createElement("div");
+  top.className = "series-game-top";
+  const num = document.createElement("span");
+  num.className = "series-game-num";
+  num.textContent = game.playoff_game_number != null ? `G${game.playoff_game_number}` : "–";
+  const running = document.createElement("span");
+  running.className = "series-game-running";
+  running.textContent = `${runningA}-${runningB}`;
+  top.appendChild(num);
+  top.appendChild(running);
 
+  const main = document.createElement("div");
+  main.className = "series-game-main";
   const score = document.createElement("span");
   score.className = "series-game-score";
   score.textContent = `${game.goals_a}-${game.goals_b}`;
-
-  const otSlot = document.createElement("span");
+  main.appendChild(score);
   if (game.overtime) {
-    otSlot.className = "badge series-game-ot";
-    otSlot.textContent = "OT";
+    const ot = document.createElement("span");
+    ot.className = "badge series-game-ot";
+    ot.textContent = "OT";
+    main.appendChild(ot);
   }
 
-  const side = document.createElement("div");
-  side.className = "series-game-side";
   const winner = document.createElement("span");
-  winner.className = `winner ${resultClass}`;
-  if (game.result === "A") {
-    winner.textContent = firstName(state.playerA?.name) || "Player A";
-    winner.title = state.playerA?.name || "Player A";
-  } else if (game.result === "B") {
+  winner.className = "series-game-winner";
+  if (game.result === "A" || game.result === "B") {
+    const dot = document.createElement("i");
+    dot.className = `side-dot ${resultClass}`;
+    winner.appendChild(dot);
     const opponentName = isSinglePlayerMode()
       ? game.opponent_name || "Opponent"
       : state.playerB?.name || "Player B";
-    winner.textContent = firstName(opponentName) || "Player B";
-    winner.title = opponentName;
+    const winnerName = game.result === "A"
+      ? firstName(state.playerA?.name) || "Player A"
+      : firstName(opponentName) || "Player B";
+    winner.title = game.result === "A" ? state.playerA?.name || "Player A" : opponentName;
+    winner.appendChild(document.createTextNode(winnerName));
   } else {
     winner.textContent = "Draw";
     winner.title = "Draw";
   }
-  const running = document.createElement("span");
-  running.className = "series-game-running";
-  running.textContent = `${runningA}-${runningB}`;
-  side.appendChild(running);
-  side.appendChild(winner);
 
-  item.appendChild(marker);
-  item.appendChild(score);
-  item.appendChild(otSlot);
-  item.appendChild(side);
+  item.appendChild(top);
+  item.appendChild(main);
+  item.appendChild(winner);
   return item;
 }
 

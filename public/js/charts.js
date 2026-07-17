@@ -244,7 +244,7 @@ export function renderRecordChart(matches) {
     const valueB = isSeries ? match.game_wins_b : match.goals_b;
     const sideRow = (side, name, value) => `
       <div class="tooltip-side${match.result === side ? " is-winner" : ""}">
-        <span class="tooltip-side-label"><i class="tooltip-dot ${side.toLowerCase()}"></i>${escapeHtml(name)}</span>
+        <span class="tooltip-side-label"><i class="side-dot ${side.toLowerCase()}"></i>${escapeHtml(name)}</span>
         <span class="tooltip-side-value">${escapeHtml(String(value ?? "—"))}</span>
       </div>`;
     const html = `
@@ -384,7 +384,7 @@ export function renderGoalsChart(matches) {
       : "avg goals";
     const sideRow = (side, name, value) => `
       <div class="tooltip-side">
-        <span class="tooltip-side-label"><i class="tooltip-dot ${side}"></i>${escapeHtml(name)}</span>
+        <span class="tooltip-side-label"><i class="side-dot ${side}"></i>${escapeHtml(name)}</span>
         <span class="tooltip-side-value">${escapeHtml(value)}</span>
       </div>`;
     let rows = "";
