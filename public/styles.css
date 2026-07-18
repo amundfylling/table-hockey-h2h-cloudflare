@@ -1564,20 +1564,72 @@ body[data-theme="dark"] .h2h-scoreboard {
 }
 
 .filter-bar-period {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  position: relative;
   flex-shrink: 0;
 }
 
-.filter-bar-period select {
+.period-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--text);
+  font-size: 1rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease;
+}
+
+.period-toggle:hover {
+  border-color: var(--muted);
+}
+
+.period-toggle[aria-expanded="true"],
+.period-toggle.has-value {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+}
+
+.period-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 230px;
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  z-index: 10;
+}
+
+.period-popover-row {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  align-items: center;
+  gap: 8px;
+}
+
+.period-popover-row label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.period-popover-row select {
+  width: 100%;
   padding: 8px 10px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--card);
   color: var(--text);
   font-size: 1rem;
-  min-width: 80px;
 }
 
 .filter-bar-tournament {
@@ -1818,12 +1870,6 @@ body[data-theme="dark"] .rows-selector select {
   #pagination-top {
     margin-left: auto;
   }
-}
-
-.period-separator {
-  color: var(--muted);
-  font-weight: 600;
-  flex-shrink: 0;
 }
 
 .toggle {
@@ -3043,6 +3089,11 @@ body[data-comparison-mode="single"][data-stats-mode="series"] #matches-table {
 
   #matches-table tr.detail-row {
     min-width: 0;
+  }
+
+  .period-popover {
+    left: auto;
+    right: 0;
   }
 
   .series-detail-players {

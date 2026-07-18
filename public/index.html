@@ -12,7 +12,7 @@
     href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Manrope:wght@400;500;600;700;800&display=swap"
     rel="stylesheet" />
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-  <link rel="stylesheet" href="styles.css?v=20260718-modern-controls" />
+  <link rel="stylesheet" href="styles.css?v=20260718-period-pill" />
 </head>
 
 <body>
@@ -126,9 +126,24 @@
             <input id="search-filter" type="search" placeholder="Search matches…" aria-label="Search matches" />
           </div>
           <div class="filter-bar-period">
-            <select id="year-from-filter" aria-label="From year"></select>
-            <span class="period-separator">–</span>
-            <select id="year-to-filter" aria-label="To year"></select>
+            <button id="period-toggle" class="period-toggle" type="button" aria-expanded="false"
+              aria-haspopup="true" aria-label="Filter by year range">
+              <span id="period-label">All years</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+            <div id="period-popover" class="period-popover" hidden>
+              <div class="period-popover-row">
+                <label for="year-from-filter">From</label>
+                <select id="year-from-filter" aria-label="From year"></select>
+              </div>
+              <div class="period-popover-row">
+                <label for="year-to-filter">To</label>
+                <select id="year-to-filter" aria-label="To year"></select>
+              </div>
+            </div>
           </div>
           <select id="tournament-filter" class="filter-bar-tournament" aria-label="Tournament"></select>
           <button id="more-filters-toggle" class="ghost more-filters-btn" type="button" aria-expanded="false">

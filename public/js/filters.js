@@ -10,6 +10,25 @@ import {
 
 let updateViewCallback = () => {};
 
+function setPeriodOpen(open) {
+  if (!elements.periodToggle || !elements.periodPopover) return;
+  elements.periodToggle.setAttribute("aria-expanded", open ? "true" : "false");
+  elements.periodPopover.hidden = !open;
+}
+
+export function updatePeriodLabel() {
+  if (!elements.periodLabel) return;
+  const { yearFrom, yearTo } = state.filters;
+  let text = "All years";
+  if (yearFrom !== "all" && yearTo !== "all") text = `${yearFrom} – ${yearTo}`;
+  else if (yearFrom !== "all") text = `From ${yearFrom}`;
+  else if (yearTo !== "all") text = `Until ${yearTo}`;
+  elements.periodLabel.textContent = text;
+  if (elements.periodToggle) {
+    elements.periodToggle.classList.toggle("has-value", yearFrom !== "all" || yearTo !== "all");
+  }
+}
+
 export function initFilters(updateView) {
   updateViewCallback = updateView;
 
@@ -20,6 +39,7 @@ export function initFilters(updateView) {
       elements.yearToFilter.value = state.filters.yearTo;
     }
     state.page = 1;
+    updatePeriodLabel();
     updateViewCallback();
   });
   elements.yearToFilter.addEventListener("change", () => {
@@ -29,6 +49,7 @@ export function initFilters(updateView) {
       elements.yearFromFilter.value = state.filters.yearFrom;
     }
     state.page = 1;
+    updatePeriodLabel();
     updateViewCallback();
   });
   elements.tournamentFilter.addEventListener("change", () => {
@@ -70,6 +91,23 @@ export function initFilters(updateView) {
       advanced.hidden = isOpen;
       elements.moreFiltersToggle.setAttribute("aria-expanded", isOpen ? "false" : "true");
     });
+  }
+
+  // Year-range pill popover
+  if (elements.periodToggle && elements.periodPopover) {
+    elements.periodToggle.addEventListener("click", () => {
+      const isOpen = elements.periodToggle.getAttribute("aria-expanded") === "true";
+      setPeriodOpen(!isOpen);
+    });
+    document.addEventListener("click", (event) => {
+      if (elements.periodPopover.hidden) return;
+      if (elements.periodToggle.contains(event.target) || elements.periodPopover.contains(event.target)) return;
+      setPeriodOpen(false);
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !elements.periodPopover.hidden) setPeriodOpen(false);
+    });
+    updatePeriodLabel();
   }
 
   elements.otToggle.addEventListener("change", () => {
@@ -157,6 +195,7 @@ export function refreshFilterOptions(matches) {
   populateSelect(elements.stageFilter, stageOptions, "All stages");
   populateBestOfOptions(Array.from(bestOfValues).sort((a, b) => Number(a) - Number(b)));
   syncFiltersFromControls();
+  updatePeriodLabel();
 }
 
 export function populateTournamentLevelOptions(values) {
@@ -385,5 +424,6 @@ export function resetFilters() {
       input.checked = false;
     });
   }
+  updatePeriodLabel();
   updateFilterCount();
 }
