@@ -16,6 +16,7 @@ import {
 import { formatSeriesLength, formatSeriesScore } from "./series.js";
 
 const DASH = "—";
+const CHEVRON_SVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
 let updateViewCallback = () => {};
 
 export function initTable(updateView) {
@@ -195,7 +196,7 @@ export function renderGameTable(matches) {
     expBtn.setAttribute("aria-controls", `detail-${rowId}`);
     expBtn.setAttribute("aria-expanded", "false");
     expBtn.setAttribute("aria-label", "Show match details");
-    expBtn.textContent = "+";
+    expBtn.innerHTML = CHEVRON_SVG;
     expCell.appendChild(expBtn);
 
     const dateCell = document.createElement("td");
@@ -391,7 +392,7 @@ export function renderSeriesTable(seriesItems) {
     expBtn.setAttribute("aria-controls", `detail-${rowId}`);
     expBtn.setAttribute("aria-expanded", "false");
     expBtn.setAttribute("aria-label", "Show series games");
-    expBtn.textContent = "+";
+    expBtn.innerHTML = CHEVRON_SVG;
     expCell.appendChild(expBtn);
 
     const dateCell = document.createElement("td");
@@ -660,7 +661,6 @@ export function initTableDetails() {
       const itemLabel = detailRow.classList.contains("series-detail-row") ? "series games" : "match details";
       button.setAttribute("aria-label", isOpen ? `Show ${itemLabel}` : `Hide ${itemLabel}`);
     }
-    button.textContent = isOpen ? "+" : "−";
     button.classList.toggle("is-open", !isOpen);
   });
 }

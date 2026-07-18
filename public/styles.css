@@ -127,26 +127,6 @@ button:disabled {
   box-shadow: none !important;
 }
 
-.background {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  overflow: hidden;
-}
-
-.grid {
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(rgba(24, 32, 37, 0.08) 1px, transparent 1px);
-  background-size: 36px 36px;
-  opacity: 0.18;
-  mix-blend-mode: multiply;
-}
-
-body[data-theme="dark"] .grid {
-  background-image: radial-gradient(rgba(243, 245, 247, 0.08) 1px, transparent 1px);
-}
-
 /* ── Layout & site header ─────────────────────────────────────────── */
 .site-header {
   max-width: 1200px;
@@ -335,6 +315,7 @@ body[data-theme="dark"] .grid {
   overflow: auto;
   display: none;
   z-index: 10;
+  padding: 4px;
 }
 
 .typeahead.is-open {
@@ -352,6 +333,7 @@ body[data-theme="dark"] .grid {
   justify-content: space-between;
   gap: 12px;
   color: var(--text);
+  border-radius: 6px;
 }
 
 .typeahead-player {
@@ -1806,6 +1788,22 @@ body[data-theme="dark"] .h2h-scoreboard {
   color: var(--text);
 }
 
+/* Custom chevron for native selects */
+.filter-bar select,
+.rows-selector select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 28px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235c6770' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+
+body[data-theme="dark"] .filter-bar select,
+body[data-theme="dark"] .rows-selector select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a5b0bb' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+}
+
 @media (max-width: 600px) {
   .matches-header {
     flex-direction: column;
@@ -1834,6 +1832,71 @@ body[data-theme="dark"] .h2h-scoreboard {
   gap: 8px;
   font-size: 0.9rem;
   color: var(--muted);
+}
+
+/* Switch-style checkboxes (Options group) */
+.filter-bar-toggles .toggle input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 34px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  position: relative;
+  cursor: pointer;
+  flex: 0 0 auto;
+  margin: 0;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.filter-bar-toggles .toggle input[type="checkbox"]::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.filter-bar-toggles .toggle input[type="checkbox"]:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.filter-bar-toggles .toggle input[type="checkbox"]:checked::before {
+  transform: translateX(14px);
+}
+
+.filter-bar-toggles .toggle input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Filter chips: the pill carries the state, hide the native checkbox */
+.filter-chip-toggle,
+.best-of-toggle {
+  position: relative;
+}
+
+.filter-chip-toggle input[type="checkbox"],
+.best-of-toggle input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  margin: 0;
+  pointer-events: none;
+}
+
+.filter-chip-toggle:has(input:focus-visible),
+.best-of-toggle:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .matches-card {
@@ -2038,8 +2101,12 @@ body[data-comparison-mode="single"][data-stats-mode="series"] #matches-table {
   background: var(--bg-alt);
 }
 
-.expand-btn.is-open {
-  transform: rotate(45deg);
+.expand-btn svg {
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.expand-btn.is-open svg {
+  transform: rotate(180deg);
 }
 
 .detail-row td {
@@ -2181,6 +2248,7 @@ body[data-comparison-mode="single"][data-stats-mode="series"] #matches-table {
   display: flex;
   gap: 8px;
   overflow-x: auto;
+  min-width: 0;
   padding-bottom: 4px;
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
@@ -2593,6 +2661,7 @@ body[data-comparison-mode="single"][data-stats-mode="series"] #matches-table {
   /* Mobile-friendly table: card layout */
   #matches-table {
     min-width: 0;
+    display: block;
   }
 
   #matches-table thead {
@@ -2970,6 +3039,10 @@ body[data-comparison-mode="single"][data-stats-mode="series"] #matches-table {
   .winner {
     font-size: 0.7rem;
     padding: 3px 6px;
+  }
+
+  #matches-table tr.detail-row {
+    min-width: 0;
   }
 
   .series-detail-players {

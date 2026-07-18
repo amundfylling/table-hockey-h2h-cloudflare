@@ -47,7 +47,7 @@ export function withGroupedDuplicateSuggestions(items) {
       country: countries.size === 1 ? group[0].country : "",
       totalMatches: totalMatches || null,
     });
-    output.push(...group);
+    output.push(...group.map((item) => ({ ...item, inGroup: true })));
   });
   return output;
 }
@@ -215,7 +215,7 @@ export function setupTypeahead(inputEl, listEl, options = {}) {
         count.title = formatRankingTitle(player);
         btn.appendChild(count);
       } else {
-        const playerMeta = formatPlayerMeta(player);
+        const playerMeta = player.inGroup ? `#${player.id}` : formatPlayerMeta(player);
         if (playerMeta) {
           const meta = document.createElement("span");
           meta.className = "muted";
