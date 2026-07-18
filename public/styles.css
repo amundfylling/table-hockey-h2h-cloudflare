@@ -3166,38 +3166,81 @@ body[data-comparison-mode="single"][data-stats-mode="series"] #matches-table {
 /* Generational run easter egg styling */
 .form-chips.has-generational-run {
   position: relative;
-  padding-top: 46px;
+  padding-top: 48px;
   overflow: visible;
   transition: padding-top 0.4s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
-/* Glowing line trailing behind the runner */
+/* ── Energy track behind the runner ── */
 .generational-track {
   position: absolute;
-  top: 35px;
+  top: 36px;
   left: var(--runner-start-x, 0px);
-  height: 4px;
-  background: linear-gradient(90deg, #11998e 0%, var(--teal) 50%, #38ef7d 100%);
-  background-size: 200% 100%;
+  height: 5px;
+  background: linear-gradient(90deg, rgba(17, 153, 142, 0) 0%, #11998e 18%, var(--teal) 55%, #38ef7d 100%);
   border-radius: 999px;
-  box-shadow: 0 0 10px var(--teal), 0 0 20px #38ef7d;
+  box-shadow: 0 0 12px rgba(56, 239, 125, 0.55), 0 0 26px rgba(42, 117, 100, 0.45);
   pointer-events: none;
   z-index: 8;
   opacity: 0;
   width: 0;
+  overflow: hidden;
+}
+
+/* Bright pulse flowing along the track */
+.generational-track::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.9) 50%, transparent 100%);
+  background-size: 50% 100%;
+  background-repeat: no-repeat;
+  opacity: 0.75;
 }
 
 .generational-track.animate-run {
-  animation: track-main 5.0s cubic-bezier(0.25, 1, 0.5, 1) forwards,
-             track-glow-flow 1.5s infinite linear;
+  animation: track-main 5.0s cubic-bezier(0.25, 1, 0.5, 1) forwards;
 }
 
+.generational-track.animate-run::after {
+  animation: track-shimmer 0.8s linear infinite;
+}
+
+/* Sparks rising off the track as the runner passes */
+.generational-sparks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9;
+}
+
+.generational-sparks .spark {
+  position: absolute;
+  top: 34px;
+  left: calc(var(--runner-start-x, 0px) + (var(--runner-end-x, 0px) - var(--runner-start-x, 0px)) * var(--spark-frac, 0));
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #38ef7d;
+  box-shadow: 0 0 6px #38ef7d;
+  opacity: 0;
+  animation: spark-rise 0.8s ease-out forwards;
+  animation-delay: var(--spark-delay, 0s);
+}
+
+.generational-sparks .spark:nth-child(even) {
+  background: #ffc837;
+  box-shadow: 0 0 6px #ffc837;
+}
+
+/* ── Runner with motion trail ── */
 .generational-runner {
   position: absolute;
-  top: 26px;
+  top: 24px;
   left: var(--runner-start-x, 0px);
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3208,6 +3251,19 @@ body[data-comparison-mode="single"][data-stats-mode="series"] #matches-table {
 
 .generational-runner.animate-run {
   animation: runner-run-across 4.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+.runner-trail {
+  position: absolute;
+  right: 65%;
+  top: 50%;
+  width: 46px;
+  height: 10px;
+  transform: translateY(-50%) skewX(-12deg);
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent 0%, rgba(56, 239, 125, 0.4) 55%, rgba(56, 239, 125, 0.85) 100%);
+  filter: blur(2px);
+  animation: trail-flicker 0.18s infinite alternate ease-in-out;
 }
 
 .generational-runner .runner-flame {
@@ -3227,9 +3283,9 @@ body[data-comparison-mode="single"][data-stats-mode="series"] #matches-table {
 
 .generational-runner .runner-emoji {
   display: inline-block;
-  font-size: 1.3rem;
+  font-size: 1.45rem;
   text-shadow: -3px 0 4px var(--teal), -6px 0 8px #38ef7d;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.25));
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
   transform: var(--runner-scale-normal);
   z-index: 2;
 }
@@ -3244,7 +3300,7 @@ body[data-comparison-mode="single"][data-stats-mode="series"] #matches-table {
   transition: opacity 0.4s ease;
 }
 
-/* Upgraded Glassmorphic Text Badge with Shimmer Overlay */
+/* ── Celebration badge ── */
 .generational-run-text {
   position: absolute;
   top: 6px;
@@ -3253,17 +3309,17 @@ body[data-comparison-mode="single"][data-stats-mode="series"] #matches-table {
   opacity: 0;
   pointer-events: none;
   z-index: 9;
-  background: linear-gradient(135deg, rgba(56, 239, 125, 0.12) 0%, rgba(42, 117, 100, 0.12) 100%);
-  border: 1.5px solid rgba(42, 117, 100, 0.5);
-  box-shadow: 0 4px 16px rgba(42, 117, 100, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  background: linear-gradient(135deg, rgba(56, 239, 125, 0.14) 0%, rgba(42, 117, 100, 0.12) 100%);
+  border: 1.5px solid rgba(255, 200, 55, 0.55);
+  box-shadow: 0 6px 20px rgba(42, 117, 100, 0.25), 0 0 26px rgba(255, 200, 55, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.5);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   color: #1e5c4e; /* Dark green for contrast in light mode */
-  padding: 4px 12px;
+  padding: 5px 14px;
   border-radius: 20px;
-  font-size: 0.72rem;
+  font-size: 0.74rem;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
   white-space: nowrap;
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
@@ -3273,8 +3329,8 @@ body[data-comparison-mode="single"][data-stats-mode="series"] #matches-table {
 
 body[data-theme="dark"] .generational-run-text {
   background: linear-gradient(135deg, rgba(56, 239, 125, 0.18) 0%, rgba(42, 117, 100, 0.18) 100%);
-  border: 1.5px solid rgba(56, 239, 125, 0.5);
-  box-shadow: 0 4px 20px rgba(56, 239, 125, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  border: 1.5px solid rgba(255, 200, 55, 0.5);
+  box-shadow: 0 4px 20px rgba(56, 239, 125, 0.3), 0 0 26px rgba(255, 200, 55, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
   color: #38ef7d; /* Mint green in dark mode */
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
@@ -3289,16 +3345,15 @@ body[data-theme="dark"] .generational-run-text {
   background: linear-gradient(
     90deg,
     rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.45) 50%,
+    rgba(255, 255, 255, 0.5) 50%,
     rgba(255, 255, 255, 0) 100%
   );
   transform: skewX(-20deg);
 }
 
 .generational-run-text.animate-run {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0) scale(1);
-  animation: text-float 3s ease-in-out infinite alternate 0.6s,
+  animation: badge-pop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) forwards 0.55s,
+             text-float 3s ease-in-out infinite alternate 1.2s,
              text-fade-out 0.4s ease forwards 4.5s;
 }
 
@@ -3311,9 +3366,9 @@ body[data-theme="dark"] .generational-run-text {
   transform: translateX(-50%) translateY(-4px);
 }
 
-/* Fire win chip sequential ignite animation */
+/* Win chips ignite in sequence as the runner passes */
 .chip.win.ignite {
-  animation: win-chip-pulse 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  animation: win-chip-pulse 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
   /* Maintain fallback styles just in case */
   background: rgba(42, 117, 100, 0.2) !important;
   color: var(--teal) !important;
@@ -3326,7 +3381,46 @@ body[data-theme="dark"] .generational-run-text {
 
 /* Streak chip end-of-run burst */
 .streak-chip.burst {
-  animation: streak-reveal-and-burst 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.5) 4.9s forwards;
+  animation: streak-reveal-and-burst 0.75s cubic-bezier(0.175, 0.885, 0.32, 1.5) 4.9s forwards;
+}
+
+/* Finale: golden rays rotating behind the streak chip */
+.burst-rays {
+  position: absolute;
+  top: calc(var(--burst-y, 0px) - 34px);
+  left: calc(var(--burst-x, 0px) - 34px);
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(rgba(255, 200, 55, 0.5) 0deg 9deg, transparent 9deg 26deg);
+  -webkit-mask-image: radial-gradient(circle, black 26%, transparent 68%);
+  mask-image: radial-gradient(circle, black 26%, transparent 68%);
+  pointer-events: none;
+  z-index: 8;
+  opacity: 0;
+}
+
+.burst-rays.animate-burst {
+  animation: rays-in 1.2s ease-out forwards 4.9s;
+}
+
+/* Finale: sparks flying out of the streak chip */
+.burst-spark {
+  position: absolute;
+  top: calc(var(--burst-y, 0px) - 2px);
+  left: calc(var(--burst-x, 0px) - 2px);
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #ffc837;
+  box-shadow: 0 0 6px #ff8008;
+  pointer-events: none;
+  z-index: 11;
+  opacity: 0;
+}
+
+.burst-spark.animate-burst {
+  animation: spark-burst 0.75s cubic-bezier(0.22, 1, 0.36, 1) forwards 4.9s;
 }
 
 @keyframes flame-drop-flight {
@@ -3354,21 +3448,91 @@ body[data-theme="dark"] .generational-run-text {
     opacity: 0;
     transform: scale(0.5);
   }
-  40% {
+  30% {
     opacity: 1;
-    transform: scale(1.5) rotate(-12deg);
+    transform: scale(1.65, 0.7) rotate(-8deg);
     box-shadow: 0 0 30px #ff8008, 0 0 50px #ffc837;
     background: linear-gradient(135deg, #ffc837 0%, #ff8008 100%) !important;
     color: #ffffff !important;
     border-color: #ff8008 !important;
   }
+  55% {
+    transform: scale(0.9, 1.35) rotate(4deg);
+  }
+  75% {
+    transform: scale(1.28, 1.12) rotate(-3deg);
+  }
   100% {
     opacity: 1;
-    transform: scale(1.2) rotate(-5deg);
-    box-shadow: 0 0 15px rgba(255, 128, 8, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+    transform: scale(1.2) rotate(-2deg);
+    box-shadow: 0 0 18px rgba(255, 128, 8, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
     background: linear-gradient(135deg, #ffc837 0%, #ff8008 100%) !important;
     color: #ffffff !important;
     border-color: #ff8008 !important;
+  }
+}
+
+@keyframes badge-pop {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px) scale(0.55);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+}
+
+@keyframes trail-flicker {
+  0% {
+    opacity: 0.55;
+    transform: translateY(-50%) skewX(-12deg) scaleX(0.85);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(-50%) skewX(-12deg) scaleX(1.1);
+  }
+}
+
+@keyframes spark-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(2px) scale(0.6);
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-16px) scale(1);
+  }
+}
+
+@keyframes rays-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.4) rotate(0deg);
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.9;
+    transform: scale(1.15) rotate(40deg);
+  }
+}
+
+@keyframes spark-burst {
+  0% {
+    opacity: 0;
+    transform: rotate(var(--angle, 0deg)) translateX(0) scale(1);
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(var(--angle, 0deg)) translateX(30px) scale(0.3);
   }
 }
 
@@ -3398,18 +3562,9 @@ body[data-theme="dark"] .generational-run-text {
   }
 }
 
-@keyframes track-glow-flow {
-  0% {
-    background-position: 0% 50%;
-    box-shadow: 0 0 8px var(--teal), 0 0 16px #38ef7d;
-  }
-  50% {
-    box-shadow: 0 0 14px var(--teal), 0 0 26px #38ef7d;
-  }
-  100% {
-    background-position: -200% 50%;
-    box-shadow: 0 0 8px var(--teal), 0 0 16px #38ef7d;
-  }
+@keyframes track-shimmer {
+  0% { background-position: -60% 0; }
+  100% { background-position: 160% 0; }
 }
 
 @keyframes runner-run-across {
@@ -3434,9 +3589,9 @@ body[data-theme="dark"] .generational-run-text {
 
 @keyframes runner-wiggle {
   0% { transform: var(--runner-scale-normal) translateY(0) rotate(0deg); }
-  25% { transform: var(--runner-scale-wiggle) translateY(-2px) rotate(-10deg); }
+  25% { transform: var(--runner-scale-wiggle) translateY(-3px) rotate(-10deg); }
   50% { transform: var(--runner-scale-normal) translateY(0) rotate(0deg); }
-  75% { transform: var(--runner-scale-wiggle) translateY(-2px) rotate(10deg); }
+  75% { transform: var(--runner-scale-wiggle) translateY(-3px) rotate(10deg); }
   100% { transform: var(--runner-scale-normal) translateY(0) rotate(0deg); }
 }
 
@@ -3464,56 +3619,50 @@ body[data-theme="dark"] .generational-run-text {
     border-color: rgba(42, 117, 100, 0.3);
     box-shadow: none;
   }
-  50% {
-    transform: scale(1.4) rotate(15deg);
+  35% {
+    transform: scale(1.45) rotate(12deg);
     background: #38ef7d !important;
     color: #ffffff !important;
-    border-color: #60efff !important;
-    box-shadow: 0 0 18px #38ef7d, 0 0 30px #60efff;
+    border-color: #38ef7d !important;
+    box-shadow: 0 0 0 6px rgba(56, 239, 125, 0.25), 0 0 22px #38ef7d;
+  }
+  65% {
+    transform: scale(0.92) rotate(-4deg);
   }
   100% {
     transform: scale(1) rotate(0deg);
     background: linear-gradient(135deg, #38ef7d 0%, #11998e 100%) !important;
     color: #ffffff !important;
     border-color: #38ef7d !important;
-    box-shadow: 0 0 8px rgba(56, 239, 125, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+    box-shadow: 0 0 12px rgba(56, 239, 125, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-  }
-}
-
-@keyframes streak-burst {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.5) rotate(-12deg);
-    box-shadow: 0 0 30px #ff8008, 0 0 50px #ffc837;
-    background: linear-gradient(135deg, #ffc837 0%, #ff8008 100%) !important;
-    color: #ffffff !important;
-  }
-  100% {
-    transform: scale(1.2) rotate(-5deg);
-    box-shadow: 0 0 15px rgba(255, 128, 8, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
-    background: linear-gradient(135deg, #ffc837 0%, #ff8008 100%) !important;
-    color: #ffffff !important;
-    border-color: #ff8008 !important;
   }
 }
 
 /* Mobile responsive adjustments for generational run */
 @media (max-width: 600px) {
   .form-chips.has-generational-run {
-    padding-top: 40px;
+    padding-top: 42px;
   }
 
   .generational-track {
-    top: 30px;
-    height: 3px;
-    box-shadow: 0 0 6px var(--teal), 0 0 12px #38ef7d;
+    top: 31px;
+    height: 4px;
+  }
+
+  .generational-sparks .spark {
+    top: 29px;
+    width: 4px;
+    height: 4px;
   }
 
   .generational-runner {
-    top: 22px;
+    top: 21px;
+  }
+
+  .runner-trail {
+    width: 34px;
+    height: 8px;
   }
 
   .generational-runner .runner-flame {
@@ -3522,7 +3671,7 @@ body[data-theme="dark"] .generational-run-text {
   }
 
   .generational-runner .runner-emoji {
-    font-size: 1.05rem;
+    font-size: 1.1rem;
     text-shadow: -2px 0 3px var(--teal), -4px 0 6px #38ef7d;
   }
 
@@ -3532,11 +3681,19 @@ body[data-theme="dark"] .generational-run-text {
     padding: 3px 9px;
     letter-spacing: 0.05em;
   }
+
+  .burst-rays {
+    top: calc(var(--burst-y, 0px) - 26px);
+    left: calc(var(--burst-x, 0px) - 26px);
+    width: 52px;
+    height: 52px;
+  }
 }
 
 /* Accessibility */
 @media (prefers-reduced-motion: reduce) {
-  .generational-runner, .generational-track {
+  .generational-runner, .generational-track, .generational-sparks,
+  .burst-rays, .burst-spark, .runner-trail {
     display: none !important;
   }
   .generational-run-text {

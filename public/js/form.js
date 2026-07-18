@@ -67,6 +67,7 @@ export function setupGenerationalRun(matches, streakChip, fragment) {
   const runner = document.createElement("span");
   runner.className = "generational-runner";
   runner.innerHTML = `
+    <span class="runner-trail"></span>
     <span class="runner-flame">🔥</span>
     <span class="runner-emoji">🏃‍♂️</span>
   `;
@@ -77,6 +78,33 @@ export function setupGenerationalRun(matches, streakChip, fragment) {
   runText.className = "generational-run-text";
   runText.textContent = "👑 Generational run!";
   fragment.appendChild(runText);
+
+  // Sparks rising off the track as the runner passes
+  const sparks = document.createElement("div");
+  sparks.className = "generational-sparks";
+  const SPARK_COUNT = 7;
+  for (let i = 0; i < SPARK_COUNT; i += 1) {
+    const spark = document.createElement("i");
+    spark.className = "spark";
+    const frac = (i + 0.5) / SPARK_COUNT;
+    spark.style.setProperty("--spark-frac", frac.toFixed(3));
+    spark.style.setProperty("--spark-delay", `${(frac * 4.3).toFixed(2)}s`);
+    sparks.appendChild(spark);
+  }
+  fragment.appendChild(sparks);
+
+  // Finale: golden rays + spark burst from the streak chip
+  const rays = document.createElement("div");
+  rays.className = "burst-rays";
+  fragment.appendChild(rays);
+  const burstSparks = [];
+  for (let i = 0; i < 8; i += 1) {
+    const spark = document.createElement("i");
+    spark.className = "burst-spark";
+    spark.style.setProperty("--angle", `${i * 45}deg`);
+    fragment.appendChild(spark);
+    burstSparks.push(spark);
+  }
 
   // Mark the streak chip to celebrate at the end of the run
   streakChip.classList.add("burst");
@@ -105,6 +133,14 @@ export function setupGenerationalRun(matches, streakChip, fragment) {
             flameDropX = streakChipCenter - lastChipCenter;
           }
           elements.formChips.style.setProperty("--flame-drop-x", `${flameDropX}px`);
+          elements.formChips.style.setProperty(
+            "--burst-x",
+            `${streakChip.offsetLeft + streakChip.offsetWidth / 2}px`
+          );
+          elements.formChips.style.setProperty(
+            "--burst-y",
+            `${streakChip.offsetTop + streakChip.offsetHeight / 2}px`
+          );
 
           // Add sequential lighting delay to each Win chip
           winChips.forEach((chip, index) => {
@@ -119,6 +155,8 @@ export function setupGenerationalRun(matches, streakChip, fragment) {
         track.classList.add("animate-run");
         runner.classList.add("animate-run");
         runText.classList.add("animate-run");
+        rays.classList.add("animate-burst");
+        burstSparks.forEach((spark) => spark.classList.add("animate-burst"));
         observer.disconnect();
 
         // Graceful cleanup after animations finish
@@ -131,6 +169,9 @@ export function setupGenerationalRun(matches, streakChip, fragment) {
             runner.remove();
             runText.remove();
             track.remove();
+            sparks.remove();
+            rays.remove();
+            burstSparks.forEach((spark) => spark.remove());
             
             // Revert win chips back to original styles
             const winChips = elements.formChips.querySelectorAll(".chip.win");
@@ -147,7 +188,7 @@ export function setupGenerationalRun(matches, streakChip, fragment) {
             // Remove the generational class to restore normal layout padding and streak chip display
             elements.formChips.classList.remove("has-generational-run");
           }, 500);
-        }, 5500);
+        }, 6000);
       }
     });
   }, { threshold: 0.1 });
