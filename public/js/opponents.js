@@ -1,8 +1,17 @@
-import { elements } from "./state.js";
+import { elements, isSeriesMode } from "./state.js";
+import { getAliasGroup, getPlayerById, setInputPlayer } from "./players.js";
 
 // ── Sortable single-player opponents table ──────────────────────────
 let _opponentsData = [];        // all aggregated opponents
 let _currentSort = { key: "games", dir: "desc" };
+let _onCompare = () => {};
+let _controlsBound = false;
+const _minGamesByMode = { games: 10, series: 1 };
+
+export function initOpponents({ onCompare } = {}) {
+  _onCompare = typeof onCompare === "function" ? onCompare : () => {};
+  bindOpponentControls();
+}
 
 function sortOpponents(list, key, dir) {
   const cmp = dir === "asc" ? 1 : -1;
@@ -51,25 +60,18 @@ function renderOpponentsRows(filtered) {
 
     const winPct = opp.games ? (opp.wins / opp.games) * 100 : 0;
 
-    // Click listener to load H2H comparison
-    row.addEventListener("click", async () => {
-      const opponent = opp.id
-        ? (await import("./players.js")).getPlayerById(opp.id)
-          || { id: opp.id, name: opp.name }
-        : { id: null, name: opp.name };
-
-      elements.playerB.disabled = false;
-      const playersModule = await import("./players.js");
-      playersModule.setInputPlayer(elements.playerB, opponent);
-
-      const mainModule = await import("./main.js");
-      mainModule.handleCompare();
-    });
-
     // Name
     const nameCell = document.createElement("td");
     nameCell.className = "opp-cell-name";
-    nameCell.textContent = opp.name;
+    const selectButton = document.createElement("button");
+    selectButton.type = "button";
+    selectButton.className = "opponent-select-btn";
+    selectButton.textContent = opp.name;
+    const opponentId = Number(opp.id);
+    selectButton.disabled = !Number.isInteger(opponentId) || opponentId <= 0;
+    selectButton.setAttribute("aria-label", `Compare with ${opp.name}`);
+    selectButton.addEventListener("click", () => selectOpponent(opp));
+    nameCell.appendChild(selectButton);
     row.appendChild(nameCell);
 
     // Games
@@ -94,18 +96,52 @@ function renderOpponentsRows(filtered) {
   });
 }
 
+function selectOpponent(opp) {
+  const opponentId = Number(opp.id);
+  if (!Number.isInteger(opponentId) || opponentId <= 0) return;
+  const opponent = {
+    ...(getPlayerById(opponentId) || { id: opponentId, name: opp.name }),
+    ids: getAliasGroup(opponentId),
+  };
+  elements.playerB.disabled = false;
+  setInputPlayer(elements.playerB, opponent);
+  _onCompare();
+}
+
 function updateSortUI() {
   if (!elements.opponentsHeadRow) return;
-  const ths = elements.opponentsHeadRow.querySelectorAll(".sortable-col");
-  ths.forEach((th) => {
+  const unitLabel = isSeriesMode() ? "Series" : "Games";
+  const gamesLabel = document.getElementById("opponents-games-label");
+  const sliderUnitLabel = document.getElementById("opponents-unit-label");
+  const recordLabel = document.getElementById("opponents-record-label");
+  if (gamesLabel) gamesLabel.textContent = unitLabel;
+  if (sliderUnitLabel) sliderUnitLabel.textContent = unitLabel.toLowerCase();
+  if (recordLabel) recordLabel.textContent = isSeriesMode() ? "W-T-L" : "W-D-L";
+  const buttons = elements.opponentsHeadRow.querySelectorAll(".opponents-sort-btn");
+  buttons.forEach((button) => {
+    const th = button.closest("th");
+    const key = button.dataset.sort;
+    if (!th) return;
     const indicator = th.querySelector(".sort-indicator");
-    if (th.dataset.sort === _currentSort.key) {
+    const isActive = key === _currentSort.key;
+    if (isActive) {
       th.classList.add("active-sort");
-      indicator.textContent = _currentSort.dir === "desc" ? "▼" : "▲";
+      th.setAttribute("aria-sort", _currentSort.dir === "desc" ? "descending" : "ascending");
+      if (indicator) indicator.textContent = _currentSort.dir === "desc" ? "▼" : "▲";
     } else {
       th.classList.remove("active-sort");
-      indicator.textContent = "";
+      th.setAttribute("aria-sort", "none");
+      if (indicator) indicator.textContent = "";
     }
+    const label = key === "winPct"
+      ? "win percentage"
+      : key === "games" ? unitLabel.toLowerCase() : key;
+    button.setAttribute(
+      "aria-label",
+      isActive
+        ? `Sort opponents by ${label}; currently ${_currentSort.dir === "desc" ? "descending" : "ascending"}`
+        : `Sort opponents by ${label}`
+    );
   });
 }
 
@@ -121,16 +157,54 @@ function applyFilterAndRender() {
   }
 }
 
-let _sortListenersBound = false;
+function setOpponentSort(key) {
+  if (!["name", "games", "winPct"].includes(key)) return;
+  if (_currentSort.key === key) {
+    _currentSort.dir = _currentSort.dir === "desc" ? "asc" : "desc";
+  } else {
+    _currentSort.key = key;
+    _currentSort.dir = key === "name" ? "asc" : "desc";
+  }
+  updateSortUI();
+  applyFilterAndRender();
+}
+
+function bindOpponentControls() {
+  if (_controlsBound) return;
+  _controlsBound = true;
+
+  if (elements.opponentsHeadRow) {
+    elements.opponentsHeadRow.querySelectorAll(".opponents-sort-btn").forEach((button) => {
+      button.addEventListener("click", () => setOpponentSort(button.dataset.sort));
+    });
+  }
+
+  if (elements.minGamesSlider) {
+    elements.minGamesSlider.addEventListener("input", () => {
+      _minGamesByMode[isSeriesMode() ? "series" : "games"] = parseInt(
+        elements.minGamesSlider.value,
+        10
+      );
+      if (elements.minGamesValue) {
+        elements.minGamesValue.textContent = elements.minGamesSlider.value;
+      }
+      applyFilterAndRender();
+    });
+  }
+}
 
 export function renderSinglePlayerPanels(matches) {
   if (!elements.topOpponentsBody) return;
+  bindOpponentControls();
 
   // 1. Group matches by opponent
   const opponentsMap = new Map();
   matches.forEach((match) => {
-    const oppId = match.opponent_id;
-    const oppName = match.opponent_name
+    const rawOpponentId = Number(match.opponent_id);
+    const hasOpponentId = Number.isInteger(rawOpponentId) && rawOpponentId > 0;
+    const oppId = hasOpponentId ? getAliasGroup(rawOpponentId)[0] : null;
+    const oppName = getPlayerById(oppId)?.name
+      || match.opponent_name
       || (oppId ? `Player ${oppId}` : "Unknown opponent");
     const key = oppId != null ? `id:${oppId}` : `name:${oppName}`;
 
@@ -150,8 +224,8 @@ export function renderSinglePlayerPanels(matches) {
     }
 
     entry.games += 1;
-    entry.goalsFor += match.goals_a;
-    entry.goalsAgainst += match.goals_b;
+    entry.goalsFor += Number(match.goals_a) || 0;
+    entry.goalsAgainst += Number(match.goals_b) || 0;
     if (match.result === "A") entry.wins += 1;
     else if (match.result === "B") entry.losses += 1;
     else entry.draws += 1;
@@ -161,54 +235,21 @@ export function renderSinglePlayerPanels(matches) {
 
   // Auto-adjust slider max to the highest game count
   if (elements.minGamesSlider) {
+    const mode = isSeriesMode() ? "series" : "games";
     const maxGames = _opponentsData.reduce(
       (m, o) => Math.max(m, o.games), 1
     );
-    elements.minGamesSlider.max = String(Math.min(maxGames, 100));
-    // Clamp current value
-    if (parseInt(elements.minGamesSlider.value, 10) > maxGames) {
-      elements.minGamesSlider.value = String(maxGames);
-    }
+    const sliderMax = Math.min(maxGames, 100);
+    elements.minGamesSlider.max = String(sliderMax);
+    elements.minGamesSlider.value = String(
+      Math.min(_minGamesByMode[mode], sliderMax)
+    );
     if (elements.minGamesValue) {
       elements.minGamesValue.textContent = elements.minGamesSlider.value;
     }
   }
 
-  // 2. Bind interactive listeners (once)
-  if (!_sortListenersBound) {
-    _sortListenersBound = true;
-
-    // Column sort click handlers
-    if (elements.opponentsHeadRow) {
-      elements.opponentsHeadRow.querySelectorAll(".sortable-col")
-        .forEach((th) => {
-          th.addEventListener("click", () => {
-            const key = th.dataset.sort;
-            if (_currentSort.key === key) {
-              _currentSort.dir =
-                _currentSort.dir === "desc" ? "asc" : "desc";
-            } else {
-              _currentSort.key = key;
-              _currentSort.dir = key === "name" ? "asc" : "desc";
-            }
-            updateSortUI();
-            applyFilterAndRender();
-          });
-        });
-    }
-
-    // Min-games slider
-    if (elements.minGamesSlider) {
-      elements.minGamesSlider.addEventListener("input", () => {
-        if (elements.minGamesValue) {
-          elements.minGamesValue.textContent = elements.minGamesSlider.value;
-        }
-        applyFilterAndRender();
-      });
-    }
-  }
-
-  // 3. Initial render
+  // 2. Initial render
   updateSortUI();
   applyFilterAndRender();
 }

@@ -51,9 +51,16 @@ export function expandAliasIds(ids) {
   return normalizeAliasIds(expanded);
 }
 
+export function selectionsShareIdentity(idsA, idsB) {
+  const identityA = new Set(expandAliasIds(idsA));
+  return expandAliasIds(idsB).some((id) => identityA.has(id));
+}
+
 export function getEffectiveAliasGroup(primaryId, explicitIds = []) {
   const ids = normalizeAliasIds(explicitIds);
-  if (ids.length > 1) return expandAliasIds(ids);
+  // An explicit singleton represents the individual profile. The grouped
+  // typeahead option carries every curated alias ID explicitly.
+  if (ids.length) return ids;
   return getAliasGroup(primaryId);
 }
 
@@ -96,6 +103,8 @@ export function clearInputPlayer(inputEl, listEl) {
   inputEl.dataset.playerName = "";
   listEl.classList.remove("is-open");
   listEl.innerHTML = "";
+  inputEl.setAttribute("aria-expanded", "false");
+  inputEl.removeAttribute("aria-activedescendant");
   updatePrimaryActionLabel();
   updateSelectionControls();
 }
@@ -107,7 +116,8 @@ export function resolvePlayerId(inputEl) {
   if (!value) return null;
   const idMatch = value.match(/\(#?(\d+)\)\s*$/) || value.match(/\b(\d+)\s*$/);
   if (idMatch) {
-    return Number.parseInt(idMatch[1], 10);
+    const candidate = Number.parseInt(idMatch[1], 10);
+    return getPlayerById(candidate) ? candidate : null;
   }
   const key = normalizeText(value);
   const matches = state.players.filter((player) => normalizeText(player.name) === key);
@@ -170,6 +180,8 @@ export function updateSelectionControls() {
     elements.copyLinkBtn.disabled = !resolvePlayerId(elements.playerA);
   }
   if (elements.shareImageBtn) {
-    elements.shareImageBtn.disabled = !resolvePlayerId(elements.playerA);
+    elements.shareImageBtn.disabled = !resolvePlayerId(elements.playerA)
+      || state.loading
+      || !state.baseMatches.length;
   }
 }

@@ -1,3 +1,10 @@
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'none'
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), geolocation=(), microphone=()
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+
 /data/*
   Cache-Control: public, max-age=300
 /js/*
@@ -5,4 +12,4 @@
 /*.html
   Cache-Control: no-cache
 /
-  Cache-Control: public, max-age=600
+  Cache-Control: no-cache

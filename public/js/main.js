@@ -17,12 +17,16 @@ import {
   getSelectionIds,
   getPlayerById,
   parseIdList,
+  selectionsShareIdentity,
   normalizePlayerRecord,
+  updatePrimaryActionLabel,
+  updateSelectionControls,
 } from "./players.js";
 import {
   loadPlayerStats,
   loadMatchup,
   loadOpponentsForPlayer,
+  cancelOpponentLoading,
   fetchJson,
 } from "./data.js";
 import { buildPlayoffSeries, annotatePlayoffGamesWithSeries } from "./series.js";
@@ -35,7 +39,7 @@ import {
 } from "./filters.js";
 import { setupTypeahead } from "./typeahead.js";
 import { renderSummary } from "./summary.js";
-import { renderSinglePlayerPanels } from "./opponents.js";
+import { initOpponents, renderSinglePlayerPanels } from "./opponents.js";
 import {
   updateUrl,
   restoreStateFromUrl,
@@ -48,12 +52,14 @@ import {
   handleRecentClick,
   initRecent,
 } from "./recent.js";
-import { renderForm } from "./form.js";
+import {
+  renderForm,
+  resetFormPresentation,
+} from "./form.js?v=20260801-generational-run-v3";
 import { renderCharts } from "./charts.js";
 import {
   renderTable,
   initTable,
-  getTableColumns,
   sortMatches,
 } from "./table.js";
 import { setTheme, toggleTheme, initInfoPopovers } from "./theme.js";
@@ -61,6 +67,12 @@ import { handleShareImage } from "./share.js";
 
 // Global functions that were in app.js
 let compareRequestToken = 0;
+let activeCompareController = null;
+
+function abortActiveComparison() {
+  if (activeCompareController) activeCompareController.abort();
+  activeCompareController = null;
+}
 
 export function setStatus(message) {
   if (elements.status) elements.status.textContent = message;
@@ -69,6 +81,16 @@ export function setStatus(message) {
 export function setLoading(isLoading) {
   state.loading = isLoading;
   document.body.classList.toggle("is-loading", isLoading);
+  [elements.summarySection, elements.visualizationsSection, elements.matchesSection]
+    .filter(Boolean)
+    .forEach((section) => section.setAttribute("aria-busy", isLoading ? "true" : "false"));
+  updateSelectionControls();
+}
+
+function setResultsSectionsVisible(visible) {
+  if (elements.summarySection) elements.summarySection.hidden = !visible;
+  if (elements.visualizationsSection) elements.visualizationsSection.hidden = !visible;
+  if (elements.matchesSection) elements.matchesSection.hidden = !visible;
 }
 
 export function updateStageMeta() {
@@ -96,6 +118,16 @@ export function updateModeControls() {
   }
   document.body.dataset.statsMode = getStatsMode();
   document.body.dataset.comparisonMode = state.comparisonMode;
+  if (elements.tightToggleLabel) {
+    elements.tightToggleLabel.textContent = getStatsMode() === "series"
+      ? "Contains a one-goal game"
+      : "One-goal games";
+  }
+  if (elements.otToggleLabel) {
+    elements.otToggleLabel.textContent = getStatsMode() === "series"
+      ? "Contains an overtime game"
+      : "Only overtime";
+  }
 }
 
 export function getActiveItems() {
@@ -121,14 +153,13 @@ function applyStageTab(matches, stageTab) {
 
 export function updateView() {
   if (!state.baseMatches.length) {
+    resetFormPresentation();
     setDataControlsEnabled(false);
     setStageFilterCardsVisible(false);
+    setResultsSectionsVisible(false);
+    if (elements.filterEmptyState) elements.filterEmptyState.hidden = true;
     updateModeControls();
     updateFilterCount();
-    renderSummary([]);
-    renderForm([]);
-    renderCharts([]);
-    renderTable([]);
     if (elements.singlePlayerSection) elements.singlePlayerSection.hidden = true;
     return;
   }
@@ -143,8 +174,35 @@ export function updateView() {
   if (state.page > totalPages) state.page = totalPages;
   if (state.page < 1) state.page = 1;
 
+  if (!state.filteredMatches.length) {
+    resetFormPresentation();
+    setResultsSectionsVisible(false);
+    if (elements.singlePlayerSection) elements.singlePlayerSection.hidden = true;
+    if (elements.filterEmptyState) elements.filterEmptyState.hidden = false;
+    const stageHasNoData = state.stageMatches.length === 0 && state.stageTab !== "overall";
+    if (elements.filterEmptyTitle) {
+      elements.filterEmptyTitle.textContent = stageHasNoData
+        ? "No matches in this stage"
+        : "No results in this view";
+    }
+    if (elements.filterEmptyCopy) {
+      elements.filterEmptyCopy.textContent = stageHasNoData
+        ? "This matchup has no games in the selected stage."
+        : "Try another stage or clear the active filters.";
+    }
+    if (elements.clearFiltersBtn) {
+      elements.clearFiltersBtn.textContent = stageHasNoData ? "Show all stages" : "Clear filters";
+    }
+    updateFilterCount();
+    updateUrl();
+    return;
+  }
+
+  if (elements.filterEmptyState) elements.filterEmptyState.hidden = true;
+  setResultsSectionsVisible(true);
+
   renderSummary(state.filteredMatches);
-  renderForm(state.filteredMatches);
+  renderForm(state.filteredMatches, state.stageMatches);
   renderCharts(state.filteredMatches);
   renderTable(state.filteredMatches);
 
@@ -173,16 +231,19 @@ export function setStageTabControls(stage = "overall") {
     elements.tabs.forEach((tab) => {
       const isActive = tab.dataset.stage === stage;
       tab.classList.toggle("is-active", isActive);
-      tab.setAttribute("aria-selected", isActive ? "true" : "false");
-      tab.tabIndex = isActive ? 0 : -1;
+      tab.setAttribute("aria-pressed", isActive ? "true" : "false");
+      tab.tabIndex = 0;
     });
   }
   updateModeControls();
 }
 
 export function renderIdleState() {
+  resetFormPresentation();
   if (elements.singlePlayerSection) elements.singlePlayerSection.hidden = true;
   setStageFilterCardsVisible(false);
+  setResultsSectionsVisible(false);
+  if (elements.filterEmptyState) elements.filterEmptyState.hidden = true;
   const selectedId = resolvePlayerId(elements.playerA);
   const selectedPlayer = selectedId ? getSelectionPlayer(elements.playerA, selectedId) : null;
 
@@ -201,57 +262,23 @@ export function renderIdleState() {
     elements.record.replaceChildren();
   }
   if (elements.summaryGrid) elements.summaryGrid.replaceChildren();
-  if (elements.formTitle) elements.formTitle.textContent = "Recent form";
-  if (elements.formChips) {
-    elements.formChips.replaceChildren();
-    const formMessage = document.createElement("span");
-    formMessage.className = "muted";
-    formMessage.textContent = selectedPlayer ? "No view loaded" : "No selection";
-    elements.formChips.appendChild(formMessage);
-  }
-
-  // Local helper for chart placeholders
-  const renderPlaceholder = (el, msg, icon) => {
-    if (!el) return;
-    el.replaceChildren();
-    const ph = document.createElement("div");
-    ph.className = "chart-placeholder";
-    const svgInner = icon === "trend"
-      ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>`
-      : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>`;
-    ph.innerHTML = `${svgInner} <span>${msg}</span>`;
-    el.appendChild(ph);
-  };
-
-  renderPlaceholder(
-    elements.recordChart,
-    selectedPlayer ? "Select a player to build the record." : "No selection",
-    "trend"
-  );
-  renderPlaceholder(
-    elements.goalsChart,
-    selectedPlayer ? "Select a player to see yearly scoring." : "No selection",
-    "bar"
-  );
-
+  if (elements.formChips) elements.formChips.replaceChildren();
+  if (elements.recordChart) elements.recordChart.replaceChildren();
+  if (elements.goalsChart) elements.goalsChart.replaceChildren();
+  if (elements.matchesBody) elements.matchesBody.replaceChildren();
   if (elements.matchCount) elements.matchCount.textContent = "0 matches";
-  
-  // Render table headers and empty state row
-  renderTable([]);
-  
-  if (elements.matchesBody) {
-    elements.matchesBody.replaceChildren();
-    const row = document.createElement("tr");
-    row.className = "empty-table-row";
-    const cell = document.createElement("td");
-    cell.colSpan = getTableColumns().length;
-    cell.textContent = selectedPlayer ? "Select a player to show matches." : "Select a player to show matches.";
-    row.appendChild(cell);
-    elements.matchesBody.appendChild(row);
-  }
+  [elements.prevPage, elements.nextPage, elements.prevPageBottom, elements.nextPageBottom]
+    .filter(Boolean)
+    .forEach((button) => { button.disabled = true; });
+  if (elements.paginationTop) elements.paginationTop.hidden = true;
+  if (elements.paginationBottom) elements.paginationBottom.hidden = true;
 }
 
 export function resetCurrentResults(options = {}) {
+  compareRequestToken += 1;
+  abortActiveComparison();
+  setLoading(false);
+  if (options.cancelOpponents) cancelOpponentLoading();
   if (elements.singlePlayerSection) elements.singlePlayerSection.hidden = true;
   const keepPlayerA = Boolean(options.keepPlayerA);
   state.baseMatches = [];
@@ -268,6 +295,7 @@ export function resetCurrentResults(options = {}) {
   if (elements.stageMeta) elements.stageMeta.textContent = "";
   updateFilterCount();
   renderIdleState();
+  updateSelectionControls();
   if (options.clearStoredSelection) safeStorageRemove(STORAGE_KEYS.last);
   if (options.clearUrl) clearUrlSelection();
   if (options.message != null) setStatus(options.message);
@@ -285,6 +313,7 @@ function maybeScrollToResults(options = {}) {
   if (!target) return;
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   target.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "start" });
+  if (elements.headline) elements.headline.focus({ preventScroll: true });
 }
 
 export async function handleCompare(options = {}) {
@@ -298,96 +327,134 @@ export async function handleCompare(options = {}) {
     setStatus("Select a valid player.");
     return;
   }
-  if (!isSingle && idsA.some((id) => idsB.includes(id))) {
-    setStatus("Choose two different players.");
+  if (!idB && elements.playerB.value.trim()) {
+    setStatus("Select a valid Player 2.");
+    return;
+  }
+  if (
+    !isSingle
+    && selectionsShareIdentity(idsA.length ? idsA : [idA], idsB.length ? idsB : [idB])
+  ) {
+    clearInputPlayer(elements.playerB, elements.listB);
+    resetCurrentResults({ keepPlayerA: true, message: "Choose two different players." });
+    updateUrl(idA, null, idsA, []);
+    safeStorageSet(STORAGE_KEYS.last, { p1: idA, p2: null, p1Ids: idsA, p2Ids: [] });
     return;
   }
 
-  // Increment token to invalidate any previous running comparison request
+  const selectedPlayerA = getSelectionPlayer(elements.playerA, idA);
+  const selectedPlayerB = isSingle ? null : getSelectionPlayer(elements.playerB, idB);
+
+  // Keep the URL in sync with what the user asked for, including an empty result.
+  updateUrl(idA, isSingle ? null : idB, idsA, isSingle ? [] : idsB);
+  safeStorageSet(STORAGE_KEYS.last, {
+    p1: idA,
+    p2: isSingle ? null : idB,
+    p1Ids: idsA,
+    p2Ids: isSingle ? [] : idsB,
+  });
+
   compareRequestToken += 1;
   const currentToken = compareRequestToken;
+  abortActiveComparison();
+  activeCompareController = new AbortController();
+  const requestSignal = activeCompareController.signal;
 
   setLoading(true);
+  resetFormPresentation();
   setStatus(isSingle ? "Loading player stats..." : "Loading matchup...");
   state.baseMatches = [];
   state.stageMatches = [];
   state.filteredMatches = [];
   if (elements.stageMeta) elements.stageMeta.textContent = "";
   setDataControlsEnabled(false);
+  setStageFilterCardsVisible(false);
+  setResultsSectionsVisible(false);
+  if (elements.singlePlayerSection) elements.singlePlayerSection.hidden = true;
+  if (elements.filterEmptyState) elements.filterEmptyState.hidden = true;
   if (elements.emptyState) elements.emptyState.hidden = true;
   if (elements.errorState) elements.errorState.hidden = true;
-  renderSummarySkeleton();
-  renderTableSkeleton();
 
   try {
     const data = isSingle
       ? await loadPlayerStats(idA, (current, total) => {
           if (currentToken !== compareRequestToken) return;
           setStatus(`Loading player files ${current}/${total}...`);
-        }, idsA)
+        }, idsA, requestSignal)
       : await loadMatchup(idA, idB, (current, total) => {
           if (currentToken !== compareRequestToken) return;
           setStatus(`Loading chunks ${current}/${total}...`);
-        }, idsA, idsB);
+        }, idsA, idsB, requestSignal);
 
     if (currentToken !== compareRequestToken) {
       return;
     }
 
-    state.playerA = getSelectionPlayer(elements.playerA, idA) || data?.playerA || { id: idA, name: `Player ${idA}` };
+    state.playerA = selectedPlayerA || data?.playerA || { id: idA, name: `Player ${idA}` };
     state.playerB = isSingle
       ? data?.playerB || { id: null, name: "Opponents" }
-      : getSelectionPlayer(elements.playerB, idB) || data?.playerB || { id: idB, name: `Player ${idB}` };
+      : selectedPlayerB || data?.playerB || { id: idB, name: `Player ${idB}` };
     state.comparisonMode = isSingle ? "single" : "matchup";
 
-    if (!data || !data.matches.length) {
+    const matches = Array.isArray(data?.matches) ? data.matches : [];
+    if (!matches.length) {
       if (elements.emptyState) elements.emptyState.hidden = false;
+      if (elements.emptyStateTitle) {
+        elements.emptyStateTitle.textContent = isSingle
+          ? "No recorded matches"
+          : "No matches yet";
+      }
+      if (elements.emptyStateCopy) {
+        elements.emptyStateCopy.textContent = isSingle
+          ? "No eligible opponent matches are available for this player."
+          : "These players have not faced each other in the dataset.";
+      }
       state.baseMatches = [];
       state.filteredMatches = [];
       if (elements.stageMeta) elements.stageMeta.textContent = "";
       setDataControlsEnabled(false);
       setStageFilterCardsVisible(false);
-      renderSummary([]);
-      renderForm([]);
-      renderCharts([]);
-      renderTable([]);
+      setResultsSectionsVisible(false);
       setLoading(false);
       setStatus("No matches found.");
+      updateSelectionControls();
       return;
     }
 
-    state.baseMatches = data.matches;
+    state.baseMatches = matches;
     state.page = 1;
     state.sort = { key: "date", direction: "desc" };
     state.perPage = Number(elements.pageSize.value);
+    updateStageMeta();
 
     if (options.restoreUrlState) {
       if (elements.tabs) {
         elements.tabs.forEach((tab) => {
           const isActive = tab.dataset.stage === state.stageTab;
           tab.classList.toggle("is-active", isActive);
-          tab.setAttribute("aria-selected", isActive ? "true" : "false");
-          tab.tabIndex = isActive ? 0 : -1;
+          tab.setAttribute("aria-pressed", isActive ? "true" : "false");
+          tab.tabIndex = 0;
         });
       }
       refreshFilterOptions(getActiveItems());
       updateModeControls();
       updateView();
     } else {
-      updateUrl(idA, isSingle ? null : idB, idsA, idsB);
-      safeStorageSet(STORAGE_KEYS.last, {
-        p1: idA,
-        p2: isSingle ? null : idB,
-        p1Ids: idsA,
-        p2Ids: isSingle ? [] : idsB,
-      });
       if (!isSingle) addRecent(idA, idB, state.playerA.name, state.playerB.name, idsA, idsB);
-      updateStageMeta();
       resetFilters();
       setStageTab("overall");
     }
     setLoading(false);
-    setStatus("");
+    const completionMessage = `${matches.length} match${matches.length === 1 ? "" : "es"} loaded.`;
+    setStatus(completionMessage);
+    setTimeout(() => {
+      if (
+        currentToken === compareRequestToken
+        && elements.status?.textContent === completionMessage
+      ) {
+        setStatus("");
+      }
+    }, 2000);
     maybeScrollToResults(options);
   } catch (err) {
     if (currentToken !== compareRequestToken) return;
@@ -397,47 +464,6 @@ export async function handleCompare(options = {}) {
     if (elements.errorState) elements.errorState.hidden = false;
     setStatus(isSingle ? "Failed to load player stats." : "Failed to load matchup.");
   }
-}
-
-export function renderSummarySkeleton() {
-  if (!elements.summaryGrid) return;
-  elements.summaryGrid.innerHTML = "";
-  const scoreboard = document.createElement("div");
-  scoreboard.className = "h2h-scoreboard";
-
-  const head = document.createElement("div");
-  head.className = "scoreboard-head skeleton";
-  head.innerHTML = "<div class=\"scoreboard-player\">Loading</div><div class=\"scoreboard-title\">...</div><div class=\"scoreboard-player\">Loading</div>";
-  scoreboard.appendChild(head);
-
-  const rows = document.createElement("div");
-  rows.className = "score-rows";
-  for (let i = 0; i < 4; i += 1) {
-    const row = document.createElement("div");
-    row.className = "score-row skeleton";
-    row.innerHTML = "<div class=\"score-value\">...</div><div class=\"score-label\">Loading</div><div class=\"score-value\">...</div>";
-    rows.appendChild(row);
-  }
-  scoreboard.appendChild(rows);
-
-  elements.summaryGrid.appendChild(scoreboard);
-}
-
-export function renderTableSkeleton() {
-  if (!elements.matchesBody) return;
-  elements.matchesBody.innerHTML = "";
-  const fragment = document.createDocumentFragment();
-  for (let i = 0; i < 6; i += 1) {
-    const row = document.createElement("tr");
-    row.className = "loading-table-row";
-    const cell = document.createElement("td");
-    cell.colSpan = 8;
-    cell.className = "skeleton";
-    cell.textContent = "Loading";
-    row.appendChild(cell);
-    fragment.appendChild(row);
-  }
-  elements.matchesBody.appendChild(fragment);
 }
 
 export async function handleSwap() {
@@ -455,6 +481,7 @@ export async function handleSwap() {
     return;
   }
 
+  cancelOpponentLoading();
   animateSwapButton();
 
   elements.playerA.value = bValue;
@@ -465,20 +492,26 @@ export async function handleSwap() {
   elements.playerB.dataset.playerIds = aIds || "";
   elements.playerA.dataset.playerName = bName || "";
   elements.playerB.dataset.playerName = aName || "";
-  
-  // Need to import updatePrimaryActionLabel from players.js
-  const playersModule = await import("./players.js");
-  playersModule.updatePrimaryActionLabel();
+  updatePrimaryActionLabel();
+  resetCurrentResults({ keepPlayerA: true, message: "" });
 
   // Reload opponents for the new Player A
   const newAId = bId ? Number(bId) : null;
   if (newAId) {
     elements.playerB.disabled = false;
-    await loadOpponentsForPlayer(newAId, parseIdList(bIds || bId));
+    await Promise.all([
+      handleCompare(),
+      loadOpponentsForPlayer(
+        newAId,
+        parseIdList(bIds || bId),
+        activeCompareController?.signal
+      ),
+    ]);
+    return;
   }
 
   if (aValue && bValue) {
-    handleCompare();
+    await handleCompare();
   }
 }
 
@@ -489,7 +522,10 @@ export function animateSwapButton() {
   elements.swapBtn.classList.add("is-spinning");
 }
 
+let copyLinkBusy = false;
+
 export function handleCopyLink() {
+  if (copyLinkBusy) return;
   const idA = resolvePlayerId(elements.playerA);
   const idB = resolvePlayerId(elements.playerB);
   const idsA = getSelectionIds(elements.playerA);
@@ -504,6 +540,9 @@ export function handleCopyLink() {
   const textEl = btn.querySelector("span") || btn;
   const originalText = textEl.textContent;
   if (navigator.clipboard) {
+    copyLinkBusy = true;
+    btn.disabled = true;
+    btn.setAttribute("aria-busy", "true");
     navigator.clipboard.writeText(link).then(
       () => {
         textEl.textContent = "✓ Copied!";
@@ -515,9 +554,18 @@ export function handleCopyLink() {
           btn.style.borderColor = "";
           btn.style.color = "";
           btn.style.background = "";
+          btn.removeAttribute("aria-busy");
+          copyLinkBusy = false;
+          updateSelectionControls();
         }, 1500);
+        setStatus("Link copied.");
       },
-      () => setStatus("Copy failed.")
+      () => {
+        btn.removeAttribute("aria-busy");
+        copyLinkBusy = false;
+        updateSelectionControls();
+        setStatus("Copy failed.");
+      }
     );
   } else {
     setStatus("Copy not supported.");
@@ -584,6 +632,11 @@ export function initGoalsModeToggle() {
   elements.goalsModeButtons.forEach((button) => {
     button.addEventListener("click", () => {
       state.goalsMode = button.dataset.goalsMode || "series";
+      elements.goalsModeButtons.forEach((modeButton) => {
+        const isActive = modeButton.dataset.goalsMode === state.goalsMode;
+        modeButton.classList.toggle("is-active", isActive);
+        modeButton.setAttribute("aria-pressed", isActive ? "true" : "false");
+      });
       renderCharts(state.filteredMatches);
       updateUrl();
     });
@@ -600,8 +653,8 @@ export function setStageTab(stage) {
     elements.tabs.forEach((tab) => {
       const isActive = tab.dataset.stage === stage;
       tab.classList.toggle("is-active", isActive);
-      tab.setAttribute("aria-selected", isActive ? "true" : "false");
-      tab.tabIndex = isActive ? 0 : -1;
+      tab.setAttribute("aria-pressed", isActive ? "true" : "false");
+      tab.tabIndex = 0;
     });
   }
   updateModeControls();
@@ -613,66 +666,106 @@ export function setStageTab(stage) {
 export async function loadPlayers() {
   setStatus("Loading players...");
   const payload = await fetchJson("data/players.json");
-  if (!payload) {
-    setStatus("Players not found.");
-    return;
+  if (!Array.isArray(payload)) {
+    throw new Error("Player index is missing or invalid.");
   }
+  state.playersById.clear();
+  state.aliasMap.clear();
   state.players = payload
     .map(normalizePlayerRecord)
-    .filter((player) => player.name && player.name.trim());
+    .filter((player) => Number.isInteger(Number(player?.id))
+      && Number(player.id) > 0
+      && player.name
+      && player.name.trim())
+    .map((player) => ({ ...player, id: Number(player.id) }));
   state.players.forEach((player) => state.playersById.set(player.id, player));
-  try {
-    const aliasesPayload = (await fetchJson("aliases.json")) || (await fetchJson("data/aliases.json"));
-    if (aliasesPayload) {
-      const groups = Array.isArray(aliasesPayload)
-        ? aliasesPayload
-        : Array.isArray(aliasesPayload.groups)
-          ? aliasesPayload.groups
-          : [];
-      groups.forEach((group) => {
-        const ids = Array.isArray(group) ? group : group && Array.isArray(group.ids) ? group.ids : [];
-        const normalized = normalizeAliasIds(ids);
-        if (normalized.length < 2) return;
-        normalized.forEach((id) => {
-          state.aliasMap.set(id, normalized);
-        });
-      });
-    }
-  } catch (err) {
-    // ignore alias load errors
+  const aliasesPayload = (await fetchJson("aliases.json"))
+    || (await fetchJson("data/aliases.json"));
+  if (!aliasesPayload) {
+    throw new Error("Alias index is missing or unavailable.");
   }
+  const groups = Array.isArray(aliasesPayload)
+    ? aliasesPayload
+    : Array.isArray(aliasesPayload.groups)
+      ? aliasesPayload.groups
+      : null;
+  if (!groups) {
+    throw new Error("Alias index is malformed.");
+  }
+  groups.forEach((group) => {
+    const ids = Array.isArray(group)
+      ? group
+      : group && Array.isArray(group.ids) ? group.ids : [];
+    const normalized = normalizeAliasIds(ids).filter((id) => state.playersById.has(id));
+    if (normalized.length < 2) return;
+    if (normalized.some((id) => state.aliasMap.has(id))) {
+      console.warn("Skipping overlapping alias group:", normalized.join(","));
+      return;
+    }
+    normalized.forEach((id) => {
+      state.aliasMap.set(id, normalized);
+    });
+  });
   setStatus("Ready.");
 }
 
 async function onPlayerASelected(player) {
   if (!player || !player.id) return;
   clearInputPlayer(elements.playerB, elements.listB);
-  resetCurrentResults({ keepPlayerA: true, message: "" });
-  await loadOpponentsForPlayer(player.id, player.ids || [player.id]);
-  await handleCompare();
+  resetCurrentResults({ keepPlayerA: true, cancelOpponents: true, message: "" });
+  const comparePromise = handleCompare({ scrollToResults: false });
+  const opponentsPromise = loadOpponentsForPlayer(
+    player.id,
+    player.ids || [player.id],
+    activeCompareController?.signal
+  );
+  await Promise.all([comparePromise, opponentsPromise]);
+}
+
+async function onPlayerASubmitted() {
+  const playerId = resolvePlayerId(elements.playerA);
+  const player = getPlayerById(playerId);
+  if (!playerId || !player) {
+    await handleCompare();
+    return;
+  }
+  const selection = { ...player, ids: getSelectionIds(elements.playerA) };
+  setInputPlayer(elements.playerA, selection);
+  await onPlayerASelected(selection);
 }
 
 export async function init() {
-  const savedTheme = safeStorageGet(STORAGE_KEYS.theme, "light");
-  if (savedTheme === "dark") {
-    setTheme("dark");
-  }
+  const savedTheme = safeStorageGet(STORAGE_KEYS.theme, null);
+  const preferredTheme = savedTheme === "dark" || savedTheme === "light"
+    ? savedTheme
+    : window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  setTheme(preferredTheme, { persist: savedTheme === "dark" || savedTheme === "light" });
 
   if (elements.themeToggle) elements.themeToggle.addEventListener("click", toggleTheme);
   initInfoPopovers();
 
-  const typeaheadA = setupTypeahead(elements.playerA, elements.listA, {
+  setupTypeahead(elements.playerA, elements.listA, {
     onPlayerSelect: onPlayerASelected,
-    onCompare: handleCompare,
-    onReset: () => resetCurrentResults({ clearUrl: true, clearStoredSelection: true, message: "" }),
-  });
-  const typeaheadB = setupTypeahead(elements.playerB, elements.listB, {
-    forPlayerB: true,
-    onCompare: handleCompare,
+    onCompare: onPlayerASubmitted,
     onReset: () => resetCurrentResults({
-      keepPlayerA: Boolean(resolvePlayerId(elements.playerA)),
+      cancelOpponents: true,
+      clearUrl: true,
+      clearStoredSelection: true,
       message: "",
     }),
+  });
+  setupTypeahead(elements.playerB, elements.listB, {
+    forPlayerB: true,
+    onCompare: handleCompare,
+    onReset: () => {
+      const idA = resolvePlayerId(elements.playerA);
+      const idsA = getSelectionIds(elements.playerA);
+      resetCurrentResults({ keepPlayerA: Boolean(idA), message: "" });
+      if (idA) {
+        updateUrl(idA, null, idsA, []);
+        safeStorageSet(STORAGE_KEYS.last, { p1: idA, p2: null, p1Ids: idsA, p2Ids: [] });
+      }
+    },
   });
 
   document.querySelectorAll("[data-clear]").forEach((button) => {
@@ -681,6 +774,7 @@ export async function init() {
       const list = button.dataset.clear === "a" ? elements.listA : elements.listB;
       clearInputPlayer(target, list);
       if (button.dataset.clear === "a") {
+        cancelOpponentLoading();
         clearInputPlayer(elements.playerB, elements.listB);
         state.opponentsOfA = new Map();
         elements.playerB.disabled = true;
@@ -712,46 +806,115 @@ export async function init() {
   if (elements.copyLinkBtn) elements.copyLinkBtn.addEventListener("click", handleCopyLink);
   if (elements.shareImageBtn) elements.shareImageBtn.addEventListener("click", handleShareImage);
   if (elements.recentList) elements.recentList.addEventListener("click", handleRecentClick);
+  if (elements.clearFiltersBtn) {
+    elements.clearFiltersBtn.addEventListener("click", () => {
+      if (state.stageTab !== "overall" && getActiveItems().length === 0) {
+        setStageTab("overall");
+        return;
+      }
+      resetFilters();
+      state.page = 1;
+      updateView();
+    });
+  }
+  if (elements.retryBtn) {
+    elements.retryBtn.addEventListener("click", () => {
+      if (!state.players.length) {
+        window.location.reload();
+        return;
+      }
+      handleCompare();
+    });
+  }
 
-  initRecent({ onCompare: handleCompare });
+  initRecent({
+    onCompare: handleCompare,
+    getSignal: () => activeCompareController?.signal || null,
+  });
   initFilters(updateView);
   initTable(updateView);
+  initOpponents({ onCompare: handleCompare });
   initTabs();
   initModeToggle();
   initGoalsModeToggle();
 
   await loadPlayers();
   renderRecent();
-  renderDataFreshness();
+  renderDataFreshness().catch((err) => console.warn("Could not load data freshness:", err));
 
   const urlSelection = getUrlSelection();
-  const lastSelection = safeStorageGet(STORAGE_KEYS.last, null);
-  const selection = urlSelection || lastSelection;
+  const storedSelection = safeStorageGet(STORAGE_KEYS.last, null);
+  const storedP1 = Number(storedSelection?.p1);
+  const storedP2 = storedSelection?.p2 == null ? null : Number(storedSelection.p2);
+  let lastSelection = Number.isInteger(storedP1)
+    && state.playersById.has(storedP1)
+    && (storedP2 == null || (Number.isInteger(storedP2) && state.playersById.has(storedP2)))
+    ? { ...storedSelection, p1: storedP1, p2: storedP2 }
+    : null;
+  if (lastSelection?.p2) {
+    const storedIdsA = normalizeAliasIds([
+      lastSelection.p1,
+      ...(Array.isArray(lastSelection.p1Ids) ? lastSelection.p1Ids : []),
+    ]);
+    const storedIdsB = normalizeAliasIds([
+      lastSelection.p2,
+      ...(Array.isArray(lastSelection.p2Ids) ? lastSelection.p2Ids : []),
+    ]);
+    if (selectionsShareIdentity(storedIdsA, storedIdsB)) {
+      lastSelection = null;
+    }
+  }
+  if (storedSelection && !lastSelection) safeStorageRemove(STORAGE_KEYS.last);
+  const hasUrlPlayer = new URLSearchParams(window.location.search).has("p1");
+  const selection = hasUrlPlayer ? urlSelection : lastSelection;
+  if (hasUrlPlayer && !urlSelection) clearUrlSelection();
   if (selection) {
-    const p1Ids = normalizeAliasIds(selection.p1Ids || [selection.p1]);
-    const p2Ids = normalizeAliasIds(selection.p2Ids || (selection.p2 ? [selection.p2] : []));
+    const validateSelectionIds = (primaryId, values) => {
+      const allowed = new Set(state.aliasMap.get(primaryId) || [primaryId]);
+      const requested = normalizeAliasIds([primaryId, ...(Array.isArray(values) ? values : [])]);
+      return requested.every((id) => allowed.has(id)) ? requested : [primaryId];
+    };
+    const p1Ids = validateSelectionIds(selection.p1, selection.p1Ids);
+    const p2Ids = selection.p2 ? validateSelectionIds(selection.p2, selection.p2Ids) : [];
     const player1 = { ...(getPlayerById(selection.p1) || { id: selection.p1, name: `Player ${selection.p1}` }), ids: p1Ids };
     setInputPlayer(elements.playerA, player1);
     elements.playerB.disabled = false;
-    await loadOpponentsForPlayer(selection.p1, p1Ids);
     if (selection.p2) {
       const player2 = { ...(getPlayerById(selection.p2) || { id: selection.p2, name: `Player ${selection.p2}` }), ids: p2Ids };
       setInputPlayer(elements.playerB, player2);
     }
     if (urlSelection) {
       restoreStateFromUrl();
-      await handleCompare({ restoreUrlState: true });
+      const comparePromise = handleCompare({ restoreUrlState: true });
+      const opponentsPromise = loadOpponentsForPlayer(
+        selection.p1,
+        p1Ids,
+        activeCompareController?.signal
+      );
+      await Promise.all([comparePromise, opponentsPromise]);
     } else {
-      await handleCompare({ scrollToResults: false });
+      const comparePromise = handleCompare({ scrollToResults: false });
+      const opponentsPromise = loadOpponentsForPlayer(
+        selection.p1,
+        p1Ids,
+        activeCompareController?.signal
+      );
+      await Promise.all([comparePromise, opponentsPromise]);
     }
   } else {
     resetCurrentResults({ message: "" });
   }
-  
-  // Need to import updatePrimaryActionLabel and updateSelectionControls from players.js
-  const playersModule = await import("./players.js");
-  playersModule.updatePrimaryActionLabel();
-  playersModule.updateSelectionControls();
+
+  updatePrimaryActionLabel();
+  updateSelectionControls();
 }
 
-init();
+init().catch((err) => {
+  console.error(err);
+  setLoading(false);
+  renderIdleState();
+  if (elements.errorState) elements.errorState.hidden = false;
+  if (elements.playerA) elements.playerA.disabled = true;
+  if (elements.playerB) elements.playerB.disabled = true;
+  setStatus("The player index could not be loaded. Please refresh to try again.");
+});

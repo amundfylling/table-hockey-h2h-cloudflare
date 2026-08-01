@@ -6,13 +6,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Table Hockey H2H</title>
   <meta name="description" content="Head-to-head comparisons for table hockey matchups." />
+  <meta name="theme-color" content="#f6f2ec" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
     href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Manrope:wght@400;500;600;700;800&display=swap"
     rel="stylesheet" />
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-  <link rel="stylesheet" href="styles.css?v=20260718-genrun-v2" />
+  <link rel="stylesheet" href="styles.css?v=20260801-generational-run-v5" />
 </head>
 
 <body>
@@ -36,7 +37,8 @@
       </div>
     </div>
     <div class="header-actions">
-      <button id="theme-toggle" class="ghost theme-toggle" type="button" aria-pressed="false">
+      <button id="theme-toggle" class="ghost theme-toggle" type="button" aria-pressed="false"
+        aria-label="Switch to dark mode">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
           stroke-linejoin="round" aria-hidden="true">
           <path d="M12 3a6 6 0 0 0 9 7.4A9 9 0 1 1 12 3z"></path>
@@ -52,7 +54,8 @@
         <div class="player-field" data-player="a">
           <label for="player-a">Player 1</label>
           <div class="input-shell">
-            <input id="player-a" type="text" autocomplete="off" placeholder="Search player" role="combobox" />
+            <input id="player-a" type="text" autocomplete="off" placeholder="Search player" role="combobox"
+              aria-haspopup="listbox" aria-expanded="false" />
             <button class="icon-btn clear-btn" type="button" data-clear="a" aria-label="Clear Player 1" hidden>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                 stroke-linejoin="round" aria-hidden="true">
@@ -76,7 +79,8 @@
         <div class="player-field" data-player="b">
           <label for="player-b">Player 2</label>
           <div class="input-shell">
-            <input id="player-b" type="text" autocomplete="off" placeholder="Select Player 1 first" role="combobox" disabled />
+            <input id="player-b" type="text" autocomplete="off" placeholder="Select Player 1 first" role="combobox"
+              aria-haspopup="listbox" aria-expanded="false" disabled />
             <span id="player-b-loader" class="input-loader" hidden></span>
             <button class="icon-btn clear-btn" type="button" data-clear="b" aria-label="Clear Player 2" hidden>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
@@ -101,14 +105,14 @@
     </section>
 
     <section class="card stage-card" hidden>
-      <div class="tabs" role="tablist" aria-label="Stage filter">
-        <button class="tab is-active" role="tab" aria-selected="true" data-stage="overall">Overall</button>
-        <button class="tab" role="tab" aria-selected="false" data-stage="round-robin">Round-robin</button>
-        <button class="tab" role="tab" aria-selected="false" data-stage="playoff">Playoff</button>
+      <div class="tabs" role="group" aria-label="Stage filter">
+        <button class="tab is-active" type="button" aria-pressed="true" data-stage="overall">Overall</button>
+        <button class="tab" type="button" aria-pressed="false" data-stage="round-robin">Round-robin</button>
+        <button class="tab" type="button" aria-pressed="false" data-stage="playoff">Playoff</button>
       </div>
       <div id="playoff-mode-toggle" class="mode-toggle" role="group" aria-label="Playoff view" hidden>
-        <button class="mode-btn is-active" type="button" data-mode="series">Series</button>
-        <button class="mode-btn" type="button" data-mode="games">Games</button>
+        <button class="mode-btn is-active" type="button" data-mode="series" aria-pressed="true">Series</button>
+        <button class="mode-btn" type="button" data-mode="games" aria-pressed="false">Games</button>
       </div>
       <div class="stage-tools">
         <div id="stage-meta" class="stage-meta"></div>
@@ -123,18 +127,19 @@
               <circle cx="11" cy="11" r="8"></circle>
               <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
             </svg>
-            <input id="search-filter" type="search" placeholder="Search matches…" aria-label="Search matches" />
+            <input id="search-filter" type="search" placeholder="Search tournament, stage, opponent…"
+              aria-label="Search tournaments, stages, or opponents" />
           </div>
           <div class="filter-bar-period">
             <button id="period-toggle" class="period-toggle" type="button" aria-expanded="false"
-              aria-haspopup="true" aria-label="Filter by year range">
+              aria-controls="period-popover" aria-label="Filter by year range">
               <span id="period-label">All years</span>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                 stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <polyline points="6 9 12 15 18 9"></polyline>
               </svg>
             </button>
-            <div id="period-popover" class="period-popover" hidden>
+            <div id="period-popover" class="period-popover" role="group" aria-label="Year range" hidden>
               <div class="period-popover-row">
                 <label for="year-from-filter">From</label>
                 <select id="year-from-filter" aria-label="From year"></select>
@@ -173,18 +178,18 @@
             </div>
             <div id="best-of-filter" class="filter-bar-group" hidden>
               <label>Best of</label>
-              <div id="best-of-options" class="multi-checks"></div>
+              <div id="best-of-options" class="multi-checks" role="group" aria-label="Best-of format"></div>
             </div>
             <div class="filter-bar-group">
               <label>Options</label>
-              <div class="filter-bar-toggles">
+              <div class="filter-bar-toggles" role="group" aria-label="Match options">
                 <label class="toggle">
                   <input id="ot-toggle" type="checkbox" />
-                  <span>Only overtime</span>
+                  <span id="ot-toggle-label">Only overtime</span>
                 </label>
                 <label class="toggle">
                   <input id="tight-toggle" type="checkbox" />
-                  <span>Only tight games</span>
+                  <span id="tight-toggle-label">One-goal games</span>
                 </label>
               </div>
             </div>
@@ -194,10 +199,16 @@
       </div>
     </section>
 
-    <section id="summary-section" class="summary-section">
+    <section id="filter-empty-state" class="card empty-state" role="status" hidden>
+      <h3 id="filter-empty-title">No results in this view</h3>
+      <p id="filter-empty-copy">Try another stage or clear the active filters.</p>
+      <button id="clear-filters-btn" class="ghost" type="button">Clear filters</button>
+    </section>
+
+    <section id="summary-section" class="summary-section" aria-labelledby="headline" aria-busy="false" hidden>
       <div class="summary-header">
         <div>
-          <h2 id="headline">Pick two players</h2>
+          <h2 id="headline" tabindex="-1">Pick two players</h2>
           <p id="subhead">Matchup stats and filters appear once you compare.</p>
         </div>
         <div class="summary-header-actions">
@@ -228,6 +239,7 @@
       <div class="form-strip">
         <div id="form-title" class="viz-title">Recent form</div>
         <div id="form-chips" class="form-chips"></div>
+        <p id="form-detail" class="form-detail" aria-live="polite" hidden></p>
       </div>
       <div id="summary-grid" class="summary-grid"></div>
     </section>
@@ -238,7 +250,7 @@
           <div class="viz-title">Opponents</div>
           <div class="opponents-filter">
             <label for="min-games-slider" class="opponents-filter-label">
-              Min. games: <span id="min-games-value">10</span>
+              Min. <span id="opponents-unit-label">games</span>: <span id="min-games-value">10</span>
             </label>
             <input type="range" id="min-games-slider" min="1" max="50"
               value="10" class="opponents-slider" />
@@ -246,29 +258,36 @@
         </div>
         <div class="table-wrap opponents-table-wrap">
           <table class="compact-table opponents-table">
+            <caption class="sr-only">Opponent records</caption>
             <thead>
               <tr id="opponents-head-row">
-                <th class="opp-col-name sortable-col" data-sort="name">
-                  Opponent <span class="sort-indicator"></span>
+                <th class="opp-col-name sortable-col" aria-sort="none">
+                  <button class="opponents-sort-btn" type="button" data-sort="name">
+                    Opponent <span class="sort-indicator" aria-hidden="true"></span>
+                  </button>
                 </th>
-                <th class="opp-col-numeric sortable-col active-sort"
-                  data-sort="games">
-                  Games <span class="sort-indicator">▼</span>
+                <th class="opp-col-numeric sortable-col active-sort" aria-sort="descending">
+                  <button class="opponents-sort-btn" type="button" data-sort="games">
+                    <span id="opponents-games-label">Games</span>
+                    <span class="sort-indicator" aria-hidden="true">▼</span>
+                  </button>
                 </th>
-                <th class="opp-col-record">W-D-L</th>
-                <th class="opp-col-numeric sortable-col" data-sort="winPct">
-                  Win % <span class="sort-indicator"></span>
+                <th id="opponents-record-label" class="opp-col-record">W-D-L</th>
+                <th class="opp-col-numeric sortable-col" aria-sort="none">
+                  <button class="opponents-sort-btn" type="button" data-sort="winPct">
+                    Win % <span class="sort-indicator" aria-hidden="true"></span>
+                  </button>
                 </th>
               </tr>
             </thead>
             <tbody id="top-opponents-body"></tbody>
           </table>
         </div>
-        <div id="opponents-count" class="opponents-count"></div>
+        <div id="opponents-count" class="opponents-count" aria-live="polite"></div>
       </div>
     </section>
 
-    <section class="card viz-card">
+    <section id="visualizations-section" class="card viz-card" aria-busy="false" hidden>
       <div class="viz-grid">
         <div class="viz-block">
           <div id="record-chart-title" class="viz-title with-info">
@@ -289,9 +308,12 @@
         <div class="viz-block">
           <div id="goals-chart-title" class="viz-title with-toggle">
             <span class="viz-title-text">Average goals by year</span>
-            <div id="goals-mode-toggle" class="mode-toggle compact" hidden>
-              <button class="mode-btn is-active" type="button" data-goals-mode="series">Per series</button>
-              <button class="mode-btn" type="button" data-goals-mode="match">Per match</button>
+            <div id="goals-mode-toggle" class="mode-toggle compact" role="group"
+              aria-label="Goals chart calculation" hidden>
+              <button class="mode-btn is-active" type="button" data-goals-mode="series"
+                aria-pressed="true">Per series</button>
+              <button class="mode-btn" type="button" data-goals-mode="match"
+                aria-pressed="false">Per match</button>
             </div>
           </div>
           <div id="goals-chart" class="chart"></div>
@@ -299,13 +321,21 @@
       </div>
     </section>
 
-    <section class="card matches-card">
+    <section id="matches-section" class="card matches-card" aria-busy="false" hidden>
       <div class="matches-header">
         <div>
-          <h3>Match list</h3>
-          <p id="match-count" class="muted">0 matches</p>
+          <h3 id="match-list-heading" tabindex="-1">Match list</h3>
+          <p id="match-count" class="muted" aria-live="polite">0 matches</p>
         </div>
         <div class="header-controls">
+          <div id="mobile-sort-control" class="mobile-sort-control">
+            <label for="mobile-sort">Sort</label>
+            <select id="mobile-sort" aria-label="Sort match list"></select>
+            <button id="mobile-sort-direction" class="ghost" type="button"
+              aria-label="Change sort direction" aria-pressed="false">
+              <span aria-hidden="true">↓</span>
+            </button>
+          </div>
           <div class="rows-selector">
             <label for="page-size">Rows</label>
             <select id="page-size">
@@ -315,14 +345,14 @@
             </select>
           </div>
           <div class="pagination" id="pagination-top">
-            <button id="prev-page" class="ghost" type="button">
+            <button id="prev-page" class="ghost" type="button" disabled>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <polyline points="15 18 9 12 15 6"></polyline>
               </svg>
               <span>Prev</span>
             </button>
-            <span id="page-info" class="page-info">Page 1 of 1</span>
-            <button id="next-page" class="ghost" type="button">
+            <span id="page-info" class="page-info" aria-live="polite">Page 1 of 1</span>
+            <button id="next-page" class="ghost" type="button" disabled>
               <span>Next</span>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <polyline points="9 18 15 12 9 6"></polyline>
@@ -334,6 +364,7 @@
 
       <div class="table-wrap">
         <table id="matches-table">
+          <caption class="sr-only">Match results</caption>
           <thead>
             <tr id="matches-head-row">
               <th></th>
@@ -350,14 +381,14 @@
         </table>
       </div>
       <div class="pagination" id="pagination-bottom">
-        <button id="prev-page-bottom" class="ghost" type="button">
+        <button id="prev-page-bottom" class="ghost" type="button" disabled>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <polyline points="15 18 9 12 15 6"></polyline>
           </svg>
           <span>Prev</span>
         </button>
         <span id="page-info-bottom" class="page-info">Page 1 of 1</span>
-        <button id="next-page-bottom" class="ghost" type="button">
+        <button id="next-page-bottom" class="ghost" type="button" disabled>
           <span>Next</span>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <polyline points="9 18 15 12 9 6"></polyline>
@@ -366,14 +397,15 @@
       </div>
     </section>
 
-    <section id="empty-state" class="card empty-state" hidden>
-      <h3>No matches yet</h3>
-      <p>These players have not faced each other in the dataset.</p>
+    <section id="empty-state" class="card empty-state" role="status" hidden>
+      <h3 id="empty-state-title">No matches yet</h3>
+      <p id="empty-state-copy">These players have not faced each other in the dataset.</p>
     </section>
 
-    <section id="error-state" class="card empty-state" hidden>
+    <section id="error-state" class="card empty-state" role="alert" hidden>
       <h3>Something went wrong</h3>
       <p>We could not load this matchup. Please try again.</p>
+      <button id="retry-btn" class="ghost" type="button">Try again</button>
     </section>
   </main>
 
@@ -388,7 +420,7 @@
     </p>
   </footer>
 
-  <script type="module" src="js/main.js"></script>
+  <script type="module" src="js/main.js?v=20260801-generational-run-v3"></script>
 </body>
 
 </html>

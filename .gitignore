@@ -5,6 +5,8 @@ node_modules/
 .cache/
 public/data/
 public/h2h/
+.data-build/
+.data-previous/
 .wrangler/
 
 # Virtual Environment & Python cache
@@ -24,4 +26,3 @@ __pycache__/
 dist/
 *.png
 !public/og-default.png
-

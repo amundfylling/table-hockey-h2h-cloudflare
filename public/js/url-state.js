@@ -5,6 +5,7 @@ import {
   resolvePlayerId,
   getSelectionIds,
   parseIdList,
+  selectionsShareIdentity,
 } from "./players.js";
 
 export function clearUrlSelection() {
@@ -125,33 +126,43 @@ export function restoreStateFromUrl() {
   const params = new URLSearchParams(window.location.search);
 
   const stage = params.get("stage");
-  if (stage) {
+  if (["overall", "round-robin", "playoff"].includes(stage)) {
     state.stageTab = stage;
   }
 
   const playoffMode = params.get("playoffMode");
-  if (playoffMode) {
+  if (["series", "games"].includes(playoffMode)) {
     state.playoffMode = playoffMode;
   }
 
   const goalsMode = params.get("goalsMode");
-  if (goalsMode) {
+  if (["series", "match"].includes(goalsMode)) {
     state.goalsMode = goalsMode;
   }
 
   const search = params.get("search");
   if (search) {
-    state.filters.search = search;
-    if (elements.searchFilter) elements.searchFilter.value = search;
+    state.filters.search = search.slice(0, 120);
+    if (elements.searchFilter) elements.searchFilter.value = state.filters.search;
   }
 
   const yearFrom = params.get("yearFrom");
-  if (yearFrom) {
+  if (/^\d{4}$/.test(yearFrom || "")) {
     state.filters.yearFrom = yearFrom;
   }
   const yearTo = params.get("yearTo");
-  if (yearTo) {
+  if (/^\d{4}$/.test(yearTo || "")) {
     state.filters.yearTo = yearTo;
+  }
+  if (
+    state.filters.yearFrom !== "all"
+    && state.filters.yearTo !== "all"
+    && state.filters.yearFrom > state.filters.yearTo
+  ) {
+    [state.filters.yearFrom, state.filters.yearTo] = [
+      state.filters.yearTo,
+      state.filters.yearFrom,
+    ];
   }
 
   const tournament = params.get("tournament");
@@ -194,8 +205,17 @@ export function getUrlSelection() {
   if (!p1) return null;
   const id1 = Number(p1);
   const id2 = p2 ? Number(p2) : null;
-  if (!Number.isFinite(id1) || (p2 && !Number.isFinite(id2))) return null;
-  const p1Ids = normalizeAliasIds([id1, ...parseIdList(params.get("p1g"))]);
-  const p2Ids = id2 ? normalizeAliasIds([id2, ...parseIdList(params.get("p2g"))]) : [];
+  if (!Number.isInteger(id1) || id1 <= 0 || (p2 && (!Number.isInteger(id2) || id2 <= 0))) {
+    return null;
+  }
+  if (!state.playersById.has(id1) || (id2 && !state.playersById.has(id2))) return null;
+  const getAllowedIds = (primaryId, value) => {
+    const requested = normalizeAliasIds([primaryId, ...parseIdList(value)]);
+    const allowed = new Set(state.aliasMap.get(primaryId) || [primaryId]);
+    return requested.every((id) => allowed.has(id)) ? requested : [primaryId];
+  };
+  const p1Ids = getAllowedIds(id1, params.get("p1g"));
+  const p2Ids = id2 ? getAllowedIds(id2, params.get("p2g")) : [];
+  if (id2 && selectionsShareIdentity(p1Ids, p2Ids)) return null;
   return { p1: id1, p2: id2, p1Ids, p2Ids };
 }

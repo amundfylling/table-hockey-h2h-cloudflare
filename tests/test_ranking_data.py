@@ -1,6 +1,6 @@
+import sys
 import tempfile
 import unittest
-import sys
 from pathlib import Path
 
 from scripts.build_h2h import load_players, load_rankings, parse_ranking_date
@@ -66,6 +66,23 @@ class TestRankingData(unittest.TestCase):
         self.assertEqual(by_name["Amund Risa Fylling"]["world_rank"], 83)
         self.assertEqual(by_name["Amund Risa Fylling"]["ranking_points"], 3163)
         self.assertIsNone(by_name["Edgars Caics"]["world_rank"])
+
+    def test_load_players_rejects_fractional_ids_and_names_blank_players(self):
+        players_csv = """PlayerID,Name,RankingID,Country,City,DateOfBirth,Sex
+10,,1,Norway,,,Male
+11,* *,3,Norway,,,Male
+10.5,Bad ID,2,Norway,,,Male
+"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            players_path = Path(tmpdir) / "players_data.csv"
+            players_path.write_text(players_csv, encoding="utf-8")
+            players, names = load_players(players_path)
+
+        self.assertEqual([player["id"] for player in players], [10, 11])
+        self.assertEqual(players[0]["name"], "Player 10")
+        self.assertEqual(players[1]["name"], "Player 11")
+        self.assertEqual(names[10], "Player 10")
+        self.assertEqual(names[11], "Player 11")
 
 
 if __name__ == "__main__":

@@ -1,7 +1,6 @@
 import { state, elements } from "./state.js";
 import {
   normalizeText,
-  toNumber,
   debounce,
 } from "./utils.js";
 import {
@@ -18,34 +17,29 @@ import {
 } from "./players.js";
 
 export function withGroupedDuplicateSuggestions(items) {
-  const byName = new Map();
-  items.forEach((player) => {
-    const key = normalizeText(player.name);
-    if (!key) return;
-    if (!byName.has(key)) byName.set(key, []);
-    byName.get(key).push(player);
-  });
-
   const usedGroups = new Set();
   const output = [];
   items.forEach((player) => {
-    const key = normalizeText(player.name);
-    const group = byName.get(key) || [];
-    if (group.length < 2) {
+    const ids = normalizeAliasIds(state.aliasMap.get(Number(player.id)) || []);
+    if (ids.length < 2) {
       output.push(player);
       return;
     }
+    const key = ids.join(",");
     if (usedGroups.has(key)) return;
     usedGroups.add(key);
-    const ids = normalizeAliasIds(group.map((item) => item.id));
+    const group = ids.map((id) => getPlayerById(id)).filter(Boolean);
+    if (!group.length) {
+      output.push(player);
+      return;
+    }
     const countries = new Set(group.map((item) => item.country).filter(Boolean));
-    const totalMatches = group.reduce((sum, item) => sum + toNumber(item.totalMatches, 0), 0);
     output.push({
-      ...group[0],
+      ...player,
       ids,
       isGroup: true,
-      country: countries.size === 1 ? group[0].country : "",
-      totalMatches: totalMatches || null,
+      country: countries.size === 1 ? player.country : "",
+      totalMatches: player.totalMatches ?? null,
     });
     output.push(...group.map((item) => ({ ...item, inGroup: true })));
   });
@@ -69,7 +63,7 @@ function normalizeAliasIds(ids) {
 export function buildSuggestions(query) {
   const value = normalizeText(query);
   let results = [];
-  if (value.length < 2) {
+  if (value.length === 0) {
     results = [...state.players];
   } else {
     for (const player of state.players) {
@@ -89,7 +83,7 @@ export function buildSuggestions(query) {
     return a.name.localeCompare(b.name);
   });
 
-  return results.slice(0, 20);
+  return withGroupedDuplicateSuggestions(results).slice(0, 20);
 }
 
 export function buildOpponentSuggestions(query) {
@@ -107,7 +101,7 @@ export function buildOpponentSuggestions(query) {
   }
 
   results.sort((a, b) => b.totalMatches - a.totalMatches);
-  return results.slice(0, 20);
+  return withGroupedDuplicateSuggestions(results).slice(0, 20);
 }
 
 export function createSuggestionIdentity(player) {
@@ -142,12 +136,14 @@ export function createSuggestionIdentity(player) {
 export function setupTypeahead(inputEl, listEl, options = {}) {
   let activeIndex = -1;
   let currentItems = [];
+  let debouncedUpdate = null;
   const isPlayerB = options.forPlayerB || false;
   inputEl.setAttribute("aria-autocomplete", "list");
   inputEl.setAttribute("aria-controls", listEl.id);
   inputEl.setAttribute("aria-expanded", "false");
 
   const closeList = () => {
+    if (debouncedUpdate) debouncedUpdate.cancel();
     listEl.classList.remove("is-open");
     listEl.innerHTML = "";
     activeIndex = -1;
@@ -168,6 +164,8 @@ export function setupTypeahead(inputEl, listEl, options = {}) {
         const msg = document.createElement("div");
         msg.className = "empty-message";
         msg.textContent = "Select Player 1 first";
+        msg.setAttribute("role", "option");
+        msg.setAttribute("aria-disabled", "true");
         listEl.appendChild(msg);
         openList();
         currentItems = [];
@@ -175,10 +173,16 @@ export function setupTypeahead(inputEl, listEl, options = {}) {
       }
     }
     if (!items.length) {
-      if (isPlayerB && state.opponentsOfA.size && inputEl.value.trim().length > 0) {
+      if (isPlayerB && resolvePlayerId(elements.playerA)) {
         const msg = document.createElement("div");
         msg.className = "empty-message";
-        msg.textContent = "No matching opponents";
+        msg.textContent = state.opponentsLoading
+          ? "Loading opponents…"
+          : state.opponentsOfA.size
+            ? "No matching opponents"
+            : "No recorded opponents available";
+        msg.setAttribute("role", "option");
+        msg.setAttribute("aria-disabled", "true");
         listEl.appendChild(msg);
         openList();
         currentItems = [];
@@ -198,6 +202,7 @@ export function setupTypeahead(inputEl, listEl, options = {}) {
       btn.id = `${listEl.id}-option-${idx}`;
       btn.setAttribute("role", "option");
       btn.setAttribute("aria-selected", idx === activeIndex ? "true" : "false");
+      btn.tabIndex = -1;
       btn.appendChild(createSuggestionIdentity(player));
       if (player.isGroup) {
         const groupMeta = document.createElement("span");
@@ -243,8 +248,8 @@ export function setupTypeahead(inputEl, listEl, options = {}) {
 
   const updateList = () => {
     let items;
-    if (isPlayerB && state.opponentsOfA.size) {
-      items = buildOpponentSuggestions(inputEl.value);
+    if (isPlayerB) {
+      items = state.opponentsLoading ? [] : buildOpponentSuggestions(inputEl.value);
     } else {
       items = buildSuggestions(inputEl.value);
     }
@@ -252,12 +257,13 @@ export function setupTypeahead(inputEl, listEl, options = {}) {
     renderList(items);
   };
 
-  const debouncedUpdate = debounce(updateList, 150);
+  debouncedUpdate = debounce(updateList, 150);
 
   inputEl.addEventListener("input", () => {
     inputEl.dataset.playerId = "";
     inputEl.dataset.playerIds = "";
     inputEl.dataset.playerName = "";
+    closeList();
     updatePrimaryActionLabel();
     if (isPlayerB) {
       if (options.onReset) options.onReset();
@@ -279,6 +285,11 @@ export function setupTypeahead(inputEl, listEl, options = {}) {
 
   inputEl.addEventListener("keydown", (event) => {
     if (!listEl.classList.contains("is-open")) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeList();
+      return;
+    }
     const items = currentItems;
     if (!items.length) return;
     if (event.key === "ArrowDown") {
@@ -302,13 +313,11 @@ export function setupTypeahead(inputEl, listEl, options = {}) {
           options.onCompare();
         }
       }
-    } else if (event.key === "Escape") {
-      closeList();
     }
   });
 
   inputEl.addEventListener("keydown", (event) => {
-    if (event.key === "Enter" && !listEl.classList.contains("is-open")) {
+    if (!event.defaultPrevented && event.key === "Enter" && !listEl.classList.contains("is-open")) {
       if (options.onCompare) options.onCompare();
     }
   });

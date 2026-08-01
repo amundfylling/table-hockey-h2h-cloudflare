@@ -2,9 +2,15 @@ import { normalizeText } from "./utils.js";
 import { buildScopedMatchKey } from "./data.js";
 
 export function getSeriesGroupKey(match) {
+  const tournamentScope = match.tournament_id != null
+    ? `id:${match.tournament_id}`
+    : match.source_tournament_id
+      ? `source:${match.source || ""}:${match.source_tournament_id}`
+      : `${match.tournament_key || "unknown"}:year:${match.year || match.date?.slice(0, 4) || ""}`;
   return [
-    match.tournament_key || `date:${match.date || ""}`,
+    tournamentScope,
     match.stage_id ?? "",
+    match.source_stage_id ?? "",
     match.stage_sequence ?? "",
     normalizeText(match.stage || ""),
     match.round_number ?? "",

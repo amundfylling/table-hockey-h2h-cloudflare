@@ -18,17 +18,47 @@ import {
   parseIdList,
 } from "./players.js";
 
-export async function fetchJson(url) {
-  const res = await fetch(url, { cache: "no-cache" });
-  if (res.status === 404) return null;
-  if (!res.ok) {
-    throw new Error(`Failed to fetch ${url}`);
+function setBoundedCache(cache, key, value, maxEntries = 12) {
+  cache.delete(key);
+  cache.set(key, value);
+  while (cache.size > maxEntries) {
+    cache.delete(cache.keys().next().value);
   }
-  return res.json();
 }
 
-export async function fetchPairPayload(id1, id2, onProgress) {
-  const payload = await fetchJson(`data/h2h/${id1}/${id2}.json`);
+export async function fetchJson(url, timeoutMs = 20000, externalSignal = null) {
+  const controller = new AbortController();
+  let timedOut = false;
+  const abortFromCaller = () => controller.abort(externalSignal?.reason);
+  if (externalSignal?.aborted) abortFromCaller();
+  else externalSignal?.addEventListener("abort", abortFromCaller, { once: true });
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    if (res.status === 404) return null;
+    if (!res.ok) {
+      const error = new Error(`Failed to fetch ${url} (${res.status})`);
+      error.status = res.status;
+      throw error;
+    }
+    return await res.json();
+  } catch (err) {
+    if (err?.name === "AbortError") {
+      if (timedOut) throw new Error(`Timed out loading ${url}`);
+      throw err;
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+    externalSignal?.removeEventListener("abort", abortFromCaller);
+  }
+}
+
+export async function fetchPairPayload(id1, id2, onProgress, signal = null) {
+  const payload = await fetchJson(`data/h2h/${id1}/${id2}.json`, 20000, signal);
   if (!payload) return null;
   const normalizedPlayers = {
     player1: normalizePlayerRecord(payload.player1),
@@ -42,7 +72,7 @@ export async function fetchPairPayload(id1, id2, onProgress) {
       if (onProgress) {
         onProgress(i + 1, payload.chunks.length);
       }
-      const chunkPayload = await fetchJson(chunkUrl);
+      const chunkPayload = await fetchJson(chunkUrl, 20000, signal);
       if (!chunkPayload) {
         throw new Error(`Missing chunk ${chunkUrl}`);
       }
@@ -55,19 +85,36 @@ export async function fetchPairPayload(id1, id2, onProgress) {
   return { ...payload, ...normalizedPlayers };
 }
 
-export async function fetchPlayerPayload(playerId) {
+export async function fetchPlayerPayload(playerId, signal = null) {
   if (state.playerFileCache.has(playerId)) {
     return state.playerFileCache.get(playerId);
   }
-  const payload = await fetchJson(`data/h2h/${playerId}.json`);
-  if (payload) {
+  const existingRequest = state.playerFileRequests.get(playerId);
+  if (existingRequest && !existingRequest.signal?.aborted) {
+    return existingRequest.promise;
+  }
+  if (existingRequest) {
+    state.playerFileRequests.delete(playerId);
+  }
+  const request = (async () => {
+    const payload = await fetchJson(`data/h2h/${playerId}.json`, 20000, signal);
+    if (!payload) return null;
     const normalizedPayload = {
       ...payload,
       player: normalizePlayerRecord(payload.player),
     };
-    state.playerFileCache.set(playerId, normalizedPayload);
+    setBoundedCache(state.playerFileCache, playerId, normalizedPayload);
+    return normalizedPayload;
+  })();
+  const requestEntry = { promise: request, signal };
+  state.playerFileRequests.set(playerId, requestEntry);
+  try {
+    return await request;
+  } finally {
+    if (state.playerFileRequests.get(playerId) === requestEntry) {
+      state.playerFileRequests.delete(playerId);
+    }
   }
-  return state.playerFileCache.get(playerId) || null;
 }
 
 export function normalizeMatchBase(raw) {
@@ -163,10 +210,15 @@ export function normalizeSinglePlayerMatch(raw, opponentId, opponentPlayer) {
 }
 
 export function buildMatchKey(match) {
+  const stableSourceId = match.source_match_id
+    ? `${match.source || ""}|${match.source_tournament_id || ""}|${match.source_stage_id || ""}|${match.source_match_id}`
+    : "";
+  if (stableSourceId) return stableSourceId;
   return [
     match.date || "",
-    match.tournament_id ?? "",
-    match.stage_id ?? "",
+    match.tournament_id ?? match.tournament_name ?? "",
+    match.stage_id ?? match.stage ?? "",
+    match.stage_type || "",
     match.stage_sequence ?? "",
     match.round_number ?? "",
     match.playoff_game_number ?? "",
@@ -180,7 +232,7 @@ export function buildScopedMatchKey(match) {
   return `${match.opponent_id ?? ""}|${buildMatchKey(match)}`;
 }
 
-export async function buildGroupMatches(groupA, groupB, onProgress) {
+export async function buildGroupMatches(groupA, groupB, onProgress, signal = null) {
   const matches = [];
   const seen = new Set();
   const opponentIds = groupB.map((id) => String(id));
@@ -190,7 +242,7 @@ export async function buildGroupMatches(groupA, groupB, onProgress) {
     if (onProgress) {
       onProgress(i + 1, groupA.length);
     }
-    const payload = await fetchPlayerPayload(playerId);
+    const payload = await fetchPlayerPayload(playerId, signal);
     if (!payload || !payload.opponents) continue;
     for (const opponentId of opponentIds) {
       const opponent = payload.opponents[opponentId];
@@ -208,7 +260,12 @@ export async function buildGroupMatches(groupA, groupB, onProgress) {
   return matches;
 }
 
-export async function loadPlayerStats(playerId, onProgress, explicitIds = []) {
+export async function loadPlayerStats(
+  playerId,
+  onProgress,
+  explicitIds = [],
+  signal = null
+) {
   const groupA = getEffectiveAliasGroup(playerId, explicitIds);
   const cacheKey = groupA.join(",");
   if (state.playerStatsCache.has(cacheKey)) {
@@ -223,7 +280,7 @@ export async function loadPlayerStats(playerId, onProgress, explicitIds = []) {
   for (let index = 0; index < groupA.length; index += 1) {
     const groupId = groupA[index];
     if (onProgress) onProgress(index + 1, groupA.length);
-    const payload = await fetchPlayerPayload(groupId);
+    const payload = await fetchPlayerPayload(groupId, signal);
     if (!payload || !payload.opponents) continue;
     if (!playerA?.name && payload.player) playerA = payload.player;
 
@@ -248,11 +305,18 @@ export async function loadPlayerStats(playerId, onProgress, explicitIds = []) {
     playerB: { id: null, name: "Opponents" },
     matches,
   };
-  state.playerStatsCache.set(cacheKey, data);
+  setBoundedCache(state.playerStatsCache, cacheKey, data, 6);
   return data;
 }
 
-export async function loadMatchup(p1, p2, onProgress, explicitIdsA = [], explicitIdsB = []) {
+export async function loadMatchup(
+  p1,
+  p2,
+  onProgress,
+  explicitIdsA = [],
+  explicitIdsB = [],
+  signal = null
+) {
   const groupA = getEffectiveAliasGroup(p1, explicitIdsA);
   const groupB = getEffectiveAliasGroup(p2, explicitIdsB);
   const cacheKey = `${groupA.join(",")}-${groupB.join(",")}`;
@@ -261,39 +325,17 @@ export async function loadMatchup(p1, p2, onProgress, explicitIdsA = [], explici
   }
 
   if (groupA.length > 1 || groupB.length > 1) {
-    const matches = await buildGroupMatches(groupA, groupB, onProgress);
+    const matches = await buildGroupMatches(groupA, groupB, onProgress, signal);
     const playerA = getPlayerById(p1) || { id: p1, name: `Player ${p1}` };
     const playerB = getPlayerById(p2) || { id: p2, name: `Player ${p2}` };
     const data = { playerA, playerB, matches };
-    state.pairCache.set(cacheKey, data);
+    setBoundedCache(state.pairCache, cacheKey, data, 20);
     return data;
   }
 
-  const id1 = Math.min(p1, p2);
-  const id2 = Math.max(p1, p2);
-  let payload = null;
-
-  try {
-    payload = await fetchPairPayload(id1, id2, onProgress);
-  } catch (err) {
-    payload = null;
-  }
-
-  if (payload) {
-    const aIsId1 = p1 === id1;
-    const player1 = payload.player1 || { id: id1, name: getPlayerById(id1)?.name || `Player ${id1}` };
-    const player2 = payload.player2 || { id: id2, name: getPlayerById(id2)?.name || `Player ${id2}` };
-    const playerA = aIsId1 ? player1 : player2;
-    const playerB = aIsId1 ? player2 : player1;
-    const matches = Array.isArray(payload.matches)
-      ? payload.matches.map((match) => normalizePairMatch(match, aIsId1))
-      : [];
-    const data = { playerA, playerB, matches };
-    state.pairCache.set(cacheKey, data);
-    return data;
-  }
-
-  const playerPayload = await fetchPlayerPayload(p1);
+  // The build emits player-centric files, so start with p1 instead of making
+  // a guaranteed 404 request for a legacy pair-centric path.
+  const playerPayload = await fetchPlayerPayload(p1, signal);
   if (playerPayload && playerPayload.opponents) {
     const opponent = playerPayload.opponents[String(p2)];
     if (opponent) {
@@ -303,12 +345,12 @@ export async function loadMatchup(p1, p2, onProgress, explicitIdsA = [], explici
         ? opponent.matches.map((match) => normalizePlayerMatch(match, true))
         : [];
       const data = { playerA, playerB, matches };
-      state.pairCache.set(cacheKey, data);
+      setBoundedCache(state.pairCache, cacheKey, data, 20);
       return data;
     }
   }
 
-  const otherPayload = await fetchPlayerPayload(p2);
+  const otherPayload = await fetchPlayerPayload(p2, signal);
   if (otherPayload && otherPayload.opponents) {
     const opponent = otherPayload.opponents[String(p1)];
     if (opponent) {
@@ -318,7 +360,7 @@ export async function loadMatchup(p1, p2, onProgress, explicitIdsA = [], explici
         ? opponent.matches.map((match) => normalizePlayerMatch(match, false))
         : [];
       const data = { playerA, playerB, matches };
-      state.pairCache.set(cacheKey, data);
+      setBoundedCache(state.pairCache, cacheKey, data, 20);
       return data;
     }
   }
@@ -326,11 +368,22 @@ export async function loadMatchup(p1, p2, onProgress, explicitIdsA = [], explici
   return null;
 }
 
-export async function loadOpponentsForPlayer(playerId, explicitIds = []) {
-  state.opponentsOfA = new Map();
+let opponentsRequestToken = 0;
+
+export function cancelOpponentLoading() {
+  opponentsRequestToken += 1;
+  state.opponentsLoading = false;
+  if (elements.playerBLoader) elements.playerBLoader.hidden = true;
+  if (elements.playerB) elements.playerB.removeAttribute("aria-busy");
+}
+
+export async function loadOpponentsForPlayer(playerId, explicitIds = [], signal = null) {
+  opponentsRequestToken += 1;
+  const currentToken = opponentsRequestToken;
   state.opponentsLoading = true;
   elements.playerBLoader.hidden = false;
-  elements.playerB.disabled = false;
+  elements.playerB.disabled = true;
+  elements.playerB.setAttribute("aria-busy", "true");
   elements.playerB.placeholder = "Loading opponents...";
 
   try {
@@ -338,7 +391,7 @@ export async function loadOpponentsForPlayer(playerId, explicitIds = []) {
     const opponentMap = new Map();
 
     for (const gId of groupIds) {
-      const payload = await fetchPlayerPayload(gId);
+      const payload = await fetchPlayerPayload(gId, signal);
       if (!payload || !payload.opponents) continue;
       for (const [oppIdStr, oppData] of Object.entries(payload.opponents)) {
         const oppId = Number(oppIdStr);
@@ -372,13 +425,23 @@ export async function loadOpponentsForPlayer(playerId, explicitIds = []) {
       expandedMap.delete(selfId);
     }
 
+    if (currentToken !== opponentsRequestToken) return false;
     state.opponentsOfA = expandedMap;
     elements.playerB.placeholder = "Search opponent";
+    elements.playerB.disabled = false;
+    return true;
   } catch (err) {
+    if (currentToken !== opponentsRequestToken) return false;
     console.error("Failed to load opponents:", err);
-    elements.playerB.placeholder = "Search player";
+    state.opponentsOfA = new Map();
+    elements.playerB.placeholder = "Could not load opponents";
+    elements.playerB.disabled = true;
+    return false;
   } finally {
-    state.opponentsLoading = false;
-    elements.playerBLoader.hidden = true;
+    if (currentToken === opponentsRequestToken) {
+      state.opponentsLoading = false;
+      elements.playerBLoader.hidden = true;
+      elements.playerB.removeAttribute("aria-busy");
+    }
   }
 }

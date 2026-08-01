@@ -1,8 +1,13 @@
 import { state, elements, isSeriesMode, isSinglePlayerMode } from "./state.js";
 import { toNumber, formatDateRange, normalizeText, escapeHtml } from "./utils.js";
-import { enrichPlayerRecord, formatWorldRank, formatRankingTitle } from "./players.js";
+import {
+  enrichPlayerRecord,
+  formatWorldRank,
+  formatRankingTitle,
+  getAliasGroup,
+} from "./players.js";
 import { formatSeriesLength, formatSeriesScore, computeSeriesSummary } from "./series.js";
-import { updateFormTitle } from "./form.js";
+import { updateFormTitle } from "./form.js?v=20260801-generational-run-v3";
 import { getItemSourceUrl, createExternalIcon } from "./table.js";
 
 const DASH = "—";
@@ -280,7 +285,7 @@ export function createHighlightBlock(label, info, side, tooltip = "") {
     tour = document.createElement("a");
     tour.href = info.url;
     tour.target = "_blank";
-    tour.rel = "noopener";
+    tour.rel = "noopener noreferrer external";
     tour.className = "highlight-tour highlight-tour--link";
     tour.appendChild(document.createTextNode(info.tournament));
     tour.appendChild(createExternalIcon());
@@ -316,14 +321,20 @@ export function createHighlightColumn(name, side, winInfo, label = "Largest win"
 
 export function getCanonOpponentKey(item) {
   if (!item || !isSinglePlayerMode()) return "";
-  if (item.opponent_id != null) return `id:${item.opponent_id}`;
+  if (item.opponent_id != null) {
+    const opponentId = Number(item.opponent_id);
+    const canonicalId = Number.isInteger(opponentId) ? getAliasGroup(opponentId)[0] : opponentId;
+    return `id:${canonicalId}`;
+  }
   return normalizeText(item.opponent_name || "");
 }
 
 export function getCanonRivalryTooltip(winItem, lossItem) {
   const winKey = getCanonOpponentKey(winItem);
   const lossKey = getCanonOpponentKey(lossItem);
-  return winKey && winKey === lossKey ? "canon rivalry" : "";
+  return winKey && winKey === lossKey
+    ? "The biggest win and biggest loss were against the same opponent."
+    : "";
 }
 
 export function getSeriesHighlightInfo(series, side) {
@@ -381,7 +392,7 @@ export function renderGameSummary(matches) {
     : "No matches for this filter.";
 
   elements.record.innerHTML = `
-    <div class="muted">Record</div>
+    <div class="muted">W-D-L record</div>
     <div><strong>${summary.winsA}-${summary.draws}-${summary.winsB}</strong></div>
     <div class="muted">${formatPercent(winPct)} wins</div>
   `;
@@ -474,7 +485,7 @@ export function renderSeriesSummary(seriesItems) {
     : "No playoff series for this filter.";
 
   elements.record.innerHTML = `
-    <div class="muted">Series record</div>
+    <div class="muted">Series W-T-L record</div>
     <div><strong>${summary.winsA}-${summary.draws}-${summary.winsB}</strong></div>
     <div class="muted">${formatPercent(winPct)} series wins</div>
   `;
@@ -546,4 +557,3 @@ export function renderSeriesSummary(seriesItems) {
 
   elements.summaryGrid.appendChild(scoreboard);
 }
-

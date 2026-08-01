@@ -43,6 +43,11 @@ class TestH2HRedirects(unittest.TestCase):
             "Pages Function should fetch player data from local static assets via env.ASSETS.fetch"
         )
         self.assertIn(
+            "/data/og/${p1}.json",
+            content,
+            "Pages Function should use compact share metadata instead of full H2H files",
+        )
+        self.assertIn(
             "url.pathname.match",
             content,
             "Pages Function should match/extract player IDs from url.pathname"
@@ -58,12 +63,20 @@ class TestH2HRedirects(unittest.TestCase):
             "Pages Function should generate og:description meta tag"
         )
         self.assertIn(
-            '<meta property="og:image" content="/og-default.png">',
+            'const H2H_PATH_RE = /^\\/h2h\\/',
             content,
-            "Pages Function should reference og-default.png"
+            "Pages Function should use an anchored H2H route pattern"
+        )
+        self.assertIn(
+            '${url.origin}/og-default.png',
+            content,
+            "Pages Function should emit an absolute Open Graph image URL"
         )
         self.assertIn(
             'http-equiv="refresh"',
             content,
             "Pages Function should redirect the browser via a meta refresh tag"
         )
+        self.assertIn('request.method !== "GET"', content)
+        self.assertIn('"x-robots-tag": "noindex, follow"', content)
+        self.assertIn("frame-ancestors 'none'", content)

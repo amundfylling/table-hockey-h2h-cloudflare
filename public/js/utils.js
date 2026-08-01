@@ -9,9 +9,21 @@ export function normalizeText(text) {
 
 export function decodeHtmlEntities(value) {
   if (value == null) return "";
+  const decodeCodePoint = (code, radix) => {
+    const point = Number.parseInt(code, radix);
+    if (
+      !Number.isInteger(point)
+      || point < 0
+      || point > 0x10FFFF
+      || (point >= 0xD800 && point <= 0xDFFF)
+    ) {
+      return "\uFFFD";
+    }
+    return String.fromCodePoint(point);
+  };
   return String(value)
-    .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number(code)))
-    .replace(/&#x([\da-f]+);/gi, (_, code) => String.fromCodePoint(parseInt(code, 16)))
+    .replace(/&#(\d+);/g, (_, code) => decodeCodePoint(code, 10))
+    .replace(/&#x([\da-f]+);/gi, (_, code) => decodeCodePoint(code, 16))
     .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
@@ -71,8 +83,30 @@ export function parseOvertime(value) {
   if (value === false || value == null) return false;
   const text = String(value).trim().toLowerCase();
   if (!text) return false;
-  if (["0", "false", "no", "none", "null", "na"].includes(text)) return false;
-  return text.includes("ot") || text.includes("over");
+  if (
+    [
+      "0",
+      "0.0",
+      "false",
+      "no",
+      "none",
+      "null",
+      "na",
+      "no overtime",
+      "regulation",
+    ].includes(text)
+  ) return false;
+  return [
+    "1",
+    "1.0",
+    "true",
+    "yes",
+    "y",
+    "ot",
+    "overtime",
+    "over time",
+    "sudden death",
+  ].includes(text);
 }
 
 export function formatDate(dateStr) {
@@ -116,15 +150,26 @@ export function classifyStage(stage) {
 }
 
 export function normalizeStageType(value, stage, tournamentName) {
+  const text = normalizeText(value).replace(/_/g, "-");
+  if (text === "playoff") return "playoff";
+  if (text === "round-robin" || text === "round robin") return "round-robin";
   const stageText = normalizeText(stage);
   const tournText = normalizeText(tournamentName);
   if (stageText.includes("team") || tournText.includes("team")) {
     return "round-robin";
   }
-  const text = normalizeText(value).replace(/_/g, "-");
-  if (text === "playoff") return "playoff";
-  if (text === "round-robin" || text === "round robin") return "round-robin";
   return classifyStage(stage);
+}
+
+export function safeExternalUrl(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  try {
+    const parsed = new URL(text);
+    return parsed.protocol === "https:" || parsed.protocol === "http:" ? parsed.href : "";
+  } catch (err) {
+    return "";
+  }
 }
 
 export function normalizeStageName(stage, stageType) {
@@ -142,8 +187,13 @@ export function normalizeStageName(stage, stageType) {
 
 export function debounce(fn, delay) {
   let timer;
-  return (...args) => {
+  const debounced = (...args) => {
     clearTimeout(timer);
     timer = setTimeout(() => fn(...args), delay);
   };
+  debounced.cancel = () => {
+    clearTimeout(timer);
+    timer = undefined;
+  };
+  return debounced;
 }

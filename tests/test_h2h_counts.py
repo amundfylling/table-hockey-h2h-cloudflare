@@ -1,11 +1,15 @@
 import json
+import os
 import unittest
 from pathlib import Path
 
 import pandas as pd
 
 from scripts.build_h2h import (  # noqa: E402
+    EXTRA_MATCHES_URL,
+    build_unique_player_name_index,
     deduplicate_overlapping_source_matches,
+    load_players,
     read_extra_matches_csv,
     read_matches_parquet,
 )
@@ -17,6 +21,7 @@ H2H_DIR = DATA_DIR / "h2h"
 PLAYERS_PATH = DATA_DIR / "players.json"
 MATCHES_PATH = ROOT_DIR / ".cache" / "scraped_matches.parquet"
 EXTRA_MATCHES_PATH = ROOT_DIR / ".cache" / "extra_matches.csv"
+SOURCE_PLAYERS_PATH = ROOT_DIR / ".cache" / "players_data.csv"
 
 
 def load_player_totals(player_ids):
@@ -89,8 +94,19 @@ class TestH2HCounts(unittest.TestCase):
             self.skipTest("No cached matches parquet found; skipping source count check.")
 
         matches = read_matches_parquet(MATCHES_PATH)
-        if EXTRA_MATCHES_PATH.exists():
-            extra_matches = read_extra_matches_csv(EXTRA_MATCHES_PATH)
+        extra_matches_url = os.environ.get("EXTRA_MATCHES_URL", EXTRA_MATCHES_URL).strip()
+        if extra_matches_url and EXTRA_MATCHES_PATH.exists():
+            if not SOURCE_PLAYERS_PATH.exists():
+                self.fail(
+                    "Cached supplemental matches exist without cached players.csv; "
+                    "the source dataset cannot be reconstructed consistently."
+                )
+            source_players, _ = load_players(SOURCE_PLAYERS_PATH)
+            player_name_to_id = build_unique_player_name_index(source_players)
+            extra_matches = read_extra_matches_csv(
+                EXTRA_MATCHES_PATH,
+                player_name_to_id,
+            )
             matches = pd.concat([matches, extra_matches], ignore_index=True)
         matches["tournament_level"] = None
         matches = deduplicate_overlapping_source_matches(matches)

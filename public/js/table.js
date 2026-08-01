@@ -18,23 +18,26 @@ import { formatSeriesLength, formatSeriesScore } from "./series.js";
 const DASH = "—";
 const CHEVRON_SVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
 let updateViewCallback = () => {};
+const mobileTableMedia = window.matchMedia("(max-width: 600px)");
 
 export function initTable(updateView) {
   updateViewCallback = updateView;
   initPagination();
   initTableSorting();
+  initMobileSorting();
   initTableDetails();
+  mobileTableMedia.addEventListener("change", () => renderTableHeaders());
 }
 
-function firstName(value) {
+function displayName(value) {
   if (!value) return "";
-  const trimmed = String(value).trim();
-  if (!trimmed) return "";
-  return trimmed.split(/\s+/)[0];
+  return String(value).trim();
 }
 
 export function renderTable(matches) {
   renderTableHeaders();
+  renderMobileSortControl();
+  updatePagination(matches.length);
   if (isSeriesMode()) {
     renderSeriesTable(matches);
     return;
@@ -74,7 +77,7 @@ export function renderTableHeaders() {
       return;
     }
 
-    if (!hasData) {
+    if (!hasData || mobileTableMedia.matches) {
       th.textContent = column.label;
       fragment.appendChild(th);
       return;
@@ -108,13 +111,25 @@ export function renderTableHeaders() {
 
 export function getItemSourceUrl(item) {
   const explicitUrl = item.source_url || item.stage_url || item.result_url || item.tournament_url || "";
-  if (explicitUrl) return explicitUrl;
+  if (explicitUrl) return getSafeExternalUrl(explicitUrl);
   const source = item.source ? String(item.source).toLowerCase() : "";
   if (source.includes("bordshockey")) return "";
-  if (item.stage_id) {
-    return `https://th.sportscorpion.com/eng/tournament/stage/${item.stage_id}/matches/`;
+  const stageId = Number(item.stage_id);
+  if (Number.isInteger(stageId) && stageId > 0) {
+    return `https://th.sportscorpion.com/eng/tournament/stage/${stageId}/matches/`;
   }
   return "";
+}
+
+export function getSafeExternalUrl(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  try {
+    const url = new URL(raw);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.href : "";
+  } catch (err) {
+    return "";
+  }
 }
 
 export function createExternalIcon() {
@@ -128,6 +143,8 @@ export function createExternalIcon() {
   icon.setAttribute("stroke-width", "1.5");
   icon.setAttribute("stroke-linecap", "round");
   icon.setAttribute("stroke-linejoin", "round");
+  icon.setAttribute("aria-hidden", "true");
+  icon.setAttribute("focusable", "false");
 
   const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
   path.setAttribute("d", "M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6");
@@ -156,7 +173,7 @@ export function renderTournamentCell(cell, item) {
   const link = document.createElement("a");
   link.href = url;
   link.target = "_blank";
-  link.rel = "noopener";
+  link.rel = "noopener noreferrer external";
   link.className = "table-link";
   link.appendChild(document.createTextNode(label));
   link.appendChild(createExternalIcon());
@@ -247,10 +264,10 @@ export function renderGameTable(matches) {
     winnerCell.className = "winner-cell";
     const winner = document.createElement("span");
     winner.className = "winner";
-    const nameA = firstName(state.playerA?.name) || "Player A";
+    const nameA = displayName(state.playerA?.name) || "Player A";
     const nameB = isSingle
-      ? firstName(match.opponent_name) || "Opponent"
-      : firstName(state.playerB?.name) || "Player B";
+      ? displayName(match.opponent_name) || "Opponent"
+      : displayName(state.playerB?.name) || "Player B";
     if (match.result === "A") {
       winner.classList.add("a");
       winner.textContent = nameA;
@@ -325,7 +342,7 @@ export function renderGameTable(matches) {
       const link = document.createElement("a");
       link.href = sourceUrl;
       link.target = "_blank";
-      link.rel = "noopener";
+      link.rel = "noopener noreferrer external";
       link.className = "table-link detail-source-link";
       let linkText = sourceUrl;
       try {
@@ -429,10 +446,10 @@ export function renderSeriesTable(seriesItems) {
     winnerCell.className = "winner-cell";
     const winner = document.createElement("span");
     winner.className = "winner";
-    const nameA = firstName(state.playerA?.name) || "Player A";
+    const nameA = displayName(state.playerA?.name) || "Player A";
     const nameB = isSingle
-      ? firstName(series.opponent_name) || "Opponent"
-      : firstName(state.playerB?.name) || "Player B";
+      ? displayName(series.opponent_name) || "Opponent"
+      : displayName(state.playerB?.name) || "Player B";
     if (series.result === "A") {
       winner.classList.add("a");
       winner.textContent = nameA;
@@ -591,8 +608,8 @@ export function createSeriesGameRow(game, runningA, runningB) {
       ? game.opponent_name || "Opponent"
       : state.playerB?.name || "Player B";
     const winnerName = game.result === "A"
-      ? firstName(state.playerA?.name) || "Player A"
-      : firstName(opponentName) || "Player B";
+      ? displayName(state.playerA?.name) || "Player A"
+      : displayName(opponentName) || "Player B";
     winner.title = game.result === "A" ? state.playerA?.name || "Player A" : opponentName;
     winner.appendChild(document.createTextNode(winnerName));
   } else {
@@ -609,12 +626,15 @@ export function createSeriesGameRow(game, runningA, runningB) {
 export function updatePagination(total) {
   const totalPages = Math.max(1, Math.ceil(total / state.perPage));
   if (state.page > totalPages) state.page = totalPages;
-  elements.pageInfo.textContent = `Page ${state.page} of ${totalPages}`;
-  elements.pageInfoBottom.textContent = `Page ${state.page} of ${totalPages}`;
-  elements.prevPage.disabled = state.page <= 1;
-  elements.nextPage.disabled = state.page >= totalPages;
-  elements.prevPageBottom.disabled = state.page <= 1;
-  elements.nextPageBottom.disabled = state.page >= totalPages;
+  const showPagination = totalPages > 1;
+  if (elements.paginationTop) elements.paginationTop.hidden = !showPagination;
+  if (elements.paginationBottom) elements.paginationBottom.hidden = !showPagination;
+  if (elements.pageInfo) elements.pageInfo.textContent = `Page ${state.page} of ${totalPages}`;
+  if (elements.pageInfoBottom) elements.pageInfoBottom.textContent = `Page ${state.page} of ${totalPages}`;
+  if (elements.prevPage) elements.prevPage.disabled = state.page <= 1;
+  if (elements.nextPage) elements.nextPage.disabled = state.page >= totalPages;
+  if (elements.prevPageBottom) elements.prevPageBottom.disabled = state.page <= 1;
+  if (elements.nextPageBottom) elements.nextPageBottom.disabled = state.page >= totalPages;
 }
 
 export function formatMatchCountText(start, end, total) {
@@ -622,23 +642,78 @@ export function formatMatchCountText(start, end, total) {
 }
 
 export function initPagination() {
-  const goPrev = () => {
+  const focusMatchList = () => {
+    if (!elements.matchListHeading) return;
+    elements.matchListHeading.focus({ preventScroll: true });
+    elements.matchListHeading.scrollIntoView({ block: "start" });
+  };
+  const goPrev = (fromBottom = false) => {
     if (state.page > 1) {
       state.page -= 1;
-      updateViewCallback();
+      renderTable(state.filteredMatches);
+      if (fromBottom) focusMatchList();
     }
   };
-  const goNext = () => {
+  const goNext = (fromBottom = false) => {
     const totalPages = Math.max(1, Math.ceil(state.filteredMatches.length / state.perPage));
     if (state.page < totalPages) {
       state.page += 1;
-      updateViewCallback();
+      renderTable(state.filteredMatches);
+      if (fromBottom) focusMatchList();
     }
   };
-  elements.prevPage.addEventListener("click", goPrev);
-  elements.nextPage.addEventListener("click", goNext);
-  elements.prevPageBottom.addEventListener("click", goPrev);
-  elements.nextPageBottom.addEventListener("click", goNext);
+  if (elements.prevPage) elements.prevPage.addEventListener("click", () => goPrev());
+  if (elements.nextPage) elements.nextPage.addEventListener("click", () => goNext());
+  if (elements.prevPageBottom) elements.prevPageBottom.addEventListener("click", () => goPrev(true));
+  if (elements.nextPageBottom) elements.nextPageBottom.addEventListener("click", () => goNext(true));
+}
+
+export function renderMobileSortControl() {
+  if (!elements.mobileSort) return;
+  ensureSortForMode();
+  const columns = getTableColumns().filter((column) => column.key);
+  const options = document.createDocumentFragment();
+  columns.forEach((column) => {
+    const option = document.createElement("option");
+    option.value = column.key;
+    option.textContent = column.label;
+    options.appendChild(option);
+  });
+  elements.mobileSort.replaceChildren(options);
+  elements.mobileSort.value = state.sort.key;
+  updateMobileSortDirectionControl();
+}
+
+export function updateMobileSortDirectionControl() {
+  const button = elements.mobileSortDirection;
+  if (!button) return;
+  const isDescending = state.sort.direction === "desc";
+  const icon = button.querySelector("[aria-hidden=\"true\"]");
+  if (icon) icon.textContent = isDescending ? "\u2193" : "\u2191";
+  button.setAttribute("aria-pressed", isDescending ? "true" : "false");
+  button.setAttribute(
+    "aria-label",
+    isDescending ? "Sort descending; change to ascending" : "Sort ascending; change to descending"
+  );
+}
+
+export function initMobileSorting() {
+  if (elements.mobileSort) {
+    elements.mobileSort.addEventListener("change", () => {
+      const column = getTableColumns().find((item) => item.key === elements.mobileSort.value);
+      if (!column) return;
+      state.sort = { key: column.key, direction: column.defaultDirection };
+      state.page = 1;
+      updateViewCallback();
+    });
+  }
+  if (elements.mobileSortDirection) {
+    elements.mobileSortDirection.addEventListener("click", () => {
+      state.sort.direction = state.sort.direction === "asc" ? "desc" : "asc";
+      state.page = 1;
+      updateViewCallback();
+    });
+  }
 }
 
 export function initTableSorting() {
@@ -678,6 +753,12 @@ export function handleSortHeaderClick(event) {
   };
   state.page = 1;
   updateViewCallback();
+  requestAnimationFrame(() => {
+    const replacement = elements.matchesHeadRow?.querySelector(
+      `.sort-header[data-sort-key="${column.key}"]`
+    );
+    if (replacement) replacement.focus();
+  });
 }
 
 export function getStageSortParts(match) {

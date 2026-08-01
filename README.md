@@ -15,6 +15,14 @@ Raw URLs (overridable via env vars):
 - `TOURNAMENTS_CSV_URL`: `https://raw.githubusercontent.com/amundfylling/Scorpion-Scraper-2.0/main/data/tournament_data.csv`
 - `TOURNAMENT_METADATA_CSV_URL`: `https://raw.githubusercontent.com/amundfylling/Scorpion-Scraper-2.0/main/data/tournament_metadata.csv`
 - `RANKING_TXT_URL`: `https://stiga.trefik.cz/ithf/ranking/ranking.txt`
+- `EXTRA_MATCHES_URL`: bordshockey.net supplemental results CSV (set to an empty string to disable)
+- `REQUIRE_RANKINGS`: set to `1` to fail the build instead of deploying without ranking data
+- `MIN_RANKING_ROWS`: minimum parsed ranking rows when rankings are required (CI: `1000`)
+- `MAX_RANKING_AGE_DAYS`: optional maximum age for required ranking data (CI: `45`)
+- `REQUIRE_TOURNAMENT_METADATA`: set to `1` to require tournament-level metadata
+- `MIN_TOURNAMENT_LEVELS`: minimum parsed tournament levels when metadata is required (CI: `1000`)
+- `MAX_MAIN_REJECTION_RATE`: maximum rejected fraction of primary match rows (CI: `0.01`)
+- `MAX_EXTRA_REJECTION_RATE`: maximum rejected fraction of supplemental rows (CI: `0.40`)
 
 ## Build-time slicing
 
@@ -28,8 +36,12 @@ Raw URLs (overridable via env vars):
 - Generates static JSON into `public/data/`:
   - `players.json` (50+ matches only)
   - `tournaments.json`
-  - `meta.json` (build timestamp + player/match counts; powers the footer "Data updated" line)
+  - `meta.json` (counts, validation metrics, and source hashes; powers the freshness footer)
   - `h2h/{playerId}.json` (one file per player; opponents nested)
+  - `og/{playerId}.json` (compact share metadata for the Pages Function)
+
+The build writes a complete sibling staging tree and swaps it into `public/data/` only after every
+artifact succeeds, so an interrupted local build leaves the previous complete dataset available.
 
 No Parquet/CSV source files are stored in this repo, and generated JSON is a build artifact deployed to Pages.
 
@@ -49,12 +61,19 @@ Run the data validation tests with:
 
 ```bash
 python -m unittest discover -s tests -v
+node --test tests-js/*.test.mjs
 ```
 
 For a smaller local H2H build, raise the match threshold:
 
 ```bash
 MIN_MATCHES=1000 python3 scripts/build_h2h.py
+```
+
+To rebuild from files already present in `.cache/` without refreshing the sources:
+
+```bash
+SKIP_DOWNLOADS=1 python3 scripts/build_h2h.py
 ```
 
 ## Cloudflare Pages deployment
@@ -65,7 +84,8 @@ Required GitHub Secrets:
 - `CLOUDFLARE_ACCOUNT_ID`
 - `CLOUDFLARE_PROJECT_NAME`
 
-The GitHub Actions workflow builds the dataset and uploads `public/` to Pages on push, on a weekly schedule, or via manual dispatch.
+The GitHub Actions workflow validates pull requests, then builds and deploys the dataset on
+push, on a weekly schedule, or via manual dispatch.
 
 ## Changing the data source
 
@@ -77,5 +97,7 @@ export PLAYERS_CSV_URL="https://raw.githubusercontent.com/your-org/your-repo/mai
 export TOURNAMENTS_CSV_URL="https://raw.githubusercontent.com/your-org/your-repo/main/data/tournament_data.csv"
 export TOURNAMENT_METADATA_CSV_URL="https://raw.githubusercontent.com/your-org/your-repo/main/data/tournament_metadata.csv"
 export RANKING_TXT_URL="https://example.com/ranking.txt"
+export EXTRA_MATCHES_URL="https://example.com/supplemental-results.csv"
+export REQUIRE_RANKINGS=1
 python3 scripts/build_h2h.py
 ```

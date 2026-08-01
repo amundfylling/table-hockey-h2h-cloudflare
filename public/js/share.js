@@ -1,19 +1,20 @@
-import { state, isSeriesMode, isSinglePlayerMode } from "./state.js";
+import { state, elements, isSeriesMode, isSinglePlayerMode } from "./state.js";
 import { computeSummary, getHighlightInfo, getSeriesHighlightInfo, formatPercent } from "./summary.js";
 import { computeSeriesSummary } from "./series.js";
-import { formatWorldRank } from "./players.js";
+import { formatWorldRank, updateSelectionControls } from "./players.js";
 import { getActiveFilterCount } from "./filters.js";
-import { getChronologicalItems } from "./form.js";
+import { getChronologicalItems } from "./form.js?v=20260801-generational-run-v3";
 import { getTournamentLevelLabel } from "./utils.js";
 
 // Helper to sanitize player name for filename
-function sanitizeName(name) {
-  if (!name) return "player";
-  return name
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
+export function sanitizeName(name, fallback = "player") {
+  if (!name) return fallback;
+  const sanitized = name
+    .normalize("NFKC")
     .replace(/\s+/g, "_")
-    .replace(/[^a-zA-Z0-9_-]/g, "");
+    .replace(/[^\p{Letter}\p{Mark}\p{Number}_-]/gu, "")
+    .replace(/^_+|_+$/g, "");
+  return sanitized || fallback;
 }
 
 // Draw a rounded rectangle path helper
@@ -88,30 +89,73 @@ function drawPlayerName(ctx, name, x, y, isRightAligned, colors, dryRun = false)
   return { fontSize, textWidth };
 }
 
+let shareInProgress = false;
+
+async function waitForShareFonts(timeoutMs = 4000) {
+  let timeoutId;
+  try {
+    await Promise.race([
+      (async () => {
+        await document.fonts.ready;
+        await Promise.all([
+          document.fonts.load("bold 42px Fraunces"),
+          document.fonts.load("bold 22px Manrope"),
+          document.fonts.load("bold 20px Manrope"),
+          document.fonts.load("bold 16px Manrope"),
+          document.fonts.load("bold 15px Manrope"),
+          document.fonts.load("bold 14px Manrope"),
+          document.fonts.load("bold 24px Manrope"),
+          document.fonts.load("bold 32px Manrope"),
+          document.fonts.load("bold 60px Fraunces"),
+          document.fonts.load("bold 12px Manrope"),
+          document.fonts.load("bold 13px Manrope"),
+        ]);
+      })(),
+      new Promise((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error("Font loading timed out.")), timeoutMs);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 export async function handleShareImage() {
   const playerA = state.playerA;
   const playerB = state.playerB;
+  const matchesSnapshot = state.filteredMatches;
+  const isSingle = isSinglePlayerMode();
+  const isSeries = isSeriesMode();
+  const pageUrlSnapshot = window.location.href;
   
-  if (!playerA) return;
+  if (!playerA || !matchesSnapshot?.length || shareInProgress) return;
+
+  shareInProgress = true;
+  const buttonLabel = elements.shareImageBtn?.querySelector("span");
+  const originalButtonLabel = buttonLabel?.textContent || "Share image";
+  if (elements.shareImageBtn) {
+    elements.shareImageBtn.disabled = true;
+    elements.shareImageBtn.setAttribute("aria-busy", "true");
+  }
+  if (buttonLabel) buttonLabel.textContent = "Preparing…";
+
+  try {
   
   // 1. Wait for web fonts to load
   try {
-    await document.fonts.ready;
-    await Promise.all([
-      document.fonts.load("bold 42px Fraunces"),
-      document.fonts.load("bold 22px Manrope"),
-      document.fonts.load("bold 20px Manrope"),
-      document.fonts.load("bold 16px Manrope"),
-      document.fonts.load("bold 15px Manrope"),
-      document.fonts.load("bold 14px Manrope"),
-      document.fonts.load("bold 24px Manrope"),
-      document.fonts.load("bold 32px Manrope"),
-      document.fonts.load("bold 60px Fraunces"),
-      document.fonts.load("bold 12px Manrope"),
-      document.fonts.load("bold 13px Manrope")
-    ]);
+    await waitForShareFonts();
   } catch (err) {
     console.warn("Font loading API failed or timed out, proceeding with fallback fonts.", err);
+  }
+
+  // Do not export a mixture of two views if the selection or filters changed while fonts loaded.
+  if (
+    state.playerA !== playerA
+    || state.playerB !== playerB
+    || state.filteredMatches !== matchesSnapshot
+  ) {
+    if (elements.status) elements.status.textContent = "View changed; try sharing again.";
+    return;
   }
 
   const canvas = document.createElement("canvas");
@@ -129,6 +173,7 @@ export async function handleShareImage() {
     border: isDark ? "#262e38" : "#e4dfd5",
     teal: "#2a7564",
     orange: "#ef6c44",
+    orangeText: isDark ? "#ff8a65" : "#ad3f24",
     draw: isDark ? "#2f3944" : "#e4dfd5",
     drawChipBg: isDark ? "#3a4654" : "#d8d2c5",
     drawPillBg: isDark ? "#222a33" : "#ffffff",
@@ -154,7 +199,6 @@ export async function handleShareImage() {
   let rankB = null;
   let fontSizeB = 32; // Default for "ALL OPPONENTS" (bold 32px Manrope)
   
-  const isSingle = isSinglePlayerMode();
   if (!isSingle) {
     nameB = playerB?.name || "Player B";
     rankB = formatWorldRank(playerB);
@@ -196,7 +240,7 @@ export async function handleShareImage() {
   if (rankB && !isSingle) {
     drawRoundRect(ctx, 1016 - pillW, rankPillY, pillW, pillH, 6, colors.orangeSoft, null);
     ctx.font = "bold 16px Manrope";
-    ctx.fillStyle = colors.orange;
+    ctx.fillStyle = colors.orangeText;
     ctx.textAlign = "center";
     ctx.fillText(rankB, 1016 - (pillW / 2), rankPillY + 22);
   }
@@ -204,8 +248,7 @@ export async function handleShareImage() {
   let cursorY = nameBaselineY + (hasRank ? 60 : 10);
   
   // 6. Compute Data
-  const matches = state.filteredMatches || [];
-  const isSeries = isSeriesMode();
+  const matches = matchesSnapshot || [];
   const summary = isSeries ? computeSeriesSummary(matches) : computeSummary(matches);
   
   // 6b. Last-10 games form strip
@@ -350,7 +393,7 @@ export async function handleShareImage() {
       ctx.textBaseline = "middle";
       ctx.fillText(`${summary.winsB} (${lossPct.toFixed(1)}%)`, barX + wA + wDraw + wB / 2, barY + barH / 2);
     } else {
-      ctx.fillStyle = colors.orange;
+      ctx.fillStyle = colors.orangeText;
       ctx.textAlign = "right";
       ctx.textBaseline = "bottom";
       ctx.fillText(`${summary.winsB} (${lossPct.toFixed(1)}%)`, barX + barW, barY - 8);
@@ -413,7 +456,7 @@ export async function handleShareImage() {
     filterLabels.push("Overtime only");
   }
   if (state.filters.tightOnly) {
-    filterLabels.push("Tight games");
+    filterLabels.push("One-goal games");
   }
   if (state.stageTab === "playoff" && state.filters.bestOf.length) {
     const labels = state.filters.bestOf
@@ -700,7 +743,7 @@ export async function handleShareImage() {
   // Panel B
   drawRoundRect(ctx, panelRB_X, panelY, panelW, panelH, 12, colors.surface, colors.border);
   ctx.font = "bold 13px Manrope";
-  ctx.fillStyle = colors.orange;
+  ctx.fillStyle = colors.orangeText;
   ctx.textAlign = "left";
   if ('letterSpacing' in ctx) ctx.letterSpacing = "1px";
   ctx.fillText(labelB, panelRB_X + 32, panelY + 40);
@@ -758,7 +801,7 @@ export async function handleShareImage() {
   
   // Right: Brand badge icon & Title
   ctx.font = "bold 18px Manrope";
-  ctx.fillStyle = colors.orange;
+  ctx.fillStyle = colors.orangeText;
   ctx.textAlign = "right";
   ctx.fillText("Table Hockey H2H", 1016, footerTextY);
   
@@ -779,33 +822,35 @@ export async function handleShareImage() {
   ctx.textBaseline = "alphabetic";
   
   // 11. Trigger Web Share or Download Fallback
-  canvas.toBlob(async (blob) => {
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
     if (!blob) {
-      console.error("Failed to generate image blob.");
-      return;
+      throw new Error("Failed to generate image blob.");
     }
     
-    const fileName = isSinglePlayerMode()
-      ? `${sanitizeName(playerA.name)}_profile.png`
-      : `${sanitizeName(playerA.name)}_vs_${sanitizeName(playerB?.name)}_h2h.png`;
+    const fileName = isSingle
+      ? `${sanitizeName(playerA.name, `player_${playerA.id}`)}_profile.png`
+      : `${sanitizeName(playerA.name, `player_${playerA.id}`)}_vs_${sanitizeName(
+          playerB?.name,
+          `player_${playerB?.id || "b"}`
+        )}_h2h.png`;
       
     const file = new File([blob], fileName, { type: "image/png" });
     
     // Dynamically build URL and Text for sharing
     let shareUrl = "";
     try {
-      const urlObj = new URL(window.location.href);
+      const urlObj = new URL(pageUrlSnapshot);
       urlObj.host = "table-hockey-h2h.pages.dev";
       urlObj.protocol = "https:";
       urlObj.port = "";
       shareUrl = urlObj.toString();
     } catch (e) {
-      shareUrl = isSinglePlayerMode()
+      shareUrl = isSingle
         ? `https://table-hockey-h2h.pages.dev/?p1=${playerA.id}`
         : `https://table-hockey-h2h.pages.dev/?p1=${playerA.id}&p2=${playerB?.id}`;
     }
 
-    const shareText = isSinglePlayerMode()
+    const shareText = isSingle
       ? `Check out the competitive stats of ${playerA.name} at ${shareUrl}`
       : `Check out the head-to-head matchup stats between ${playerA.name} and ${playerB?.name} at ${shareUrl}`;
     
@@ -813,18 +858,29 @@ export async function handleShareImage() {
       try {
         await navigator.share({
           files: [file],
-          title: isSinglePlayerMode() ? `${playerA.name} Profile` : `${playerA.name} vs ${playerB?.name} Matchup`,
+          title: isSingle ? `${playerA.name} Profile` : `${playerA.name} vs ${playerB?.name} Matchup`,
           text: shareText
         });
+        if (elements.status) elements.status.textContent = "Image shared.";
       } catch (err) {
         if (err.name !== "AbortError") {
           downloadImage(blob, fileName);
+          if (elements.status) elements.status.textContent = "Image downloaded.";
         }
       }
     } else {
       downloadImage(blob, fileName);
+      if (elements.status) elements.status.textContent = "Image downloaded.";
     }
-  }, "image/png");
+  } catch (err) {
+    console.error("Could not create share image:", err);
+    if (elements.status) elements.status.textContent = "Could not create the share image.";
+  } finally {
+    shareInProgress = false;
+    if (elements.shareImageBtn) elements.shareImageBtn.removeAttribute("aria-busy");
+    if (buttonLabel) buttonLabel.textContent = originalButtonLabel;
+    updateSelectionControls();
+  }
 }
 
 function downloadImage(blob, fileName) {
@@ -835,5 +891,5 @@ function downloadImage(blob, fileName) {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

@@ -105,7 +105,10 @@ export function initFilters(updateView) {
       setPeriodOpen(false);
     });
     document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape" && !elements.periodPopover.hidden) setPeriodOpen(false);
+      if (event.key === "Escape" && !elements.periodPopover.hidden) {
+        setPeriodOpen(false);
+        elements.periodToggle.focus();
+      }
     });
     updatePeriodLabel();
   }
@@ -151,7 +154,12 @@ export function applyFilters(matches) {
       if (!bestOfFilters.has(String(bestOf))) return false;
     }
     if (filters.otOnly && !match.overtime) return false;
-    if (filters.tightOnly && match.goal_abs > 1) return false;
+    if (filters.tightOnly) {
+      const containsOneGoalGame = Array.isArray(match.games)
+        ? match.games.some((game) => Number(game.goal_abs) === 1)
+        : Number(match.goal_abs) === 1;
+      if (!containsOneGoalGame) return false;
+    }
     if (search) {
       const hay = `${match.tournament_name || ""} ${getTournamentLevelLabel(getTournamentLevelKey(match))} ${match.stage || ""} ${match.opponent_name || ""}`;
       if (!normalizeText(hay).includes(search)) return false;
@@ -347,10 +355,16 @@ export function renderActiveFilterChips() {
     chips.push({ label: `Stage name: ${state.filters.stage}`, clear: () => { state.filters.stage = "all"; elements.stageFilter.value = "all"; } });
   }
   if (state.filters.otOnly) {
-    chips.push({ label: "Overtime only", clear: () => { state.filters.otOnly = false; elements.otToggle.checked = false; } });
+    const label = state.stageTab === "playoff" && state.playoffMode === "series"
+      ? "Contains an overtime game"
+      : "Overtime only";
+    chips.push({ label, clear: () => { state.filters.otOnly = false; elements.otToggle.checked = false; } });
   }
   if (state.filters.tightOnly) {
-    chips.push({ label: "Tight games", clear: () => { state.filters.tightOnly = false; elements.tightToggle.checked = false; } });
+    const label = state.stageTab === "playoff" && state.playoffMode === "series"
+      ? "Contains a one-goal game"
+      : "One-goal games";
+    chips.push({ label, clear: () => { state.filters.tightOnly = false; elements.tightToggle.checked = false; } });
   }
   if (state.stageTab === "playoff" && state.filters.bestOf.length) {
     const labels = state.filters.bestOf.map((v) => v === "1" ? "Single" : `Bo${v}`).join(", ");
@@ -379,6 +393,7 @@ export function renderActiveFilterChips() {
     btn.addEventListener("click", () => {
       chip.clear();
       state.page = 1;
+      updatePeriodLabel();
       updateViewCallback();
     });
     el.appendChild(btn);

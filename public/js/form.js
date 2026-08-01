@@ -2,6 +2,13 @@ import { state, elements, isSeriesMode } from "./state.js";
 import { formatDateRange } from "./utils.js";
 import { formatSeriesScore, formatSeriesLength } from "./series.js";
 
+const GENERATIONAL_RUN_MIN = 10;
+const PLAYED_RUN_LIMIT = 24;
+const playedRunKeys = new Set();
+
+let presentationGeneration = 0;
+let activeRunCleanup = null;
+
 export function updateFormTitle() {
   if (!elements.formTitle) return;
   const label = isSeriesMode() ? "Series form" : "Game form";
@@ -12,15 +19,44 @@ export function updateFormTitle() {
   }
 }
 
+function numberOrZero(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+export function getFormItemIdentity(item = {}) {
+  const value = item || {};
+  return [
+    value.source || "",
+    value.source_tournament_id ?? value.tournament_id ?? "",
+    value.source_stage_id ?? value.stage_id ?? "",
+    value.source_match_id || "",
+    value.opponent_id ?? "",
+    value.date || "",
+    value.stage_sequence ?? "",
+    value.round_number ?? "",
+    value.playoff_game_number ?? "",
+    value.goals_a ?? value.game_wins_a ?? "",
+    value.goals_b ?? value.game_wins_b ?? "",
+  ].join("|");
+}
+
 export function getChronologicalItems(items) {
   return [...items].sort((a, b) => {
-    const seqA = a.stage_sequence ?? 0;
-    const seqB = b.stage_sequence ?? 0;
-    const roundA = a.round_number ?? 0;
-    const roundB = b.round_number ?? 0;
-    const gameA = a.playoff_game_number ?? 0;
-    const gameB = b.playoff_game_number ?? 0;
-    return a.ts - b.ts || seqA - seqB || roundA - roundB || gameA - gameB;
+    const numericFields = ["ts", "stage_sequence", "round_number", "playoff_game_number"];
+    for (const field of numericFields) {
+      const difference = numberOrZero(a[field]) - numberOrZero(b[field]);
+      if (difference) return difference;
+    }
+
+    const sourceIdDifference = numberOrZero(a.source_match_id) - numberOrZero(b.source_match_id);
+    if (sourceIdDifference) return sourceIdDifference;
+
+    const identityA = getFormItemIdentity(a);
+    const identityB = getFormItemIdentity(b);
+    if (identityA < identityB) return -1;
+    if (identityA > identityB) return 1;
+    return 0;
   });
 }
 
@@ -38,174 +74,297 @@ export function getCurrentWinStreak(items) {
   return count;
 }
 
-export function createCurrentStreakChip(items) {
-  const streak = getCurrentWinStreak(items);
-  if (streak < 3) return null;
+function getLatestItem(items) {
+  const ordered = getChronologicalItems(items);
+  return ordered[ordered.length - 1] || null;
+}
 
-  const chip = document.createElement("span");
+export function getStreakPresentation(viewItems, canonicalItems = viewItems) {
+  const viewStreak = getCurrentWinStreak(viewItems);
+  const canonicalStreak = getCurrentWinStreak(canonicalItems);
+  const viewLatestIdentity = getFormItemIdentity(getLatestItem(viewItems));
+  const canonicalLatestIdentity = getFormItemIdentity(getLatestItem(canonicalItems));
+  const sameEndpoint = Boolean(viewLatestIdentity)
+    && viewLatestIdentity === canonicalLatestIdentity;
+  const isGenerational = viewStreak >= GENERATIONAL_RUN_MIN
+    && canonicalStreak >= GENERATIONAL_RUN_MIN
+    && sameEndpoint;
+  const isFilteredView = canonicalItems !== viewItems && (
+    canonicalItems.length !== viewItems.length
+    || canonicalStreak !== viewStreak
+    || !sameEndpoint
+  );
+
+  return {
+    viewStreak,
+    canonicalStreak,
+    streak: isGenerational ? canonicalStreak : viewStreak,
+    isGenerational,
+    isFilteredView,
+    latestIdentity: canonicalLatestIdentity || viewLatestIdentity,
+  };
+}
+
+export function allowsGenerationalMotion({
+  supportsObserver,
+  visibilityState,
+  reducedMotion,
+  forcedColors,
+}) {
+  return Boolean(supportsObserver)
+    && visibilityState !== "hidden"
+    && !reducedMotion
+    && !forcedColors;
+}
+
+function canAnimateGenerationalRun() {
+  if (typeof window === "undefined" || typeof document === "undefined") return false;
+  return allowsGenerationalMotion({
+    supportsObserver: typeof IntersectionObserver === "function",
+    visibilityState: document.visibilityState,
+    reducedMotion: Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches),
+    forcedColors: Boolean(window.matchMedia?.("(forced-colors: active)").matches),
+  });
+}
+
+function appendTextPart(parent, className, text, hidden = false) {
+  const part = document.createElement("span");
+  part.className = className;
+  part.textContent = text;
+  if (hidden) part.setAttribute("aria-hidden", "true");
+  parent.appendChild(part);
+  return part;
+}
+
+export function createCurrentStreakChip(items, canonicalItems = items) {
+  const presentation = getStreakPresentation(items, canonicalItems);
+  if (presentation.streak < 3) return null;
+
   const itemLabel = isSeriesMode() ? "series" : "game";
-  const baseTitle = `${state.playerA?.name || "Player 1"} has won ${streak} ${itemLabel}s in a row`;
+  const itemPlural = itemLabel === "series" ? "series" : "games";
+  const playerName = state.playerA?.name || "Player 1";
+  const canReplay = presentation.isGenerational && canAnimateGenerationalRun();
+  const chip = document.createElement(canReplay ? "button" : "span");
+  const baseTitle = `${playerName} has won ${presentation.streak} ${itemPlural} in a row`;
+  const generationalTitle = `Generational run. ${baseTitle}.`;
+
+  if (canReplay) chip.type = "button";
   chip.className = "streak-chip";
-  chip.textContent = `🔥 ${streak}`;
-  chip.title = streak >= 7 ? `Generational run. ${baseTitle}` : baseTitle;
-  chip.setAttribute("aria-label", chip.title);
+  chip.dataset.streak = String(presentation.streak);
+  chip.dataset.generational = presentation.isGenerational ? "true" : "false";
+
+  if (presentation.isGenerational) {
+    chip.classList.add("is-exceptional");
+    appendTextPart(chip, "streak-chip__flame", "🔥", true);
+    appendTextPart(chip, "streak-chip__count", String(presentation.streak), true);
+    appendTextPart(chip, "streak-chip__unit", `-${itemLabel} streak`, true);
+    appendTextPart(chip, "streak-chip__honor", "Generational run", true);
+    if (canReplay) appendTextPart(chip, "streak-chip__replay", "↻", true);
+    if (!canReplay) {
+      appendTextPart(chip, "sr-only", generationalTitle);
+      chip.setAttribute("role", "status");
+    }
+  } else {
+    chip.textContent = `${presentation.streak}-${itemLabel} streak`;
+    if (presentation.isFilteredView) chip.classList.add("is-view-scoped");
+  }
+
+  let title = presentation.isGenerational ? generationalTitle : baseTitle;
+  if (!presentation.isGenerational && presentation.isFilteredView) {
+    title += " in the current filtered view";
+  }
+  if (canReplay) title += " Activate to replay the celebration.";
+  chip.title = title;
+  if (canReplay || !presentation.isGenerational) {
+    chip.setAttribute("aria-label", title);
+  }
   return chip;
 }
 
-export function setupGenerationalRun(matches, streakChip, fragment) {
-  const streak = getCurrentWinStreak(matches);
-  if (streak < 10) return;
-
-  elements.formChips.classList.add("has-generational-run");
-
-  // Glowing Neon Track
-  const track = document.createElement("div");
-  track.className = "generational-track";
-  fragment.appendChild(track);
-
-  // Runner Emojis (Flame runner 🔥🏃‍♂️)
-  const runner = document.createElement("span");
-  runner.className = "generational-runner";
-  runner.innerHTML = `
-    <span class="runner-trail"></span>
-    <span class="runner-flame">🔥</span>
-    <span class="runner-emoji">🏃‍♂️</span>
-  `;
-  fragment.appendChild(runner);
-
-  // Upgraded Text Banner
-  const runText = document.createElement("div");
-  runText.className = "generational-run-text";
-  runText.textContent = "👑 Generational run!";
-  fragment.appendChild(runText);
-
-  // Sparks rising off the track as the runner passes
-  const sparks = document.createElement("div");
-  sparks.className = "generational-sparks";
-  const SPARK_COUNT = 7;
-  for (let i = 0; i < SPARK_COUNT; i += 1) {
-    const spark = document.createElement("i");
-    spark.className = "spark";
-    const frac = (i + 0.5) / SPARK_COUNT;
-    spark.style.setProperty("--spark-frac", frac.toFixed(3));
-    spark.style.setProperty("--spark-delay", `${(frac * 4.3).toFixed(2)}s`);
-    sparks.appendChild(spark);
+function rememberRunKey(key) {
+  playedRunKeys.delete(key);
+  playedRunKeys.add(key);
+  while (playedRunKeys.size > PLAYED_RUN_LIMIT) {
+    playedRunKeys.delete(playedRunKeys.values().next().value);
   }
-  fragment.appendChild(sparks);
-
-  // Finale: golden rays + spark burst from the streak chip
-  const rays = document.createElement("div");
-  rays.className = "burst-rays";
-  fragment.appendChild(rays);
-  const burstSparks = [];
-  for (let i = 0; i < 8; i += 1) {
-    const spark = document.createElement("i");
-    spark.className = "burst-spark";
-    spark.style.setProperty("--angle", `${i * 45}deg`);
-    fragment.appendChild(spark);
-    burstSparks.push(spark);
-  }
-
-  // Mark the streak chip to celebrate at the end of the run
-  streakChip.classList.add("burst");
-
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach((entry) => {
-      if (entry.isIntersecting) {
-        // Find win chips inside formChips container
-        const winChips = elements.formChips.querySelectorAll(".chip.win");
-        if (winChips.length > 0) {
-          const firstChip = winChips[0];
-          const lastChip = winChips[winChips.length - 1];
-          
-          const startX = firstChip.offsetLeft + (firstChip.offsetWidth / 2) - 10;
-          const endX = lastChip.offsetLeft + (lastChip.offsetWidth / 2) - 10;
-          const runnerY = firstChip.offsetTop - 20;
-
-          elements.formChips.style.setProperty("--runner-start-x", `${startX}px`);
-          elements.formChips.style.setProperty("--runner-end-x", `${endX}px`);
-          elements.formChips.style.setProperty("--runner-y", `${runnerY}px`);
-
-          let flameDropX = 35; // Default fallback
-          if (streakChip) {
-            const lastChipCenter = lastChip.offsetLeft + (lastChip.offsetWidth / 2);
-            const streakChipCenter = streakChip.offsetLeft + (streakChip.offsetWidth / 2);
-            flameDropX = streakChipCenter - lastChipCenter;
-          }
-          elements.formChips.style.setProperty("--flame-drop-x", `${flameDropX}px`);
-          elements.formChips.style.setProperty(
-            "--burst-x",
-            `${streakChip.offsetLeft + streakChip.offsetWidth / 2}px`
-          );
-          elements.formChips.style.setProperty(
-            "--burst-y",
-            `${streakChip.offsetTop + streakChip.offsetHeight / 2}px`
-          );
-
-          // Add sequential lighting delay to each Win chip
-          winChips.forEach((chip, index) => {
-            // Stagger ignite based on horizontal position relative to the track length
-            const delay = (index / winChips.length) * 4.2;
-            chip.style.animationDelay = `${delay}s`;
-            chip.classList.add("ignite");
-          });
-        }
-
-        // Start animations
-        track.classList.add("animate-run");
-        runner.classList.add("animate-run");
-        runText.classList.add("animate-run");
-        rays.classList.add("animate-burst");
-        burstSparks.forEach((spark) => spark.classList.add("animate-burst"));
-        observer.disconnect();
-
-        // Graceful cleanup after animations finish
-        setTimeout(() => {
-          runner.classList.add("animate-hide");
-          runText.classList.add("animate-hide");
-          track.style.transition = "opacity 0.5s ease";
-          track.style.opacity = "0";
-          setTimeout(() => {
-            runner.remove();
-            runText.remove();
-            track.remove();
-            sparks.remove();
-            rays.remove();
-            burstSparks.forEach((spark) => spark.remove());
-            
-            // Revert win chips back to original styles
-            const winChips = elements.formChips.querySelectorAll(".chip.win");
-            winChips.forEach((chip) => {
-              chip.classList.remove("ignite");
-              chip.style.animationDelay = "";
-            });
-            
-            // Revert streak chip back to normal
-            if (streakChip) {
-              streakChip.classList.remove("burst");
-            }
-
-            // Remove the generational class to restore normal layout padding and streak chip display
-            elements.formChips.classList.remove("has-generational-run");
-          }, 500);
-        }, 6000);
-      }
-    });
-  }, { threshold: 0.1 });
-  observer.observe(streakChip);
 }
 
-export function renderForm(matches) {
-  elements.formChips.innerHTML = "";
-  elements.formChips.classList.remove("has-generational-run");
+function buildRunKey(presentation) {
+  return [
+    state.playerA?.id ?? "player-a",
+    state.playerB?.id ?? "all-opponents",
+    isSeriesMode() ? "series" : "games",
+    state.stageTab || "overall",
+    presentation.streak,
+    presentation.latestIdentity,
+  ].join(":");
+}
+
+function createRunLane() {
+  const lane = document.createElement("span");
+  lane.className = "generational-lane";
+  lane.setAttribute("aria-hidden", "true");
+
+  const track = document.createElement("span");
+  track.className = "generational-lane__track";
+  lane.appendChild(track);
+
+  const runner = document.createElement("span");
+  runner.className = "generational-runner";
+  appendTextPart(runner, "generational-runner__trail", "");
+  appendTextPart(runner, "generational-runner__flame", "🔥");
+  appendTextPart(runner, "generational-runner__figure", "🏃");
+  lane.appendChild(runner);
+
+  return lane;
+}
+
+function centerWithinContainer(element, container) {
+  const elementRect = element.getBoundingClientRect();
+  const containerRect = container.getBoundingClientRect();
+  return {
+    x: elementRect.left - containerRect.left + container.scrollLeft + elementRect.width / 2,
+    y: elementRect.top - containerRect.top + container.scrollTop + elementRect.height / 2,
+    height: elementRect.height,
+  };
+}
+
+export function resetFormPresentation() {
+  presentationGeneration += 1;
+  if (activeRunCleanup) activeRunCleanup();
+  activeRunCleanup = null;
+
+  const container = elements.formChips;
+  if (!container) return;
+  container.classList.remove("is-generational-running");
+  container.querySelector(".generational-lane")?.remove();
+  container.querySelectorAll(".chip.is-run-lit").forEach((chip) => {
+    chip.classList.remove("is-run-lit");
+    chip.style.removeProperty("--run-delay");
+  });
+  container.querySelector(".streak-chip.is-celebrating")
+    ?.classList.remove("is-celebrating");
+}
+
+export function setupGenerationalRun(
+  matches,
+  canonicalItems,
+  streakChip,
+  presentation = getStreakPresentation(matches, canonicalItems)
+) {
+  if (!presentation.isGenerational || !streakChip || !canAnimateGenerationalRun()) return;
+
+  const container = elements.formChips;
+  const generation = presentationGeneration;
+  const runKey = buildRunKey(presentation);
+  let observer = null;
+  let animationFrame = null;
+  let lane = null;
+  let finishListenersAttached = false;
+
+  const clearVisuals = () => {
+    if (animationFrame !== null) cancelAnimationFrame(animationFrame);
+    animationFrame = null;
+    lane?.remove();
+    lane = null;
+    container.classList.remove("is-generational-running");
+    container.querySelectorAll(".chip.is-run-lit").forEach((chip) => {
+      chip.classList.remove("is-run-lit");
+      chip.style.removeProperty("--run-delay");
+    });
+    streakChip.classList.remove("is-celebrating");
+  };
+
+  const detachFinishListeners = () => {
+    if (!finishListenersAttached) return;
+    finishListenersAttached = false;
+    streakChip.removeEventListener("animationend", finishRun);
+    streakChip.removeEventListener("animationcancel", finishRun);
+  };
+
+  const finishRun = (event) => {
+    if (event.animationName !== "generational-streak-finale") return;
+    detachFinishListeners();
+    clearVisuals();
+  };
+
+  const attachFinishListeners = () => {
+    detachFinishListeners();
+    finishListenersAttached = true;
+    streakChip.addEventListener("animationend", finishRun);
+    streakChip.addEventListener("animationcancel", finishRun);
+  };
+
+  const startRun = () => {
+    if (generation !== presentationGeneration || !streakChip.isConnected) return;
+    if (!canAnimateGenerationalRun()) return;
+    observer?.disconnect();
+    observer = null;
+    detachFinishListeners();
+    clearVisuals();
+
+    const winChips = [...container.querySelectorAll(".chip.win")].slice(-10);
+    if (winChips.length < GENERATIONAL_RUN_MIN) return;
+
+    const start = centerWithinContainer(winChips[0], container);
+    const finish = centerWithinContainer(streakChip, container);
+    lane = createRunLane();
+    lane.style.setProperty("--run-start-x", `${start.x}px`);
+    lane.style.setProperty("--run-track-y", `${start.y + start.height / 2 - 2}px`);
+    lane.style.setProperty("--run-distance", `${Math.max(0, finish.x - start.x)}px`);
+    container.appendChild(lane);
+
+    animationFrame = requestAnimationFrame(() => {
+      animationFrame = null;
+      if (generation !== presentationGeneration || !lane?.isConnected) return;
+      container.classList.add("is-generational-running");
+      lane.classList.add("is-active");
+      winChips.forEach((chip, index) => {
+        chip.style.setProperty("--run-delay", `${140 + index * 145}ms`);
+        chip.classList.add("is-run-lit");
+      });
+      streakChip.classList.add("is-celebrating");
+      attachFinishListeners();
+      rememberRunKey(runKey);
+    });
+  };
+
+  const replayRun = () => startRun();
+  streakChip.addEventListener("click", replayRun);
+
+  activeRunCleanup = () => {
+    observer?.disconnect();
+    observer = null;
+    detachFinishListeners();
+    clearVisuals();
+    streakChip.removeEventListener("click", replayRun);
+  };
+
+  if (!playedRunKeys.has(runKey)) {
+    observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) startRun();
+    }, { threshold: 0.5, rootMargin: "0px 0px -8% 0px" });
+    observer.observe(container);
+  }
+}
+
+export function renderForm(matches, canonicalItems = matches) {
+  resetFormPresentation();
+  elements.formChips.replaceChildren();
+  if (elements.formDetail) {
+    elements.formDetail.textContent = "";
+    elements.formDetail.hidden = true;
+  }
   if (!matches.length) {
     elements.formChips.innerHTML = "<span class=\"muted\">No matches</span>";
     return;
   }
+
   const ordered = getChronologicalItems(matches).slice(-10);
   const fragment = document.createDocumentFragment();
   ordered.forEach((match) => {
-    const chip = document.createElement("span");
+    const chip = document.createElement("button");
+    chip.type = "button";
     chip.className = "chip";
     const tournament = match.tournament_name || "Unknown tournament";
     const stage = match.stage ? ` | ${match.stage}` : "";
@@ -225,12 +384,22 @@ export function renderForm(matches) {
       chip.textContent = "D";
       chip.classList.add("draw");
     }
+    chip.setAttribute("aria-label", chip.title);
+    const showDetail = () => {
+      if (!elements.formDetail) return;
+      elements.formDetail.textContent = chip.title;
+      elements.formDetail.hidden = false;
+    };
+    chip.addEventListener("focus", showDetail);
+    chip.addEventListener("click", showDetail);
     fragment.appendChild(chip);
   });
-  const streakChip = createCurrentStreakChip(matches);
-  if (streakChip) {
-    fragment.appendChild(streakChip);
-    setupGenerationalRun(matches, streakChip, fragment);
-  }
+
+  const presentation = getStreakPresentation(matches, canonicalItems);
+  const streakChip = createCurrentStreakChip(matches, canonicalItems);
+  if (streakChip) fragment.appendChild(streakChip);
   elements.formChips.appendChild(fragment);
+  if (streakChip) {
+    setupGenerationalRun(matches, canonicalItems, streakChip, presentation);
+  }
 }
