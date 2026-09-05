@@ -531,6 +531,49 @@ button:disabled {
   gap: 12px;
 }
 
+.matchup-result {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-alt);
+  scroll-margin-top: 20px;
+  overflow-wrap: anywhere;
+}
+
+.matchup-result-scope {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.matchup-result h2 {
+  font-size: clamp(1.4rem, 3vw, 1.85rem);
+  line-height: 1.2;
+  text-wrap: balance;
+  font-variant-numeric: tabular-nums;
+}
+
+.matchup-result h2:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 4px;
+}
+
+.matchup-result[data-leader="a"] .matchup-result-leader {
+  color: var(--teal-text);
+}
+
+.matchup-result[data-leader="b"] .matchup-result-leader {
+  color: var(--accent-dark);
+}
+
+.matchup-result-detail {
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
 .ghost {
   border: 1px solid var(--border);
   background: transparent;

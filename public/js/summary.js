@@ -9,6 +9,7 @@ import {
 import { formatSeriesLength, formatSeriesScore, computeSeriesSummary } from "./series.js";
 import { updateFormTitle } from "./form.js?v=20260801-generational-run-v3";
 import { getItemSourceUrl, createExternalIcon } from "./table.js";
+import { getActiveFilterCount } from "./filters.js";
 
 const DASH = "—";
 
@@ -372,11 +373,48 @@ export function renderSummary(items) {
   renderGameSummary(items);
 }
 
+function renderMatchupResult(summary) {
+  if (!elements.matchupResult) return;
+  elements.matchupResult.hidden = isSinglePlayerMode() || !summary.total;
+  if (elements.matchupResult.hidden) return;
+
+  const { winsA, winsB, draws, total } = summary;
+  const seriesMode = isSeriesMode();
+  const stage = {
+    overall: "Overall",
+    "round-robin": "Round-robin",
+    playoff: "Playoff",
+  }[state.stageTab];
+  const filtered = getActiveFilterCount() > 0 ? " · Filtered view" : "";
+  elements.matchupResultScope.textContent = `Head to head · ${stage}${filtered}`;
+
+  if (winsA === winsB) {
+    elements.matchupResultTitle.textContent = `Level at ${winsA}–${winsB}`;
+    elements.matchupResult.dataset.leader = "tied";
+  } else {
+    const leaderIsA = winsA > winsB;
+    const leader = leaderIsA ? state.playerA : state.playerB;
+    const name = document.createElement("span");
+    name.className = "matchup-result-leader";
+    name.textContent = leader.name;
+    elements.matchupResultTitle.replaceChildren(
+      name,
+      ` leads ${Math.max(winsA, winsB)}–${Math.min(winsA, winsB)}`
+    );
+    elements.matchupResult.dataset.leader = leaderIsA ? "a" : "b";
+  }
+
+  const unit = seriesMode ? "playoff series" : (total === 1 ? "game" : "games");
+  const drawUnit = seriesMode ? "tied series" : (draws === 1 ? "draw" : "draws");
+  elements.matchupResultDetail.textContent = `${total} ${unit} · ${draws} ${drawUnit}`;
+}
+
 export function renderGameSummary(matches) {
   updateFormTitle();
   if (!state.playerA || (!isSinglePlayerMode() && !state.playerB)) return;
-  elements.record.hidden = false;
+  elements.record.hidden = !isSinglePlayerMode();
   const summary = computeSummary(matches);
+  renderMatchupResult(summary);
   const total = summary.total || 0;
   const winPct = total ? (summary.winsA / total) * 100 : 0;
   const drawPct = total ? (summary.draws / total) * 100 : 0;
@@ -460,8 +498,9 @@ export function renderGameSummary(matches) {
 export function renderSeriesSummary(seriesItems) {
   updateFormTitle();
   if (!state.playerA || (!isSinglePlayerMode() && !state.playerB)) return;
-  elements.record.hidden = false;
+  elements.record.hidden = !isSinglePlayerMode();
   const summary = computeSeriesSummary(seriesItems);
+  renderMatchupResult(summary);
   const total = summary.total || 0;
   const winPct = total ? (summary.winsA / total) * 100 : 0;
   const drawPct = total ? (summary.draws / total) * 100 : 0;

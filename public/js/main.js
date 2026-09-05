@@ -88,6 +88,7 @@ export function setLoading(isLoading) {
 }
 
 function setResultsSectionsVisible(visible) {
+  if (!visible && elements.matchupResult) elements.matchupResult.hidden = true;
   if (elements.summarySection) elements.summarySection.hidden = !visible;
   if (elements.visualizationsSection) elements.visualizationsSection.hidden = !visible;
   if (elements.matchesSection) elements.matchesSection.hidden = !visible;
@@ -309,11 +310,13 @@ function setStageFilterCardsVisible(visible) {
 function maybeScrollToResults(options = {}) {
   if (options.restoreUrlState || options.scrollToResults === false) return;
   if (!window.matchMedia("(max-width: 900px)").matches) return;
-  const target = document.getElementById("summary-section");
-  if (!target) return;
+  const showMatchupResult = elements.matchupResult && !elements.matchupResult.hidden;
+  const target = showMatchupResult ? elements.matchupResult : elements.summarySection;
+  const heading = showMatchupResult ? elements.matchupResultTitle : elements.headline;
+  if (!target || target.hidden) return;
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   target.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "start" });
-  if (elements.headline) elements.headline.focus({ preventScroll: true });
+  if (heading) heading.focus({ preventScroll: true });
 }
 
 export async function handleCompare(options = {}) {
