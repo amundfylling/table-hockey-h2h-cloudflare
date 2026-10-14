@@ -387,7 +387,8 @@ export function renderGoalsChart(matches) {
     : years.length;
   const slotOf = (year, idx) => (Number.isFinite(firstYear) ? Number(year) - firstYear : idx);
   const groupWidth = (width - padding * 2) / slotCount;
-  const barWidth = Math.max(3, Math.min(16, groupWidth * 0.35));
+  // Keep the pair inside its slot on long spans (30+ years at mobile width).
+  const barWidth = Math.max(Math.min(3, groupWidth * 0.4), Math.min(16, groupWidth * 0.35));
   const maxLabels = Math.max(2, Math.floor((width - padding * 2) / 46));
   const labelStep = Math.max(1, Math.ceil(slotCount / maxLabels));
   let bars = "";
