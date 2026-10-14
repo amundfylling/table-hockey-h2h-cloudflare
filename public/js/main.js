@@ -39,7 +39,7 @@ import {
   updateFilterCount,
 } from "./filters.js";
 import { setupTypeahead } from "./typeahead.js";
-import { renderSummary } from "./summary.js";
+import { renderSummary, initScoreBug } from "./summary.js";
 import { initOpponents, renderSinglePlayerPanels } from "./opponents.js";
 import {
   updateUrl,
@@ -52,6 +52,7 @@ import {
   addRecent,
   handleRecentClick,
   initRecent,
+  renderFeatured,
 } from "./recent.js";
 import {
   renderForm,
@@ -79,8 +80,13 @@ export function setStatus(message) {
   if (elements.status) elements.status.textContent = message;
 }
 
+function setHomeVisible(visible) {
+  document.body.dataset.home = visible ? "true" : "false";
+}
+
 export function setLoading(isLoading) {
   state.loading = isLoading;
+  if (isLoading) setHomeVisible(false);
   document.body.classList.toggle("is-loading", isLoading);
   [elements.summarySection, elements.visualizationsSection, elements.matchesSection]
     .filter(Boolean)
@@ -89,6 +95,7 @@ export function setLoading(isLoading) {
 }
 
 function setResultsSectionsVisible(visible) {
+  if (visible) setHomeVisible(false);
   if (!visible && elements.matchupResult) elements.matchupResult.hidden = true;
   if (elements.summarySection) elements.summarySection.hidden = !visible;
   if (elements.visualizationsSection) elements.visualizationsSection.hidden = !visible;
@@ -254,6 +261,7 @@ export function renderIdleState() {
   if (elements.filterEmptyState) elements.filterEmptyState.hidden = true;
   const selectedId = resolvePlayerId(elements.playerA);
   const selectedPlayer = selectedId ? getSelectionPlayer(elements.playerA, selectedId) : null;
+  setHomeVisible(!selectedPlayer);
 
   if (elements.emptyState) elements.emptyState.hidden = true;
   if (elements.errorState) elements.errorState.hidden = true;
@@ -593,6 +601,24 @@ export async function renderDataFreshness() {
   if (Number.isNaN(date.getTime())) return;
   el.textContent = `Data updated ${date.toLocaleDateString("en-GB", { year: "numeric", month: "short", day: "numeric" })}`;
   el.hidden = false;
+  const stats = document.getElementById("home-stats");
+  if (stats && Number(meta.players) && Number(meta.matches)) {
+    stats.replaceChildren(
+      ...[
+        [formatNumber(meta.players), "players"],
+        [formatNumber(meta.matches), "matches"],
+        [date.toLocaleDateString("en-GB", { day: "numeric", month: "short" }), "last update"],
+      ].map(([value, label]) => {
+        const item = document.createElement("span");
+        item.className = "home-stat";
+        const strong = document.createElement("strong");
+        strong.textContent = value;
+        item.append(strong, ` ${label}`);
+        return item;
+      })
+    );
+    stats.hidden = false;
+  }
 }
 
 export function initTabs() {
@@ -849,9 +875,23 @@ export async function init() {
   initTabs();
   initModeToggle();
   initGoalsModeToggle();
+  initScoreBug();
+  if (elements.featuredList) elements.featuredList.addEventListener("click", handleRecentClick);
+
+  // Phones get shorter pages; desktop keeps the 50-row default.
+  if (elements.pageSize && window.matchMedia("(max-width: 600px)").matches) {
+    elements.pageSize.value = "25";
+    state.perPage = 25;
+  }
+
+  // Decide early whether the home screen shows, so a restored matchup never flashes it.
+  const hasInitialSelection = new URLSearchParams(window.location.search).has("p1")
+    || Boolean(safeStorageGet(STORAGE_KEYS.last, null)?.p1);
+  setHomeVisible(!hasInitialSelection);
 
   await loadPlayers();
   renderRecent();
+  renderFeatured();
   renderDataFreshness().catch((err) => console.warn("Could not load data freshness:", err));
 
   const urlSelection = getUrlSelection();

@@ -1,5 +1,5 @@
 import { state, elements, isSeriesMode } from "./state.js";
-import { formatDateRange } from "./utils.js";
+import { formatDate, formatDateRange } from "./utils.js";
 import { formatSeriesScore, formatSeriesLength } from "./series.js";
 
 const GENERATIONAL_RUN_MIN = 10;
@@ -362,17 +362,18 @@ export function renderForm(matches, canonicalItems = matches) {
 
   const ordered = getChronologicalItems(matches).slice(-10);
   const fragment = document.createDocumentFragment();
-  ordered.forEach((match) => {
+  ordered.forEach((match, index) => {
     const chip = document.createElement("button");
     chip.type = "button";
     chip.className = "chip";
+    if (index === ordered.length - 1) chip.classList.add("is-latest");
     const tournament = match.tournament_name || "Unknown tournament";
-    const stage = match.stage ? ` | ${match.stage}` : "";
+    const stage = match.stage ? ` · ${match.stage}` : "";
     const opponentName = match.opponent_name || state.playerB?.name || "Opponent";
     if (match.type === "series") {
-      chip.title = `${formatDateRange(match.date, match.end_date)} | ${state.playerA.name} ${formatSeriesScore(match)} ${opponentName} | ${formatSeriesLength(match)} | ${tournament}${stage}`;
+      chip.title = `${formatDateRange(match.date, match.end_date)} · ${state.playerA.name} ${formatSeriesScore(match)} ${opponentName} · ${formatSeriesLength(match)} · ${tournament}${stage}`;
     } else {
-      chip.title = `${match.date || "Unknown date"} | ${state.playerA.name} ${match.goals_a}-${match.goals_b} ${opponentName} | ${tournament}${stage}`;
+      chip.title = `${match.date ? formatDate(match.date) : "Unknown date"} · ${state.playerA.name} ${match.goals_a}–${match.goals_b} ${opponentName} · ${tournament}${stage}`;
     }
     if (match.result === "A") {
       chip.textContent = "W";

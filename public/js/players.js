@@ -88,7 +88,18 @@ export function setInputPlayer(inputEl, player) {
   const ids = normalizeAliasIds([primaryId, ...(player.ids || [])]);
   const id = Number.isFinite(primaryId) ? primaryId : ids[0];
   const name = decodeHtmlEntities(player.name);
-  inputEl.value = ids.length > 1 ? `${name} (${ids.length} IDs)` : `${name} (#${id})`;
+  // Show the bare name; the id is kept in data attributes and only shown when
+  // another player shares the same name and the label would be ambiguous.
+  const nameKey = normalizeText(name);
+  const sharesName = state.players.some(
+    (other) => Number(other.id) !== id && !ids.includes(Number(other.id))
+      && normalizeText(other.name) === nameKey
+  );
+  if (ids.length > 1) {
+    inputEl.value = `${name} (${ids.length} IDs)`;
+  } else {
+    inputEl.value = sharesName ? `${name} (#${id})` : name;
+  }
   inputEl.dataset.playerId = id;
   inputEl.dataset.playerIds = ids.length > 1 ? ids.join(",") : "";
   inputEl.dataset.playerName = name;

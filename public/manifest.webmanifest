@@ -1,0 +1,14 @@
+{
+  "name": "Table Hockey H2H",
+  "short_name": "H2H",
+  "description": "Head-to-head records, form and playoff series for competitive table hockey.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f6f2ec",
+  "theme_color": "#f6f2ec",
+  "icons": [
+    { "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}
