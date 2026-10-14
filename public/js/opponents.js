@@ -1,5 +1,6 @@
 import { elements, isSeriesMode } from "./state.js";
 import { getAliasGroup, getPlayerById, setInputPlayer } from "./players.js";
+import { formatNumber } from "./utils.js";
 
 // ── Sortable single-player opponents table ──────────────────────────
 let _opponentsData = [];        // all aggregated opponents
@@ -77,7 +78,7 @@ function renderOpponentsRows(filtered) {
     // Games
     const gamesCell = document.createElement("td");
     gamesCell.className = "opp-cell-numeric";
-    gamesCell.textContent = String(opp.games);
+    gamesCell.textContent = formatNumber(opp.games);
     row.appendChild(gamesCell);
 
     // Record

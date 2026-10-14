@@ -110,7 +110,7 @@ The palette is a restrained sports-stat palette: warm rink neutrals, one puck-or
 - **Ink** (`#182025`): Primary text and readable foreground.
 - **Slate Muted** (`#5c6770`): Secondary labels, helper text, table headers, and subdued metadata.
 - **Night Background** (`#0f1215`): Dark-mode page background.
-- **Night Surface** (`#1b2128`): Dark-mode cards and elevated panels.
+- **Night Surface** (`#1d242c`): Dark-mode cards and elevated panels.
 - **Night Ink** (`#f3f5f7`): Dark-mode primary text.
 - **Night Muted** (`#a5b0bb`): Dark-mode secondary text.
 
@@ -119,6 +119,8 @@ The palette is a restrained sports-stat palette: warm rink neutrals, one puck-or
 **The Two-Player Color Rule.** Orange and teal must carry matchup meaning first. Do not spend them on unrelated decoration when a player comparison is present.
 
 **The Small Orange Text Rule.** Bright puck orange (`#ef6c44`) measures ~3:1 on white — fine for large text, fills, and graphics, but below WCAG AA for small text. Orange text under ~18px bold (winner badges, score values, chips, links) uses Deep Puck Orange (`#cc5132`, `var(--accent-dark)`) instead. Dark mode redefines `--accent-dark` to a lighter orange, so the same variable keeps both themes compliant.
+
+**The Neutral Chrome Rule.** UI chrome (focus rings, active tabs, selected options, toggles, links, hover borders) uses ink via `--ui` and `--ui-soft`, never orange. Orange is reserved for Player B, the logo, and the one primary action, so it always means something when it appears.
 
 **The No Spreadsheet Gray Rule.** Neutral surfaces should stay warm or tinted. Avoid flat white-gray table dumps that make the app feel like exported data.
 
@@ -145,9 +147,17 @@ The palette is a restrained sports-stat palette: warm rink neutrals, one puck-or
 
 **The No Zoom Rule.** Form controls never go below 1rem (16px); iOS Safari auto-zooms on focus for smaller text. Reclaim density with padding, not font size.
 
+**The Six Sizes Rule.** The interface uses exactly six font sizes, defined as tokens in `styles.css`: `--fs-xs` 0.75rem, `--fs-sm` 0.875rem, `--fs-md` 1rem, `--fs-lg` 1.25rem, `--fs-xl` 1.75rem and `--fs-2xl` 2.75rem. Never write a literal `font-size` in rem or px; pick a token.
+
+**The Figures Rule.** All numbers render with tabular figures (set on `body`), large counts use thousands separators (`formatNumber`), records and score ranges use an en dash (77–43), and dates use one format everywhere: `5 Dec 2021` (`formatDate`).
+
+**The One Label Rule.** Small uppercase labels (eyebrows, stat labels, section labels) share one style: `--fs-xs`, weight 700, 0.08em tracking, muted color.
+
 ## 4. Elevation
 
-The system uses a hybrid of tonal layering, translucent cards, borders, and soft shadows. Elevation should separate functional regions, not decorate every element. Cards currently use a translucent background with `backdrop-filter: blur(12px)`, `1px` borders, and soft ambient shadows.
+The system uses solid card surfaces, `1px` borders, and soft ambient shadows. Elevation should separate functional regions, not decorate every element: no cards nested inside cards, no tinted boxes around charts, and no backdrop blur.
+
+**The One Result Rule.** A matchup's headline record appears once, in the hero scoreboard at the top of the summary card. Everything else (stat bars, biggest wins, form) supports it rather than repeating it.
 
 ### Shadow Vocabulary
 - **Ambient Surface** (`0 8px 24px rgba(0, 0, 0, 0.06)`): Default light-mode card shadow.
@@ -171,8 +181,8 @@ The system uses a hybrid of tonal layering, translucent cards, borders, and soft
 - **Secondary / Ghost:** Transparent background, `1px` border, pill shape, text in Ink or Night Ink. Use for theme toggle, copy link, pagination, and close actions.
 
 ### Chips
-- **Style:** Pills with clear semantic color: teal for Player A wins, orange for Player B wins, muted neutral for draws.
-- **State:** Form chips are compact circles. Winner badges and match-score pills are compact but must remain legible on mobile.
+- **Form chips:** Compact circles. A win is solid teal, a loss is a muted outline, a draw is a tonal fill, so a streak reads at a glance without leaning on red/green. The most recent game carries a ring.
+- **Scores and winners:** No pills. A score is plain tabular figures with an en dash; the winning side's goals are bold in that player's color. A winner is a small colored dot plus the name.
 
 ### Cards / Containers
 - **Corner Style:** Tight rounded surfaces (`8px` default card radius, `8px` nested block radius, `12px` for the scoreboard family: scoreboard head, score rows, highlight columns).
@@ -210,9 +220,17 @@ Tooltips are compact evidence cards, not ornaments: a muted uppercase caption (d
 
 The filter drawer is a practical control surface opened from the stage controls, not a floating global action. It should keep strong hierarchy: title, close button, search, period, tournament, stage, playoff-only best-of multi-select, sort, then options. The backdrop may blur slightly, but the drawer itself should stay crisp and readable.
 
+### Home Screen
+
+With no matchup selected the page leads with a display headline and a quiet stat strip (players, matches, last update). Below the picker, "Top-ranked rivalries" offers up to four one-tap matchups built from the current world ranking. Home-only blocks use `.home-only` and are driven by `body[data-home]`, which is set before data loads so shared links never flash the home screen.
+
+### Loading and Score Bug
+
+While a matchup loads, a shimmer skeleton in the shape of the scoreboard holds the layout. Once the scoreboard scrolls out of view, a slim fixed score bug (names and record) stays pinned to the top on screens up to 900px. Hero numbers count up once (600ms) unless the user prefers reduced motion.
+
 ### Match Table
 
-Desktop uses a proper table for scanability. Mobile converts rows into cards with date, score, winner, tournament, stage, and overtime placed in predictable positions. Preserve this mobile-card behavior when adding playoff series features. Expanded playoff series should open into a compact evidence panel with a series header, game-by-game scorelines, OT badges placed next to the game result, winners, and the running series score after each game.
+Desktop uses a proper table for scanability. Mobile (600px and below) converts rows into a borderless list: the score leads in a fixed left column, tournament on the first line, date, stage and round on the second, with overtime marked next to the score; the winner column is dropped because the bold side of the score already says it. Preserve this mobile-card behavior when adding playoff series features. Expanded playoff series should open into a compact evidence panel with a series header, game-by-game scorelines, OT badges placed next to the game result, winners, and the running series score after each game.
 
 ## 6. Do's and Don'ts
 

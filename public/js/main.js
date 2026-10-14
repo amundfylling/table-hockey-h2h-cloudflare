@@ -30,6 +30,7 @@ import {
   fetchJson,
 } from "./data.js";
 import { buildPlayoffSeries, annotatePlayoffGamesWithSeries } from "./series.js";
+import { formatNumber } from "./utils.js";
 import {
   initFilters,
   applyFilters,
@@ -38,7 +39,7 @@ import {
   updateFilterCount,
 } from "./filters.js";
 import { setupTypeahead } from "./typeahead.js";
-import { renderSummary } from "./summary.js";
+import { renderSummary, initScoreBug } from "./summary.js";
 import { initOpponents, renderSinglePlayerPanels } from "./opponents.js";
 import {
   updateUrl,
@@ -51,6 +52,7 @@ import {
   addRecent,
   handleRecentClick,
   initRecent,
+  renderFeatured,
 } from "./recent.js";
 import {
   renderForm,
@@ -78,8 +80,13 @@ export function setStatus(message) {
   if (elements.status) elements.status.textContent = message;
 }
 
+function setHomeVisible(visible) {
+  document.body.dataset.home = visible ? "true" : "false";
+}
+
 export function setLoading(isLoading) {
   state.loading = isLoading;
+  if (isLoading) setHomeVisible(false);
   document.body.classList.toggle("is-loading", isLoading);
   [elements.summarySection, elements.visualizationsSection, elements.matchesSection]
     .filter(Boolean)
@@ -88,6 +95,7 @@ export function setLoading(isLoading) {
 }
 
 function setResultsSectionsVisible(visible) {
+  if (visible) setHomeVisible(false);
   if (!visible && elements.matchupResult) elements.matchupResult.hidden = true;
   if (elements.summarySection) elements.summarySection.hidden = !visible;
   if (elements.visualizationsSection) elements.visualizationsSection.hidden = !visible;
@@ -100,9 +108,15 @@ export function updateStageMeta() {
   const playoffMatches = state.baseMatches.filter((match) => match.stage_type === "playoff");
   const po = playoffMatches.length;
   const series = buildPlayoffSeries(playoffMatches).length;
-  if (elements.stageMeta) {
-    elements.stageMeta.textContent = `Overall ${total}, Round-robin ${rr}, Playoff ${po} games / ${series} series`;
-  }
+  setStageCounts({ overall: total, "round-robin": rr, playoff: po, series });
+}
+
+function setStageCounts(counts = {}) {
+  if (!elements.stageCounts) return;
+  elements.stageCounts.forEach((el) => {
+    const value = counts[el.dataset.stageCount];
+    el.textContent = value == null ? "" : formatNumber(value);
+  });
 }
 
 export function updateModeControls() {
@@ -247,6 +261,7 @@ export function renderIdleState() {
   if (elements.filterEmptyState) elements.filterEmptyState.hidden = true;
   const selectedId = resolvePlayerId(elements.playerA);
   const selectedPlayer = selectedId ? getSelectionPlayer(elements.playerA, selectedId) : null;
+  setHomeVisible(!selectedPlayer);
 
   if (elements.emptyState) elements.emptyState.hidden = true;
   if (elements.errorState) elements.errorState.hidden = true;
@@ -263,6 +278,8 @@ export function renderIdleState() {
     elements.record.replaceChildren();
   }
   if (elements.summaryGrid) elements.summaryGrid.replaceChildren();
+  if (elements.summaryHero) elements.summaryHero.replaceChildren();
+  if (elements.summaryScope) elements.summaryScope.textContent = "";
   if (elements.formChips) elements.formChips.replaceChildren();
   if (elements.recordChart) elements.recordChart.replaceChildren();
   if (elements.goalsChart) elements.goalsChart.replaceChildren();
@@ -293,7 +310,7 @@ export function resetCurrentResults(options = {}) {
   resetFilters();
   setStageTabControls("overall");
   setDataControlsEnabled(false);
-  if (elements.stageMeta) elements.stageMeta.textContent = "";
+  setStageCounts();
   updateFilterCount();
   renderIdleState();
   updateSelectionControls();
@@ -303,6 +320,7 @@ export function resetCurrentResults(options = {}) {
 }
 
 function setStageFilterCardsVisible(visible) {
+  if (elements.controlsBar) elements.controlsBar.hidden = !visible;
   if (elements.stageCard) elements.stageCard.hidden = !visible;
   if (elements.filterCard) elements.filterCard.hidden = !visible;
 }
@@ -310,9 +328,8 @@ function setStageFilterCardsVisible(visible) {
 function maybeScrollToResults(options = {}) {
   if (options.restoreUrlState || options.scrollToResults === false) return;
   if (!window.matchMedia("(max-width: 900px)").matches) return;
-  const showMatchupResult = elements.matchupResult && !elements.matchupResult.hidden;
-  const target = showMatchupResult ? elements.matchupResult : elements.summarySection;
-  const heading = showMatchupResult ? elements.matchupResultTitle : elements.headline;
+  const target = elements.summarySection;
+  const heading = elements.headline;
   if (!target || target.hidden) return;
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   target.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "start" });
@@ -369,7 +386,7 @@ export async function handleCompare(options = {}) {
   state.baseMatches = [];
   state.stageMatches = [];
   state.filteredMatches = [];
-  if (elements.stageMeta) elements.stageMeta.textContent = "";
+  setStageCounts();
   setDataControlsEnabled(false);
   setStageFilterCardsVisible(false);
   setResultsSectionsVisible(false);
@@ -414,7 +431,7 @@ export async function handleCompare(options = {}) {
       }
       state.baseMatches = [];
       state.filteredMatches = [];
-      if (elements.stageMeta) elements.stageMeta.textContent = "";
+      setStageCounts();
       setDataControlsEnabled(false);
       setStageFilterCardsVisible(false);
       setResultsSectionsVisible(false);
@@ -448,7 +465,7 @@ export async function handleCompare(options = {}) {
       setStageTab("overall");
     }
     setLoading(false);
-    const completionMessage = `${matches.length} match${matches.length === 1 ? "" : "es"} loaded.`;
+    const completionMessage = `${formatNumber(matches.length)} match${matches.length === 1 ? "" : "es"} loaded.`;
     setStatus(completionMessage);
     setTimeout(() => {
       if (
@@ -582,8 +599,26 @@ export async function renderDataFreshness() {
   if (!meta || !meta.generated_at) return;
   const date = new Date(meta.generated_at);
   if (Number.isNaN(date.getTime())) return;
-  el.textContent = `Data updated ${date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}`;
+  el.textContent = `Data updated ${date.toLocaleDateString("en-GB", { year: "numeric", month: "short", day: "numeric" })}`;
   el.hidden = false;
+  const stats = document.getElementById("home-stats");
+  if (stats && Number(meta.players) && Number(meta.matches)) {
+    stats.replaceChildren(
+      ...[
+        [formatNumber(meta.players), "players"],
+        [formatNumber(meta.matches), "matches"],
+        [date.toLocaleDateString("en-GB", { day: "numeric", month: "short" }), "last update"],
+      ].map(([value, label]) => {
+        const item = document.createElement("span");
+        item.className = "home-stat";
+        const strong = document.createElement("strong");
+        strong.textContent = value;
+        item.append(strong, ` ${label}`);
+        return item;
+      })
+    );
+    stats.hidden = false;
+  }
 }
 
 export function initTabs() {
@@ -840,9 +875,23 @@ export async function init() {
   initTabs();
   initModeToggle();
   initGoalsModeToggle();
+  initScoreBug();
+  if (elements.featuredList) elements.featuredList.addEventListener("click", handleRecentClick);
+
+  // Phones get shorter pages; desktop keeps the 50-row default.
+  if (elements.pageSize && window.matchMedia("(max-width: 600px)").matches) {
+    elements.pageSize.value = "25";
+    state.perPage = 25;
+  }
+
+  // Decide early whether the home screen shows, so a restored matchup never flashes it.
+  const hasInitialSelection = new URLSearchParams(window.location.search).has("p1")
+    || Boolean(safeStorageGet(STORAGE_KEYS.last, null)?.p1);
+  setHomeVisible(!hasInitialSelection);
 
   await loadPlayers();
   renderRecent();
+  renderFeatured();
   renderDataFreshness().catch((err) => console.warn("Could not load data freshness:", err));
 
   const urlSelection = getUrlSelection();

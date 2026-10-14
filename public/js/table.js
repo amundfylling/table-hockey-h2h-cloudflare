@@ -8,6 +8,7 @@ import {
 import {
   formatDate,
   formatDateRange,
+  formatNumber,
   getTournamentLevelLabel,
   getTournamentLevelKey,
   toNumber,
@@ -239,7 +240,14 @@ export function renderGameTable(matches) {
     scoreCell.className = "score-cell";
     const scoreSpan = document.createElement("span");
     scoreSpan.className = "match-score";
-    scoreSpan.textContent = `${match.goals_a} - ${match.goals_b}`;
+    scoreSpan.dataset.result = match.result || "D";
+    const goalsA = document.createElement("span");
+    goalsA.className = "goals goals--a";
+    goalsA.textContent = match.goals_a;
+    const goalsB = document.createElement("span");
+    goalsB.className = "goals goals--b";
+    goalsB.textContent = match.goals_b;
+    scoreSpan.append(goalsA, "–", goalsB);
     if (match.overtime) {
       const otInline = document.createElement("span");
       otInline.className = "badge ot-inline";
@@ -491,7 +499,7 @@ export function renderSeriesTable(seriesItems) {
   elements.matchesBody.appendChild(fragment);
 
   const end = Math.min(start + state.perPage, seriesItems.length);
-  elements.matchCount.textContent = `Showing ${start + 1}-${end} of ${seriesItems.length} series`;
+  elements.matchCount.textContent = `Showing ${start + 1}–${end} of ${formatNumber(seriesItems.length)} series`;
 }
 
 export function createSeriesDetailPanel(series) {
@@ -638,7 +646,7 @@ export function updatePagination(total) {
 }
 
 export function formatMatchCountText(start, end, total) {
-  return `Showing ${start + 1}-${end} of ${total} matches`;
+  return `Showing ${start + 1}–${end} of ${formatNumber(total)} matches`;
 }
 
 export function initPagination() {

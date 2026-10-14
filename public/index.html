@@ -5,35 +5,37 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Table Hockey H2H</title>
-  <meta name="description" content="Head-to-head comparisons for table hockey matchups." />
+  <meta name="description" content="Head-to-head records, form and playoff series for every competitive table hockey rivalry." />
   <meta name="theme-color" content="#f6f2ec" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Table Hockey H2H" />
+  <meta property="og:description" content="Head-to-head records, form and playoff series for every competitive table hockey rivalry." />
+  <meta property="og:image" content="/og-default.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+  <link rel="manifest" href="manifest.webmanifest" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
     href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Manrope:wght@400;500;600;700;800&display=swap"
     rel="stylesheet" />
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-  <link rel="stylesheet" href="styles.css?v=20260906-matchup-result" />
+  <link rel="stylesheet" href="styles.css?v=20261014-design-refresh-3" />
 </head>
 
-<body>
+<body data-home="pending">
   <header class="site-header">
     <div class="brand">
       <div class="logo" aria-hidden="true">
         <svg viewBox="0 0 48 48" fill="none">
-          <circle cx="24" cy="24" r="22" fill="currentColor" opacity="0.15" />
-          <path d="M16 14v20l4-3V17l-4-3z" fill="currentColor" />
-          <path d="M32 14v20l-4-3V17l4-3z" fill="currentColor" />
-          <circle cx="24" cy="24" r="6" fill="currentColor" />
-          <circle cx="24" cy="24" r="3" fill="none" stroke="currentColor" stroke-width="1.5" />
-          <path d="M12 24h6m12 0h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+          <rect x="9" y="11" width="7" height="26" rx="3.5" fill="currentColor" />
+          <rect x="32" y="11" width="7" height="26" rx="3.5" fill="currentColor" />
+          <circle cx="24" cy="24" r="5.5" fill="currentColor" />
         </svg>
       </div>
       <div>
         <h1>Table Hockey H2H</h1>
-        <p class="site-description">
-          Head-to-head records, form, playoff series, and tournament filters for competitive table hockey.
-        </p>
+        <p class="site-description">Head-to-head stats for competitive table hockey</p>
       </div>
     </div>
     <div class="header-actions">
@@ -43,12 +45,17 @@
           stroke-linejoin="round" aria-hidden="true">
           <path d="M12 3a6 6 0 0 0 9 7.4A9 9 0 1 1 12 3z"></path>
         </svg>
-        <span>Dark mode</span>
+        <span class="sr-only">Dark mode</span>
       </button>
     </div>
   </header>
 
   <main class="container">
+    <section class="home-hero home-only" aria-labelledby="home-title">
+      <h2 id="home-title" class="home-title">Every table hockey rivalry, settled.</h2>
+      <p id="home-stats" class="home-stats" hidden></p>
+    </section>
+
     <section class="card selection-card">
       <div class="selection-grid">
         <div class="player-field" data-player="a">
@@ -94,7 +101,7 @@
         </div>
       </div>
 
-      <section id="matchup-result" class="matchup-result" aria-labelledby="matchup-result-title"
+      <section id="matchup-result" class="matchup-result sr-only" aria-labelledby="matchup-result-title"
         aria-live="polite" aria-atomic="true" hidden>
         <p id="matchup-result-scope" class="matchup-result-scope"></p>
         <h2 id="matchup-result-title" tabindex="-1"></h2>
@@ -111,113 +118,37 @@
       </div>
     </section>
 
-    <section class="card stage-card" hidden>
-      <div class="tabs" role="group" aria-label="Stage filter">
-        <button class="tab is-active" type="button" aria-pressed="true" data-stage="overall">Overall</button>
-        <button class="tab" type="button" aria-pressed="false" data-stage="round-robin">Round-robin</button>
-        <button class="tab" type="button" aria-pressed="false" data-stage="playoff">Playoff</button>
-      </div>
-      <div id="playoff-mode-toggle" class="mode-toggle" role="group" aria-label="Playoff view" hidden>
-        <button class="mode-btn is-active" type="button" data-mode="series" aria-pressed="true">Series</button>
-        <button class="mode-btn" type="button" data-mode="games" aria-pressed="false">Games</button>
-      </div>
-      <div class="stage-tools">
-        <div id="stage-meta" class="stage-meta"></div>
-      </div>
+    <section id="featured" class="featured home-only" aria-labelledby="featured-title" hidden>
+      <h2 id="featured-title" class="eyebrow">Top-ranked rivalries</h2>
+      <div id="featured-list" class="featured-list"></div>
     </section>
 
-    <section id="filter-card" class="card filter-card" hidden>
-      <div id="filter-bar" class="filter-bar">
-        <div class="filter-bar-primary">
-          <div class="filter-bar-search">
-            <svg class="filter-bar-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
-            <input id="search-filter" type="search" placeholder="Search tournament, stage, opponent…"
-              aria-label="Search tournaments, stages, or opponents" />
-          </div>
-          <div class="filter-bar-period">
-            <button id="period-toggle" class="period-toggle" type="button" aria-expanded="false"
-              aria-controls="period-popover" aria-label="Filter by year range">
-              <span id="period-label">All years</span>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <polyline points="6 9 12 15 18 9"></polyline>
-              </svg>
-            </button>
-            <div id="period-popover" class="period-popover" role="group" aria-label="Year range" hidden>
-              <div class="period-popover-row">
-                <label for="year-from-filter">From</label>
-                <select id="year-from-filter" aria-label="From year"></select>
-              </div>
-              <div class="period-popover-row">
-                <label for="year-to-filter">To</label>
-                <select id="year-to-filter" aria-label="To year"></select>
-              </div>
-            </div>
-          </div>
-          <select id="tournament-filter" class="filter-bar-tournament" aria-label="Tournament"></select>
-          <button id="more-filters-toggle" class="ghost more-filters-btn" type="button" aria-expanded="false">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <line x1="4" y1="21" x2="4" y2="14"></line>
-              <line x1="4" y1="10" x2="4" y2="3"></line>
-              <line x1="12" y1="21" x2="12" y2="12"></line>
-              <line x1="12" y1="8" x2="12" y2="3"></line>
-              <line x1="20" y1="21" x2="20" y2="16"></line>
-              <line x1="20" y1="12" x2="20" y2="3"></line>
-              <line x1="1" y1="14" x2="7" y2="14"></line>
-              <line x1="9" y1="8" x2="15" y2="8"></line>
-              <line x1="17" y1="16" x2="23" y2="16"></line>
-            </svg>
-            <span>More</span>
-          </button>
+    <div id="results-skeleton" class="results-skeleton" aria-hidden="true">
+      <div class="card skeleton-card">
+        <span class="skeleton-line skeleton-line--eyebrow"></span>
+        <div class="skeleton-hero">
+          <span class="skeleton-line skeleton-line--name"></span>
+          <span class="skeleton-line skeleton-line--record"></span>
+          <span class="skeleton-line skeleton-line--name"></span>
         </div>
-        <div id="filter-bar-advanced" class="filter-bar-advanced" hidden>
-          <div class="filter-bar-advanced-inner">
-            <div class="filter-bar-group">
-              <label>Level</label>
-              <div id="tournament-level-options" class="multi-checks" role="group" aria-label="Tournament level"></div>
-            </div>
-            <div class="filter-bar-group">
-              <label for="stage-filter">Stage name</label>
-              <select id="stage-filter"></select>
-            </div>
-            <div id="best-of-filter" class="filter-bar-group" hidden>
-              <label>Best of</label>
-              <div id="best-of-options" class="multi-checks" role="group" aria-label="Best-of format"></div>
-            </div>
-            <div class="filter-bar-group">
-              <label>Options</label>
-              <div class="filter-bar-toggles" role="group" aria-label="Match options">
-                <label class="toggle">
-                  <input id="ot-toggle" type="checkbox" />
-                  <span id="ot-toggle-label">Only overtime</span>
-                </label>
-                <label class="toggle">
-                  <input id="tight-toggle" type="checkbox" />
-                  <span id="tight-toggle-label">One-goal games</span>
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div id="active-filters" class="active-filters" hidden></div>
+        <span class="skeleton-line skeleton-line--bar"></span>
+        <span class="skeleton-line skeleton-line--bar"></span>
+        <span class="skeleton-line skeleton-line--bar"></span>
       </div>
-    </section>
+      <div class="card skeleton-card">
+        <span class="skeleton-line"></span>
+        <span class="skeleton-line"></span>
+        <span class="skeleton-line"></span>
+        <span class="skeleton-line"></span>
+      </div>
+    </div>
 
-    <section id="filter-empty-state" class="card empty-state" role="status" hidden>
-      <h3 id="filter-empty-title">No results in this view</h3>
-      <p id="filter-empty-copy">Try another stage or clear the active filters.</p>
-      <button id="clear-filters-btn" class="ghost" type="button">Clear filters</button>
-    </section>
+    <div id="score-bug" class="score-bug" aria-hidden="true"></div>
 
-    <section id="summary-section" class="summary-section" aria-labelledby="headline" aria-busy="false" hidden>
+    <section id="summary-section" class="card summary-section" aria-labelledby="headline" aria-busy="false" hidden>
       <div class="summary-header">
-        <div>
-          <h2 id="headline" tabindex="-1">Pick two players</h2>
-          <p id="subhead">Matchup stats and filters appear once you compare.</p>
-        </div>
+        <p id="summary-scope" class="eyebrow"></p>
+        <h2 id="headline" class="sr-only" tabindex="-1">Pick two players</h2>
         <div class="summary-header-actions">
           <button id="copy-link-btn" class="ghost copy-link-btn" type="button"
             aria-label="Copy link to this matchup" disabled>
@@ -240,16 +171,118 @@
             </svg>
             <span>Share image</span>
           </button>
-          <div id="record" class="record"></div>
+          <div id="record" class="record" hidden></div>
         </div>
       </div>
+      <div id="summary-hero" class="summary-hero"></div>
+      <p id="subhead" class="summary-subhead">Matchup stats and filters appear once you compare.</p>
+      <div id="summary-grid" class="summary-grid"></div>
       <div class="form-strip">
         <div id="form-title" class="viz-title">Recent form</div>
         <div id="form-chips" class="form-chips"></div>
         <p id="form-detail" class="form-detail" aria-live="polite" hidden></p>
       </div>
-      <div id="summary-grid" class="summary-grid"></div>
     </section>
+
+    <div id="controls-bar" class="card controls-bar" hidden>
+      <section class="stage-card" hidden>
+        <div class="tabs" role="group" aria-label="Stage filter">
+          <button class="tab is-active" type="button" aria-pressed="true" data-stage="overall">Overall <span class="tab-count" data-stage-count="overall"></span></button>
+          <button class="tab" type="button" aria-pressed="false" data-stage="round-robin">Round-robin <span class="tab-count" data-stage-count="round-robin"></span></button>
+          <button class="tab" type="button" aria-pressed="false" data-stage="playoff">Playoff <span class="tab-count" data-stage-count="playoff"></span></button>
+        </div>
+        <div id="playoff-mode-toggle" class="mode-toggle" role="group" aria-label="Playoff view" hidden>
+          <button class="mode-btn is-active" type="button" data-mode="series" aria-pressed="true">Series <span class="tab-count" data-stage-count="series"></span></button>
+          <button class="mode-btn" type="button" data-mode="games" aria-pressed="false">Games</button>
+        </div>
+      </section>
+      <section id="filter-card" class="filter-card" hidden>
+        <div id="filter-bar" class="filter-bar">
+          <div class="filter-bar-primary">
+            <div class="filter-bar-search">
+              <svg class="filter-bar-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input id="search-filter" type="search" placeholder="Search matches…"
+                aria-label="Search tournaments, stages, or opponents" />
+            </div>
+            <div class="filter-bar-period">
+              <button id="period-toggle" class="period-toggle" type="button" aria-expanded="false"
+                aria-controls="period-popover" aria-label="Filter by year range">
+                <span id="period-label">All years</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </button>
+              <div id="period-popover" class="period-popover" role="group" aria-label="Year range" hidden>
+                <div class="period-popover-row">
+                  <label for="year-from-filter">From</label>
+                  <select id="year-from-filter" aria-label="From year"></select>
+                </div>
+                <div class="period-popover-row">
+                  <label for="year-to-filter">To</label>
+                  <select id="year-to-filter" aria-label="To year"></select>
+                </div>
+              </div>
+            </div>
+            <select id="tournament-filter" class="filter-bar-tournament" aria-label="Tournament"></select>
+            <button id="more-filters-toggle" class="ghost more-filters-btn" type="button" aria-expanded="false">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="4" y1="21" x2="4" y2="14"></line>
+                <line x1="4" y1="10" x2="4" y2="3"></line>
+                <line x1="12" y1="21" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12" y2="3"></line>
+                <line x1="20" y1="21" x2="20" y2="16"></line>
+                <line x1="20" y1="12" x2="20" y2="3"></line>
+                <line x1="1" y1="14" x2="7" y2="14"></line>
+                <line x1="9" y1="8" x2="15" y2="8"></line>
+                <line x1="17" y1="16" x2="23" y2="16"></line>
+              </svg>
+              <span>More</span>
+            </button>
+          </div>
+          <div id="filter-bar-advanced" class="filter-bar-advanced" hidden>
+            <div class="filter-bar-advanced-inner">
+              <div class="filter-bar-group">
+                <label>Level</label>
+                <div id="tournament-level-options" class="multi-checks" role="group" aria-label="Tournament level"></div>
+              </div>
+              <div class="filter-bar-group">
+                <label for="stage-filter">Stage name</label>
+                <select id="stage-filter"></select>
+              </div>
+              <div id="best-of-filter" class="filter-bar-group" hidden>
+                <label>Best of</label>
+                <div id="best-of-options" class="multi-checks" role="group" aria-label="Best-of format"></div>
+              </div>
+              <div class="filter-bar-group">
+                <label>Options</label>
+                <div class="filter-bar-toggles" role="group" aria-label="Match options">
+                  <label class="toggle">
+                    <input id="ot-toggle" type="checkbox" />
+                    <span id="ot-toggle-label">Only overtime</span>
+                  </label>
+                  <label class="toggle">
+                    <input id="tight-toggle" type="checkbox" />
+                    <span id="tight-toggle-label">One-goal games</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div id="active-filters" class="active-filters" hidden></div>
+        </div>
+      </section>
+    </div>
+
+    <section id="filter-empty-state" class="card empty-state" role="status" hidden>
+      <h3 id="filter-empty-title">No results in this view</h3>
+      <p id="filter-empty-copy">Try another stage or clear the active filters.</p>
+      <button id="clear-filters-btn" class="ghost" type="button">Clear filters</button>
+    </section>
+
 
     <section id="single-player-section" class="card viz-card" hidden>
       <div class="opponents-panel">
@@ -429,7 +462,7 @@
     </p>
   </footer>
 
-  <script type="module" src="js/main.js?v=20260801-generational-run-v3"></script>
+  <script type="module" src="js/main.js?v=20261014-design-refresh-3"></script>
 </body>
 
 </html>

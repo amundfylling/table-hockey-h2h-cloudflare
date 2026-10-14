@@ -1,6 +1,6 @@
 import { state, elements, isSeriesMode, isSinglePlayerMode } from "./state.js";
 import { getChronologicalItems } from "./form.js?v=20260801-generational-run-v3";
-import { escapeHtml, formatDateRange } from "./utils.js";
+import { escapeHtml, formatDate, formatDateRange } from "./utils.js";
 import { SVG_TREND, SVG_BAR_CHART } from "./constants.js";
 
 export function formatAxisValue(value) {
@@ -278,7 +278,7 @@ export function renderRecordChart(matches) {
     if (bucket.start === bucket.end) {
       const match = ordered[bucket.start];
       const matchIsSeries = match.type === "series";
-      const title = matchIsSeries ? formatDateRange(match.date, match.end_date) : match.date || "Unknown date";
+      const title = matchIsSeries ? formatDateRange(match.date, match.end_date) : (match.date ? formatDate(match.date) : "Unknown date");
       const valueA = matchIsSeries ? match.game_wins_a : match.goals_a;
       const valueB = matchIsSeries ? match.game_wins_b : match.goals_b;
       const sideRow = (side, name, value) => `
@@ -379,9 +379,17 @@ export function renderGoalsChart(matches) {
   const height = 210;
   const padding = width < 360 ? 34 : 42;
   const chartHeight = height - padding * 2;
-  const groupWidth = (width - padding * 2) / years.length;
+  // Continuous year axis: missing years keep their slot so gaps stay visible.
+  const firstYear = Number(years[0]);
+  const lastYear = Number(years[years.length - 1]);
+  const slotCount = Number.isFinite(firstYear) && Number.isFinite(lastYear)
+    ? lastYear - firstYear + 1
+    : years.length;
+  const slotOf = (year, idx) => (Number.isFinite(firstYear) ? Number(year) - firstYear : idx);
+  const groupWidth = (width - padding * 2) / slotCount;
   const barWidth = Math.max(3, Math.min(16, groupWidth * 0.35));
-  const labelStep = Math.max(1, Math.ceil(years.length / 6));
+  const maxLabels = Math.max(2, Math.floor((width - padding * 2) / 46));
+  const labelStep = Math.max(1, Math.ceil(slotCount / maxLabels));
   let bars = "";
   let hits = "";
   let labels = "";
@@ -399,7 +407,8 @@ export function renderGoalsChart(matches) {
   averages.forEach((item, idx) => {
     const aHeight = (item.avgA / maxAvg) * chartHeight;
     const bHeight = (item.avgB / maxAvg) * chartHeight;
-    const xBase = padding + idx * groupWidth;
+    const slot = slotOf(item.year, idx);
+    const xBase = padding + slot * groupWidth;
     const aX = xBase + groupWidth * 0.1;
     const bX = aX + barWidth + groupWidth * 0.08;
     const aY = height - padding - aHeight;
@@ -411,10 +420,16 @@ export function renderGoalsChart(matches) {
       <rect x="${bX}" y="${bY}" width="${barWidth}" height="${bHeight}" rx="3" fill="var(--accent-graphic)" data-year="${item.year}" data-side="b" data-value="${bValue}" />
     `;
     hits += `<rect class="bar-hit" x="${xBase}" y="${padding}" width="${groupWidth}" height="${chartHeight}" fill="transparent" data-year="${item.year}" data-a="${aValue}" data-b="${bValue}" data-top="${Math.min(aY, bY)}" data-x="${xBase}" data-w="${groupWidth}" />`;
-    if (idx % labelStep === 0 || idx === years.length - 1) {
-      labels += `<text x="${xBase + groupWidth * 0.5}" y="${height - 8}" fill="var(--muted)" font-size="12" text-anchor="middle">${item.year}</text>`;
-    }
   });
+  for (let slot = 0; slot < slotCount; slot += 1) {
+    const isLast = slot === slotCount - 1;
+    const onStep = slot % labelStep === 0;
+    // The final year gets a label only when it will not collide with the previous one.
+    const lastFits = isLast && (slot % labelStep) * groupWidth >= 40;
+    if (!onStep && !lastFits) continue;
+    const label = Number.isFinite(firstYear) ? firstYear + slot : years[slot];
+    labels += `<text x="${padding + slot * groupWidth + groupWidth * 0.5}" y="${height - 8}" fill="var(--muted)" font-size="12" text-anchor="middle">${label}</text>`;
+  }
 
   const latest = averages[averages.length - 1];
   const averageUnit = isSeriesMode()
