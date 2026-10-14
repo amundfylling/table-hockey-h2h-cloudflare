@@ -10,6 +10,7 @@ import {
   setInputPlayer,
   getPlayerById,
   getWorldRank,
+  getCountryFlag,
   parseIdList,
   selectionsShareIdentity,
 } from "./players.js";
@@ -59,6 +60,7 @@ export function renderRecent() {
     .slice(0, 5);
   if (!elements.recentList) return;
   elements.recentList.innerHTML = "";
+  elements.recentList.closest(".recent")?.classList.toggle("is-empty", !recent.length);
   if (!recent.length) {
     const ranked = state.players
       .filter((player) => player.name && getWorldRank(player) !== null)
@@ -141,4 +143,77 @@ export async function handleRecentClick(event) {
   const comparePromise = onCompareCallback();
   const opponentsPromise = loadOpponentsForPlayer(p1, p1Ids, getRequestSignal());
   await Promise.all([comparePromise, opponentsPromise]);
+}
+
+function getRankedPlayers() {
+  const ranked = state.players
+    .filter((player) => player.name && getWorldRank(player) !== null)
+    .sort((a, b) => getWorldRank(a) - getWorldRank(b));
+  const unique = [];
+  ranked.forEach((player) => {
+    const taken = unique.some((other) =>
+      selectionsShareIdentity(getAliasIds(other.id), getAliasIds(player.id)));
+    if (!taken) unique.push(player);
+  });
+  return unique;
+}
+
+function createFeaturedSide(player) {
+  const side = document.createElement("span");
+  side.className = "featured-player";
+  const flag = getCountryFlag(player.country || player.ranking_nation);
+  if (flag) {
+    const flagEl = document.createElement("span");
+    flagEl.className = "featured-flag";
+    flagEl.setAttribute("aria-hidden", "true");
+    flagEl.textContent = flag;
+    side.appendChild(flagEl);
+  }
+  const name = document.createElement("span");
+  name.className = "featured-name";
+  name.textContent = decodeHtmlEntities(player.name);
+  side.appendChild(name);
+  const rank = document.createElement("span");
+  rank.className = "featured-rank";
+  rank.textContent = `#${getWorldRank(player)}`;
+  side.appendChild(rank);
+  return side;
+}
+
+// Home-page rivalry cards built from the top of the world ranking.
+export function renderFeatured() {
+  const container = document.getElementById("featured");
+  const list = document.getElementById("featured-list");
+  if (!container || !list) return;
+  const ranked = getRankedPlayers().slice(0, 6);
+  const pairIndexes = [[0, 1], [2, 3], [0, 2], [1, 3]];
+  const pairs = pairIndexes
+    .filter(([a, b]) => ranked[a] && ranked[b])
+    .map(([a, b]) => [ranked[a], ranked[b]]);
+  list.replaceChildren();
+  container.hidden = pairs.length === 0;
+  pairs.forEach(([playerA, playerB]) => {
+    const card = createMatchupChip(
+      playerA.id,
+      playerB.id,
+      playerA.name,
+      playerB.name,
+      getAliasIds(playerA.id),
+      getAliasIds(playerB.id)
+    );
+    card.className = "featured-card";
+    card.textContent = "";
+    card.setAttribute(
+      "aria-label",
+      `Compare ${decodeHtmlEntities(playerA.name)} and ${decodeHtmlEntities(playerB.name)}`
+    );
+    const vs = document.createElement("span");
+    vs.className = "featured-vs";
+    vs.textContent = "vs";
+    const cta = document.createElement("span");
+    cta.className = "featured-cta";
+    cta.textContent = "Compare";
+    card.append(createFeaturedSide(playerA), vs, createFeaturedSide(playerB), cta);
+    list.appendChild(card);
+  });
 }

@@ -26,3 +26,5 @@ __pycache__/
 dist/
 *.png
 !public/og-default.png
+!public/apple-touch-icon.png
+!public/icon-512.png

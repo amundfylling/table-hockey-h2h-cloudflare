@@ -174,8 +174,69 @@ function getScopeLabel() {
 function renderHero(summary, caption) {
   if (elements.summaryScope) elements.summaryScope.textContent = getScopeLabel();
   if (elements.summaryHero) {
-    elements.summaryHero.replaceChildren(createHero(summary.winsA, summary.winsB, caption));
+    const hero = createHero(summary.winsA, summary.winsB, caption);
+    elements.summaryHero.replaceChildren(hero);
+    animateHeroNumbers(hero, summary.winsA, summary.winsB);
   }
+  renderScoreBug(summary.winsA, summary.winsB);
+}
+
+// A short count-up on the hero record; skipped for reduced motion and re-renders.
+let lastAnimatedKey = "";
+function animateHeroNumbers(hero, winsA, winsB) {
+  const key = `${state.playerA?.id}:${state.playerB?.id}:${winsA}:${winsB}`;
+  const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  if (reduced || key === lastAnimatedKey || typeof requestAnimationFrame !== "function") {
+    lastAnimatedKey = key;
+    return;
+  }
+  lastAnimatedKey = key;
+  const numA = hero.querySelector(".hero-num--a");
+  const numB = hero.querySelector(".hero-num--b");
+  const duration = 600;
+  const start = performance.now();
+  const step = (now) => {
+    if (!hero.isConnected) return;
+    const t = Math.min(1, (now - start) / duration);
+    const eased = 1 - (1 - t) ** 3;
+    numA.textContent = formatNumber(Math.round(winsA * eased));
+    numB.textContent = formatNumber(Math.round(winsB * eased));
+    if (t < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+// Slim sticky bar (phones) that keeps the matchup in view once the hero scrolls away.
+function renderScoreBug(winsA, winsB) {
+  const bug = document.getElementById("score-bug");
+  if (!bug) return;
+  const single = isSinglePlayerMode();
+  const lead = winsA === winsB ? "tie" : winsA > winsB ? "a" : "b";
+  const make = (className, text) => {
+    const el = document.createElement("span");
+    el.className = className;
+    el.textContent = text;
+    return el;
+  };
+  bug.dataset.lead = lead;
+  bug.replaceChildren(
+    make("score-bug-name score-bug-name--a", state.playerA?.name || ""),
+    make("score-bug-record", `${formatNumber(winsA)}–${formatNumber(winsB)}`),
+    make(
+      `score-bug-name score-bug-name--${single ? "field" : "b"}`,
+      single ? "All opponents" : state.playerB?.name || ""
+    )
+  );
+}
+
+export function initScoreBug() {
+  const hero = elements.summaryHero;
+  if (!hero || typeof IntersectionObserver !== "function") return;
+  const observer = new IntersectionObserver(([entry]) => {
+    const scrolledPast = !entry.isIntersecting && entry.boundingClientRect.bottom < 0;
+    document.body.classList.toggle("show-score-bug", scrolledPast);
+  });
+  observer.observe(hero);
 }
 
 function plural(count, one, many) {

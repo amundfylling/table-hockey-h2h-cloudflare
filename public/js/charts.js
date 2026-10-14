@@ -156,18 +156,30 @@ export function renderRecordChart(matches) {
   const width = Math.max(280, Math.min(720, measuredWidth || 520));
   const height = 210;
   const padding = width < 360 ? 34 : 42;
-  const min = 0;
-  const max = 100;
+  // Fit the y-axis to the settled line: the first few results swing wildly, so they
+  // are left out of the range calculation and clamped to the chart edge instead.
+  const warmup = Math.min(10, Math.floor(values.length / 5));
+  const settled = values.slice(warmup).map((value) => value.winRate);
+  const lowest = Math.min(50, ...settled);
+  const highest = Math.max(50, ...settled);
+  const min = Math.max(0, Math.floor((lowest - 10) / 10) * 10);
+  const max = Math.min(100, Math.ceil((highest + 10) / 10) * 10);
   const range = max - min;
   const referenceValue = 50;
   const referenceY = height - padding - ((referenceValue - min) / range) * (height - padding * 2);
   const xScale = (index) =>
     padding + (index / Math.max(1, values.length - 1)) * (width - padding * 2);
-  const yScale = (value) =>
-    height - padding - ((value - min) / range) * (height - padding * 2);
+  const yScale = (value) => {
+    const clamped = Math.max(min, Math.min(max, value));
+    return height - padding - ((clamped - min) / range) * (height - padding * 2);
+  };
   const points = values.map((value, index) => `${xScale(index)},${yScale(value.winRate)}`);
   const areaPath = `M ${xScale(0)} ${referenceY} L ${points.join(" ")} L ${xScale(values.length - 1)} ${referenceY} Z`;
-  const ticks = [0, 25, 50, 75, 100];
+  const tickStep = range > 60 ? 25 : range > 30 ? 10 : 5;
+  const ticks = [];
+  for (let tick = Math.ceil(min / tickStep) * tickStep; tick <= max; tick += tickStep) {
+    ticks.push(tick);
+  }
   const gridLines = [];
   const yLabels = [];
   ticks.forEach((value) => {
@@ -181,10 +193,20 @@ export function renderRecordChart(matches) {
   });
   const endValue = values[values.length - 1];
   const endColor = "var(--teal)";
-  const leadLabel = `Current ${formatPercent(endValue.winRate)} win rate`;
   const opponentSeriesLabel = state.playerB?.name || "Opponents";
-  const firstLabel = ordered[0]?.date?.slice(0, 4) || "";
-  const lastLabel = ordered[ordered.length - 1]?.date?.slice(0, 4) || "";
+  // Year labels at the first result of each year, thinned so they never collide.
+  const yearLabels = [];
+  let previousYear = "";
+  let previousX = -Infinity;
+  ordered.forEach((match, index) => {
+    const year = match?.date?.slice(0, 4) || "";
+    if (!year || year === previousYear) return;
+    previousYear = year;
+    const x = xScale(index);
+    if (x - previousX < 48 || x > width - padding + 1) return;
+    previousX = x;
+    yearLabels.push(`<text x="${x}" y="${height - 8}" fill="var(--muted)" font-size="12" text-anchor="${index === 0 ? "start" : "middle"}">${escapeHtml(year)}</text>`);
+  });
   const endX = xScale(values.length - 1);
   const endY = yScale(endValue.winRate);
   const endpointTextAnchor = endX > width - 95 ? "end" : "start";
@@ -195,7 +217,7 @@ export function renderRecordChart(matches) {
   elements.recordChart.innerHTML = `
     <div class="chart-legend">
       <span><span class="legend-dot a" aria-hidden="true"></span>${escapeHtml(state.playerA.name)} win rate</span>
-      <span class="chart-note">${escapeHtml(leadLabel)}</span>
+      <span class="chart-note"><strong class="chart-big">${escapeHtml(formatPercent(endValue.winRate))}</strong> now</span>
     </div>
     <svg viewBox="0 0 ${width} ${height}" role="img" tabindex="0"
       aria-labelledby="record-chart-svg-title record-chart-svg-desc">
@@ -210,8 +232,7 @@ export function renderRecordChart(matches) {
       <circle cx="${endX}" cy="${endY}" r="4.5" fill="${endColor}" />
       <text x="${padding}" y="${referenceY - 6}" fill="var(--muted)" font-size="12">50%</text>
       <text x="${endpointTextX}" y="${endpointTextY}" fill="${endColor}" font-size="12" font-weight="700" text-anchor="${endpointTextAnchor}">${formatPercent(endValue.winRate)}</text>
-      ${firstLabel ? `<text x="${padding}" y="${height - 8}" fill="var(--muted)" font-size="12" text-anchor="start">${escapeHtml(firstLabel)}</text>` : ""}
-      ${lastLabel && lastLabel !== firstLabel ? `<text x="${width - padding}" y="${height - 8}" fill="var(--muted)" font-size="12" text-anchor="end">${escapeHtml(lastLabel)}</text>` : ""}
+      ${yearLabels.join("")}
       <line class="chart-hover-line" x1="0" y1="${padding}" x2="0" y2="${height - padding}" stroke="var(--muted)" stroke-dasharray="3 5" stroke-width="1" opacity="0" />
       <circle class="chart-hover-point" cx="0" cy="0" r="4" fill="var(--teal)" opacity="0" />
     </svg>
@@ -338,9 +359,17 @@ export function renderGoalsChart(matches) {
   const height = 210;
   const padding = width < 360 ? 34 : 42;
   const chartHeight = height - padding * 2;
-  const groupWidth = (width - padding * 2) / years.length;
+  // Continuous year axis: missing years keep their slot so gaps stay visible.
+  const firstYear = Number(years[0]);
+  const lastYear = Number(years[years.length - 1]);
+  const slotCount = Number.isFinite(firstYear) && Number.isFinite(lastYear)
+    ? lastYear - firstYear + 1
+    : years.length;
+  const slotOf = (year, idx) => (Number.isFinite(firstYear) ? Number(year) - firstYear : idx);
+  const groupWidth = (width - padding * 2) / slotCount;
   const barWidth = Math.max(3, Math.min(16, groupWidth * 0.35));
-  const labelStep = Math.max(1, Math.ceil(years.length / 6));
+  const maxLabels = Math.max(2, Math.floor((width - padding * 2) / 46));
+  const labelStep = Math.max(1, Math.ceil(slotCount / maxLabels));
   let bars = "";
   let hits = "";
   let labels = "";
@@ -358,7 +387,8 @@ export function renderGoalsChart(matches) {
   averages.forEach((item, idx) => {
     const aHeight = (item.avgA / maxAvg) * chartHeight;
     const bHeight = (item.avgB / maxAvg) * chartHeight;
-    const xBase = padding + idx * groupWidth;
+    const slot = slotOf(item.year, idx);
+    const xBase = padding + slot * groupWidth;
     const aX = xBase + groupWidth * 0.1;
     const bX = aX + barWidth + groupWidth * 0.08;
     const aY = height - padding - aHeight;
@@ -370,10 +400,16 @@ export function renderGoalsChart(matches) {
       <rect x="${bX}" y="${bY}" width="${barWidth}" height="${bHeight}" rx="3" fill="var(--accent-graphic)" data-year="${item.year}" data-side="b" data-value="${bValue}" />
     `;
     hits += `<rect class="bar-hit" x="${xBase}" y="${padding}" width="${groupWidth}" height="${chartHeight}" fill="transparent" data-year="${item.year}" data-a="${aValue}" data-b="${bValue}" data-top="${Math.min(aY, bY)}" data-x="${xBase}" data-w="${groupWidth}" />`;
-    if (idx % labelStep === 0 || idx === years.length - 1) {
-      labels += `<text x="${xBase + groupWidth * 0.5}" y="${height - 8}" fill="var(--muted)" font-size="12" text-anchor="middle">${item.year}</text>`;
-    }
   });
+  for (let slot = 0; slot < slotCount; slot += 1) {
+    const isLast = slot === slotCount - 1;
+    const onStep = slot % labelStep === 0;
+    // The final year gets a label only when it will not collide with the previous one.
+    const lastFits = isLast && (slot % labelStep) * groupWidth >= 40;
+    if (!onStep && !lastFits) continue;
+    const label = Number.isFinite(firstYear) ? firstYear + slot : years[slot];
+    labels += `<text x="${padding + slot * groupWidth + groupWidth * 0.5}" y="${height - 8}" fill="var(--muted)" font-size="12" text-anchor="middle">${label}</text>`;
+  }
 
   const latest = averages[averages.length - 1];
   const averageUnit = isSeriesMode()

@@ -5,35 +5,37 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Table Hockey H2H</title>
-  <meta name="description" content="Head-to-head comparisons for table hockey matchups." />
+  <meta name="description" content="Head-to-head records, form and playoff series for every competitive table hockey rivalry." />
   <meta name="theme-color" content="#f6f2ec" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Table Hockey H2H" />
+  <meta property="og:description" content="Head-to-head records, form and playoff series for every competitive table hockey rivalry." />
+  <meta property="og:image" content="/og-default.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+  <link rel="manifest" href="manifest.webmanifest" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
     href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Manrope:wght@400;500;600;700;800&display=swap"
     rel="stylesheet" />
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-  <link rel="stylesheet" href="styles.css?v=20261014-design-refresh" />
+  <link rel="stylesheet" href="styles.css?v=20261014-design-refresh-2" />
 </head>
 
-<body>
+<body data-home="pending">
   <header class="site-header">
     <div class="brand">
       <div class="logo" aria-hidden="true">
         <svg viewBox="0 0 48 48" fill="none">
-          <circle cx="24" cy="24" r="22" fill="currentColor" opacity="0.15" />
-          <path d="M16 14v20l4-3V17l-4-3z" fill="currentColor" />
-          <path d="M32 14v20l-4-3V17l4-3z" fill="currentColor" />
-          <circle cx="24" cy="24" r="6" fill="currentColor" />
-          <circle cx="24" cy="24" r="3" fill="none" stroke="currentColor" stroke-width="1.5" />
-          <path d="M12 24h6m12 0h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+          <rect x="9" y="11" width="7" height="26" rx="3.5" fill="currentColor" />
+          <rect x="32" y="11" width="7" height="26" rx="3.5" fill="currentColor" />
+          <circle cx="24" cy="24" r="5.5" fill="currentColor" />
         </svg>
       </div>
       <div>
         <h1>Table Hockey H2H</h1>
-        <p class="site-description">
-          Head-to-head records, form, playoff series, and tournament filters for competitive table hockey.
-        </p>
+        <p class="site-description">Head-to-head stats for competitive table hockey</p>
       </div>
     </div>
     <div class="header-actions">
@@ -43,12 +45,18 @@
           stroke-linejoin="round" aria-hidden="true">
           <path d="M12 3a6 6 0 0 0 9 7.4A9 9 0 1 1 12 3z"></path>
         </svg>
-        <span>Dark mode</span>
+        <span class="sr-only">Dark mode</span>
       </button>
     </div>
   </header>
 
   <main class="container">
+    <section class="home-hero home-only" aria-labelledby="home-title">
+      <h2 id="home-title" class="home-title">Every table hockey rivalry, settled.</h2>
+      <p class="home-lede">Search a player to see their record against anyone they have faced: wins, form, playoff series and every game.</p>
+      <p id="home-stats" class="home-stats" hidden></p>
+    </section>
+
     <section class="card selection-card">
       <div class="selection-grid">
         <div class="player-field" data-player="a">
@@ -110,6 +118,33 @@
         <div id="recent-list" class="recent-list"></div>
       </div>
     </section>
+
+    <section id="featured" class="featured home-only" aria-labelledby="featured-title" hidden>
+      <h2 id="featured-title" class="eyebrow">Top-ranked rivalries</h2>
+      <div id="featured-list" class="featured-list"></div>
+    </section>
+
+    <div id="results-skeleton" class="results-skeleton" aria-hidden="true">
+      <div class="card skeleton-card">
+        <span class="skeleton-line skeleton-line--eyebrow"></span>
+        <div class="skeleton-hero">
+          <span class="skeleton-line skeleton-line--name"></span>
+          <span class="skeleton-line skeleton-line--record"></span>
+          <span class="skeleton-line skeleton-line--name"></span>
+        </div>
+        <span class="skeleton-line skeleton-line--bar"></span>
+        <span class="skeleton-line skeleton-line--bar"></span>
+        <span class="skeleton-line skeleton-line--bar"></span>
+      </div>
+      <div class="card skeleton-card">
+        <span class="skeleton-line"></span>
+        <span class="skeleton-line"></span>
+        <span class="skeleton-line"></span>
+        <span class="skeleton-line"></span>
+      </div>
+    </div>
+
+    <div id="score-bug" class="score-bug" aria-hidden="true"></div>
 
     <section id="summary-section" class="card summary-section" aria-labelledby="headline" aria-busy="false" hidden>
       <div class="summary-header">
@@ -426,7 +461,7 @@
     </p>
   </footer>
 
-  <script type="module" src="js/main.js?v=20261014-design-refresh"></script>
+  <script type="module" src="js/main.js?v=20261014-design-refresh-2"></script>
 </body>
 
 </html>
