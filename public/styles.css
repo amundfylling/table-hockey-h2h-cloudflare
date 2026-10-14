@@ -240,6 +240,7 @@ button:disabled {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 28px;
+  align-content: start;
 }
 
 .card {
@@ -4416,12 +4417,6 @@ body[data-home="true"] .recent.is-empty {
   text-wrap: balance;
 }
 
-.home-lede {
-  font-size: var(--fs-lg);
-  line-height: 1.45;
-  text-wrap: pretty;
-}
-
 .home-stats {
   display: flex;
   flex-wrap: wrap;
@@ -4644,10 +4639,6 @@ body.is-loading .results-skeleton {
 @media (max-width: 600px) {
   .home-hero {
     padding-top: 8px;
-  }
-
-  .home-lede {
-    font-size: var(--fs-md);
   }
 
   .skeleton-hero {
