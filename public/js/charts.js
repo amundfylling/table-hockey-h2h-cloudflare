@@ -1,6 +1,5 @@
-import { state, elements, isSeriesMode } from "./state.js";
+import { state, elements, isSeriesMode, isSinglePlayerMode } from "./state.js";
 import { getChronologicalItems } from "./form.js?v=20260801-generational-run-v3";
-import { formatPercent } from "./summary.js";
 import { escapeHtml, formatDateRange } from "./utils.js";
 import { SVG_TREND, SVG_BAR_CHART } from "./constants.js";
 
@@ -130,154 +129,176 @@ export function renderRecordChart(matches) {
     renderChartPlaceholder(elements.recordChart, "No selection", "trend");
     return;
   }
-  if (matches.length < 2) {
-    renderChartPlaceholder(elements.recordChart, "Not enough data to build trend.", "trend");
+  if (!matches.length) {
+    renderChartPlaceholder(elements.recordChart, "No data available.", "trend");
     return;
   }
   const ordered = getChronologicalItems(matches);
-  const values = [];
-  let wins = 0;
-  let losses = 0;
-  let draws = 0;
-  ordered.forEach((match) => {
-    if (match.result === "A") wins += 1;
-    else if (match.result === "B") losses += 1;
-    else draws += 1;
-    const total = wins + losses + draws;
-    values.push({
-      winRate: total ? (wins / total) * 100 : 0,
-      wins,
-      losses,
-      draws,
-      total,
-    });
-  });
   const measuredWidth = Math.round(elements.recordChart.getBoundingClientRect().width);
   const width = Math.max(280, Math.min(720, measuredWidth || 520));
   const height = 210;
-  const padding = width < 360 ? 34 : 42;
-  const min = 0;
-  const max = 100;
-  const range = max - min;
-  const referenceValue = 50;
-  const referenceY = height - padding - ((referenceValue - min) / range) * (height - padding * 2);
-  const xScale = (index) =>
-    padding + (index / Math.max(1, values.length - 1)) * (width - padding * 2);
-  const yScale = (value) =>
-    height - padding - ((value - min) / range) * (height - padding * 2);
-  const points = values.map((value, index) => `${xScale(index)},${yScale(value.winRate)}`);
-  const areaPath = `M ${xScale(0)} ${referenceY} L ${points.join(" ")} L ${xScale(values.length - 1)} ${referenceY} Z`;
-  const ticks = [0, 25, 50, 75, 100];
-  const gridLines = [];
-  const yLabels = [];
-  ticks.forEach((value) => {
-    const y = yScale(value);
-    gridLines.push(
-      `<line x1="${padding}" y1="${y}" x2="${width - padding}" y2="${y}" stroke="var(--border)" stroke-width="1" />`
+  const padX = 8;
+  const padTop = 12;
+  const padBottom = 30;
+  const plotWidth = width - padX * 2;
+  const midY = padTop + (height - padTop - padBottom) / 2;
+  const halfHeight = midY - padTop - 2;
+
+  // One bar per result while each bar keeps ~2.5px plus a 1px gap; beyond that,
+  // consecutive results share a bar whose height is that bucket's win share.
+  const maxBars = Math.max(1, Math.floor(plotWidth / 3.5));
+  const perBar = Math.max(1, Math.ceil(ordered.length / maxBars));
+  const buckets = [];
+  let wins = 0;
+  let losses = 0;
+  let draws = 0;
+  for (let start = 0; start < ordered.length; start += perBar) {
+    const items = ordered.slice(start, start + perBar);
+    const bucket = { start, end: start + items.length - 1, a: 0, b: 0, d: 0 };
+    items.forEach((match) => {
+      if (match.result === "A") bucket.a += 1;
+      else if (match.result === "B") bucket.b += 1;
+      else bucket.d += 1;
+    });
+    wins += bucket.a;
+    losses += bucket.b;
+    draws += bucket.d;
+    buckets.push({ ...bucket, wins, losses, draws });
+  }
+
+  const slot = plotWidth / buckets.length;
+  const gap = slot >= 3 ? Math.min(2, Math.max(1, slot * 0.2)) : 0;
+  const barWidth = Math.max(0.5, slot - gap);
+  const xAt = (index) => padX + index * slot;
+  const bars = buckets
+    .map((bucket, index) => {
+      const size = bucket.a + bucket.b + bucket.d;
+      const x = xAt(index) + gap / 2;
+      const upHeight = (bucket.a / size) * halfHeight;
+      const downHeight = (bucket.b / size) * halfHeight;
+      let markup = "";
+      if (upHeight > 0) {
+        markup += `<rect x="${x}" y="${midY - 1 - upHeight}" width="${barWidth}" height="${upHeight}" fill="var(--teal)" />`;
+      }
+      if (downHeight > 0) {
+        markup += `<rect x="${x}" y="${midY + 1}" width="${barWidth}" height="${downHeight}" fill="var(--accent-graphic)" />`;
+      }
+      if (bucket.d === size) {
+        markup += `<rect x="${x}" y="${midY - 3}" width="${barWidth}" height="6" fill="var(--muted)" opacity="0.6" />`;
+      }
+      return markup;
+    })
+    .join("");
+
+  // Year labels where the year changes, skipping any that would collide.
+  const yearLabels = [];
+  let lastLabelX = -Infinity;
+  let previousYear = "";
+  buckets.forEach((bucket, index) => {
+    const year = ordered[bucket.start]?.date?.slice(0, 4) || "";
+    if (!year || year === previousYear) return;
+    previousYear = year;
+    const x = xAt(index);
+    yearLabels.push(
+      `<line x1="${x}" y1="${height - padBottom + 2}" x2="${x}" y2="${height - padBottom + 7}" stroke="var(--muted)" stroke-width="1" />`
     );
-    yLabels.push(
-      `<text x="${padding - 6}" y="${y}" fill="var(--muted)" font-size="12" text-anchor="end" dominant-baseline="middle">${value}%</text>`
+    if (x - lastLabelX < 40 || x > width - 30) return;
+    lastLabelX = x;
+    yearLabels.push(
+      `<text x="${x}" y="${height - 8}" fill="var(--muted)" font-size="12" text-anchor="start">${escapeHtml(year)}</text>`
     );
   });
-  const endValue = values[values.length - 1];
-  const endColor = "var(--teal)";
-  const leadLabel = `Current ${formatPercent(endValue.winRate)} win rate`;
+
+  const isSeries = isSeriesMode();
+  const unit = isSeries ? "series" : "game";
+  const units = isSeries ? "series" : "games";
   const opponentSeriesLabel = state.playerB?.name || "Opponents";
-  const firstLabel = ordered[0]?.date?.slice(0, 4) || "";
-  const lastLabel = ordered[ordered.length - 1]?.date?.slice(0, 4) || "";
-  const endX = xScale(values.length - 1);
-  const endY = yScale(endValue.winRate);
-  const endpointTextAnchor = endX > width - 95 ? "end" : "start";
-  const endpointTextX = endpointTextAnchor === "end" ? endX - 8 : endX + 8;
-  const endpointTextY = Math.max(padding + 10, Math.min(height - padding - 8, endY - 8));
-  const chartDescription = `${state.playerA.name} has a current ${formatPercent(endValue.winRate)} win rate after ${endValue.total} results, with ${endValue.wins} wins, ${endValue.draws} draws, and ${endValue.losses} losses. Use the Left and Right arrow keys to inspect each result.`;
+  const opponentWinsLabel = isSinglePlayerMode() || !state.playerB?.name
+    ? "Losses"
+    : `${state.playerB.name} wins`;
+  const bucketNote = perBar > 1 ? `Each bar is ${perBar} ${units}` : `Oldest left, newest right`;
+  const chartDescription = `${ordered.length} ${units} in date order. Bars above the line are wins for ${state.playerA.name} (${wins}), bars below are ${isSinglePlayerMode() ? "losses" : `wins for ${state.playerB?.name}`} (${losses}), with ${draws} draws. Use the Left and Right arrow keys to inspect each bar.`;
 
   elements.recordChart.innerHTML = `
     <div class="chart-legend">
-      <span><span class="legend-dot a" aria-hidden="true"></span>${escapeHtml(state.playerA.name)} win rate</span>
-      <span class="chart-note">${escapeHtml(leadLabel)}</span>
+      <span><span class="legend-dot a" aria-hidden="true"></span>${escapeHtml(state.playerA.name)} wins (up)</span>
+      <span><span class="legend-dot b" aria-hidden="true"></span>${escapeHtml(opponentWinsLabel)} (down)</span>
+      <span class="chart-note">${escapeHtml(bucketNote)}</span>
     </div>
     <svg viewBox="0 0 ${width} ${height}" role="img" tabindex="0"
       aria-labelledby="record-chart-svg-title record-chart-svg-desc">
-      <title id="record-chart-svg-title">Running win rate</title>
+      <title id="record-chart-svg-title">Every ${unit}, in order</title>
       <desc id="record-chart-svg-desc">${escapeHtml(chartDescription)}</desc>
-      ${gridLines.join("")}
-      ${yLabels.join("")}
-      <line x1="${padding}" y1="${referenceY}" x2="${width - padding}" y2="${referenceY}" stroke="var(--muted)" stroke-dasharray="4 4" stroke-width="1.4" />
-      <line x1="${padding}" y1="${height - padding}" x2="${width - padding}" y2="${height - padding}" stroke="var(--muted)" stroke-width="1" />
-      <path d="${areaPath}" fill="var(--teal-soft)" stroke="none"></path>
-      <polyline fill="none" stroke="var(--teal)" stroke-width="3" points="${points.join(" ")}" />
-      <circle cx="${endX}" cy="${endY}" r="4.5" fill="${endColor}" />
-      <text x="${padding}" y="${referenceY - 6}" fill="var(--muted)" font-size="12">50%</text>
-      <text x="${endpointTextX}" y="${endpointTextY}" fill="${endColor}" font-size="12" font-weight="700" text-anchor="${endpointTextAnchor}">${formatPercent(endValue.winRate)}</text>
-      ${firstLabel ? `<text x="${padding}" y="${height - 8}" fill="var(--muted)" font-size="12" text-anchor="start">${escapeHtml(firstLabel)}</text>` : ""}
-      ${lastLabel && lastLabel !== firstLabel ? `<text x="${width - padding}" y="${height - 8}" fill="var(--muted)" font-size="12" text-anchor="end">${escapeHtml(lastLabel)}</text>` : ""}
-      <line class="chart-hover-line" x1="0" y1="${padding}" x2="0" y2="${height - padding}" stroke="var(--muted)" stroke-dasharray="3 5" stroke-width="1" opacity="0" />
-      <circle class="chart-hover-point" cx="0" cy="0" r="4" fill="var(--teal)" opacity="0" />
+      <g shape-rendering="crispEdges">${bars}</g>
+      <line x1="${padX}" y1="${midY}" x2="${width - padX}" y2="${midY}" stroke="var(--border)" stroke-width="2" />
+      <line x1="${padX}" y1="${height - padBottom + 2}" x2="${width - padX}" y2="${height - padBottom + 2}" stroke="var(--border)" stroke-width="1" />
+      ${yearLabels.join("")}
+      <rect class="chart-hover-band" x="0" y="${padTop}" width="${slot}" height="${height - padTop - padBottom}" fill="var(--muted)" opacity="0" pointer-events="none" />
     </svg>
   `;
 
   const container = elements.recordChart;
   const svg = container.querySelector("svg");
   const tooltip = ensureChartTooltip(container);
-  const hoverLine = svg.querySelector(".chart-hover-line");
-  const hoverPoint = svg.querySelector(".chart-hover-point");
+  const hoverBand = svg.querySelector(".chart-hover-band");
 
-  let keyboardIndex = values.length - 1;
+  let keyboardIndex = buckets.length - 1;
   const showIndex = (index) => {
+    const bucket = buckets[index];
+    if (!bucket) return;
     const rect = svg.getBoundingClientRect();
-    const match = ordered[index];
-    const entry = values[index];
-    if (!match) return;
-    const xPos = xScale(index);
-    const yPos = yScale(entry.winRate);
-
-    hoverLine.setAttribute("x1", xPos);
-    hoverLine.setAttribute("x2", xPos);
-    hoverLine.setAttribute("opacity", "1");
-    hoverPoint.setAttribute("cx", xPos);
-    hoverPoint.setAttribute("cy", yPos);
-    hoverPoint.setAttribute("opacity", "1");
-
     const containerRect = container.getBoundingClientRect();
-    const xLocal = (xPos / width) * rect.width + (rect.left - containerRect.left);
-    const yLocal = (yPos / height) * rect.height + (rect.top - containerRect.top);
-    const isSeries = match.type === "series";
-    const title = isSeries ? formatDateRange(match.date, match.end_date) : match.date || "Unknown date";
-    const valueA = isSeries ? match.game_wins_a : match.goals_a;
-    const valueB = isSeries ? match.game_wins_b : match.goals_b;
-    const sideRow = (side, name, value) => `
-      <div class="tooltip-side${match.result === side ? " is-winner" : ""}">
-        <span class="tooltip-side-label"><i class="side-dot ${side.toLowerCase()}" aria-hidden="true"></i>${escapeHtml(name)}</span>
-        <span class="tooltip-side-value">${escapeHtml(String(value ?? "—"))}</span>
-      </div>`;
-    const html = `
-      <div class="tooltip-title">${escapeHtml(title)}</div>
-      ${sideRow("A", state.playerA.name, valueA)}
-      ${sideRow("B", match.opponent_name || opponentSeriesLabel, valueB)}
-      <div class="tooltip-divider"></div>
-      <div class="tooltip-kv"><span>Win rate</span><strong>${formatPercent(entry.winRate)}</strong></div>
-      <div class="tooltip-kv"><span>Record</span><strong>${entry.wins}W · ${entry.draws}D · ${entry.losses}L</strong></div>
-      ${isSeries ? `<div class="tooltip-kv"><span>Goals</span><strong>${match.goals_a}–${match.goals_b}</strong></div>` : ""}
-    `;
-    showChartTooltip(container, tooltip, html, xLocal, xLocal, yLocal);
+    const x1 = xAt(index);
+    hoverBand.setAttribute("x", x1);
+    hoverBand.setAttribute("opacity", "0.14");
+    const toLocalX = (x) => (x / width) * rect.width + (rect.left - containerRect.left);
+    const yLocal = (midY / height) * rect.height + (rect.top - containerRect.top);
+    const record = `<div class="tooltip-kv"><span>Record so far</span><strong>${bucket.wins}W · ${bucket.draws}D · ${bucket.losses}L</strong></div>`;
+    let html;
+    if (bucket.start === bucket.end) {
+      const match = ordered[bucket.start];
+      const matchIsSeries = match.type === "series";
+      const title = matchIsSeries ? formatDateRange(match.date, match.end_date) : match.date || "Unknown date";
+      const valueA = matchIsSeries ? match.game_wins_a : match.goals_a;
+      const valueB = matchIsSeries ? match.game_wins_b : match.goals_b;
+      const sideRow = (side, name, value) => `
+        <div class="tooltip-side${match.result === side ? " is-winner" : ""}">
+          <span class="tooltip-side-label"><i class="side-dot ${side.toLowerCase()}" aria-hidden="true"></i>${escapeHtml(name)}</span>
+          <span class="tooltip-side-value">${escapeHtml(String(value ?? "—"))}</span>
+        </div>`;
+      html = `
+        <div class="tooltip-title">${escapeHtml(title)}</div>
+        ${match.tournament_name ? `<div class="tooltip-kv"><span>${escapeHtml(match.tournament_name)}</span></div>` : ""}
+        ${sideRow("A", state.playerA.name, valueA)}
+        ${sideRow("B", match.opponent_name || opponentSeriesLabel, valueB)}
+        <div class="tooltip-divider"></div>
+        ${matchIsSeries ? `<div class="tooltip-kv"><span>Goals</span><strong>${match.goals_a}–${match.goals_b}</strong></div>` : ""}
+        ${record}
+      `;
+    } else {
+      const first = ordered[bucket.start]?.date || "";
+      const last = ordered[bucket.end]?.date || "";
+      html = `
+        <div class="tooltip-title">${escapeHtml(formatDateRange(first, last))}</div>
+        <div class="tooltip-kv"><span>${escapeHtml(state.playerA.name)}</span><strong>${bucket.a}W · ${bucket.d}D · ${bucket.b}L</strong></div>
+        <div class="tooltip-divider"></div>
+        ${record}
+      `;
+    }
+    showChartTooltip(container, tooltip, html, toLocalX(x1), toLocalX(x1 + slot), yLocal);
   };
 
   const handleMove = (event) => {
     const rect = svg.getBoundingClientRect();
     const x = ((event.clientX - rect.left) / rect.width) * width;
-    const index = Math.max(
-      0,
-      Math.min(values.length - 1, Math.round(((x - padding) / (width - padding * 2)) * (values.length - 1)))
-    );
+    const index = Math.max(0, Math.min(buckets.length - 1, Math.floor((x - padX) / slot)));
     keyboardIndex = index;
     showIndex(index);
   };
 
   const handleLeave = () => {
     hideChartTooltip(tooltip);
-    hoverLine.setAttribute("opacity", "0");
-    hoverPoint.setAttribute("opacity", "0");
+    hoverBand.setAttribute("opacity", "0");
   };
 
   bindChartTooltip(svg, handleMove, handleLeave);
@@ -287,9 +308,9 @@ export function renderRecordChart(matches) {
     if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
     event.preventDefault();
     if (event.key === "Home") keyboardIndex = 0;
-    else if (event.key === "End") keyboardIndex = values.length - 1;
+    else if (event.key === "End") keyboardIndex = buckets.length - 1;
     else if (event.key === "ArrowLeft") keyboardIndex = Math.max(0, keyboardIndex - 1);
-    else keyboardIndex = Math.min(values.length - 1, keyboardIndex + 1);
+    else keyboardIndex = Math.min(buckets.length - 1, keyboardIndex + 1);
     showIndex(keyboardIndex);
   });
 }
@@ -493,7 +514,7 @@ export function renderGoalsChart(matches) {
 export function renderCharts(matches) {
   if (elements.recordChartTitle) {
     const title = elements.recordChartTitle.querySelector(".viz-title-text");
-    if (title) title.textContent = isSeriesMode() ? "Running series win rate" : "Running win rate";
+    if (title) title.textContent = isSeriesMode() ? "Every series, in order" : "Every game, in order";
   }
   if (elements.goalsChartTitle) {
     const title = elements.goalsChartTitle.querySelector(".viz-title-text");

@@ -298,15 +298,16 @@
       <div class="viz-grid">
         <div class="viz-block">
           <div id="record-chart-title" class="viz-title with-info">
-            <span class="viz-title-text">Running win rate</span>
+            <span class="viz-title-text">Every game, in order</span>
             <span class="info-wrap">
-              <button class="info-btn" type="button" aria-label="About running win rate"
-                aria-describedby="running-win-rate-info" aria-expanded="false">
+              <button class="info-btn" type="button" aria-label="About every game, in order"
+                aria-describedby="game-strip-info" aria-expanded="false">
                 i
               </button>
-              <span id="running-win-rate-info" class="info-tooltip" role="tooltip">
-                Shows the first selected player's win percentage after each result. Draws stay in the total, and the
-                dashed line marks 50%.
+              <span id="game-strip-info" class="info-tooltip" role="tooltip">
+                One bar per result, oldest on the left. Bars above the line are wins for the first selected player,
+                bars below are wins for the opponent, and short grey marks are draws. With many results, each bar
+                groups several and its height shows the win share.
               </span>
             </span>
           </div>
