@@ -145,9 +145,17 @@ The palette is a restrained sports-stat palette: warm rink neutrals, one puck-or
 
 **The No Zoom Rule.** Form controls never go below 1rem (16px); iOS Safari auto-zooms on focus for smaller text. Reclaim density with padding, not font size.
 
+**The Six Sizes Rule.** The interface uses exactly six font sizes, defined as tokens in `styles.css`: `--fs-xs` 0.75rem, `--fs-sm` 0.875rem, `--fs-md` 1rem, `--fs-lg` 1.25rem, `--fs-xl` 1.75rem and `--fs-2xl` 2.75rem. Never write a literal `font-size` in rem or px; pick a token.
+
+**The Figures Rule.** All numbers render with tabular figures (set on `body`), large counts use thousands separators (`formatNumber`), records and score ranges use an en dash (77–43), and dates use one format everywhere: `5 Dec 2021` (`formatDate`).
+
+**The One Label Rule.** Small uppercase labels (eyebrows, stat labels, section labels) share one style: `--fs-xs`, weight 700, 0.08em tracking, muted color.
+
 ## 4. Elevation
 
-The system uses a hybrid of tonal layering, translucent cards, borders, and soft shadows. Elevation should separate functional regions, not decorate every element. Cards currently use a translucent background with `backdrop-filter: blur(12px)`, `1px` borders, and soft ambient shadows.
+The system uses solid card surfaces, `1px` borders, and soft ambient shadows. Elevation should separate functional regions, not decorate every element: no cards nested inside cards, no tinted boxes around charts, and no backdrop blur.
+
+**The One Result Rule.** A matchup's headline record appears once, in the hero scoreboard at the top of the summary card. Everything else (stat bars, biggest wins, form) supports it rather than repeating it.
 
 ### Shadow Vocabulary
 - **Ambient Surface** (`0 8px 24px rgba(0, 0, 0, 0.06)`): Default light-mode card shadow.

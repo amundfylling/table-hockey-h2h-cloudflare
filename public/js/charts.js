@@ -1,7 +1,7 @@
 import { state, elements, isSeriesMode } from "./state.js";
 import { getChronologicalItems } from "./form.js?v=20260801-generational-run-v3";
 import { formatPercent } from "./summary.js";
-import { escapeHtml, formatDateRange } from "./utils.js";
+import { escapeHtml, formatDate, formatDateRange } from "./utils.js";
 import { SVG_TREND, SVG_BAR_CHART } from "./constants.js";
 
 export function formatAxisValue(value) {
@@ -243,7 +243,7 @@ export function renderRecordChart(matches) {
     const xLocal = (xPos / width) * rect.width + (rect.left - containerRect.left);
     const yLocal = (yPos / height) * rect.height + (rect.top - containerRect.top);
     const isSeries = match.type === "series";
-    const title = isSeries ? formatDateRange(match.date, match.end_date) : match.date || "Unknown date";
+    const title = isSeries ? formatDateRange(match.date, match.end_date) : (match.date ? formatDate(match.date) : "Unknown date");
     const valueA = isSeries ? match.game_wins_a : match.goals_a;
     const valueB = isSeries ? match.game_wins_b : match.goals_b;
     const sideRow = (side, name, value) => `

@@ -109,19 +109,32 @@ export function parseOvertime(value) {
   ].includes(text);
 }
 
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const numberFormat = new Intl.NumberFormat("en-US");
+
+// Whole numbers with thousands separators: 14483 -> "14,483".
+export function formatNumber(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return String(value ?? "");
+  return numberFormat.format(num);
+}
+
+// One date style site-wide: "2021-12-05" -> "5 Dec 2021".
 export function formatDate(dateStr) {
   if (!dateStr) return "-";
-  const parts = dateStr.split("-");
+  const parts = String(dateStr).split("-");
   if (parts.length !== 3) return dateStr;
   const [year, month, day] = parts;
-  return `${day}/${month}/${year}`;
+  const monthName = MONTHS[Number(month) - 1];
+  if (!monthName || !Number(day)) return dateStr;
+  return `${Number(day)} ${monthName} ${year}`;
 }
 
 export function formatDateRange(start, end) {
   const first = formatDate(start);
   const last = formatDate(end);
   if (first === last || last === "-") return first;
-  return `${first} - ${last}`;
+  return `${first} – ${last}`;
 }
 
 export function classifyStage(stage) {
