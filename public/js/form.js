@@ -11,11 +11,11 @@ let activeRunCleanup = null;
 
 export function updateFormTitle() {
   if (!elements.formTitle) return;
-  const label = isSeriesMode() ? "Series form" : "Game form";
+  const label = isSeriesMode() ? "Last 10 series" : "Last 10 games";
   if (state.playerA && state.playerA.name) {
-    elements.formTitle.textContent = `${label} (last 10 - ${state.playerA.name})`;
+    elements.formTitle.textContent = `${label} · ${state.playerA.name}`;
   } else {
-    elements.formTitle.textContent = `${label} (last 10)`;
+    elements.formTitle.textContent = label;
   }
 }
 

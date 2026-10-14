@@ -30,6 +30,7 @@ import {
   fetchJson,
 } from "./data.js";
 import { buildPlayoffSeries, annotatePlayoffGamesWithSeries } from "./series.js";
+import { formatNumber } from "./utils.js";
 import {
   initFilters,
   applyFilters,
@@ -100,9 +101,15 @@ export function updateStageMeta() {
   const playoffMatches = state.baseMatches.filter((match) => match.stage_type === "playoff");
   const po = playoffMatches.length;
   const series = buildPlayoffSeries(playoffMatches).length;
-  if (elements.stageMeta) {
-    elements.stageMeta.textContent = `Overall ${total}, Round-robin ${rr}, Playoff ${po} games / ${series} series`;
-  }
+  setStageCounts({ overall: total, "round-robin": rr, playoff: po, series });
+}
+
+function setStageCounts(counts = {}) {
+  if (!elements.stageCounts) return;
+  elements.stageCounts.forEach((el) => {
+    const value = counts[el.dataset.stageCount];
+    el.textContent = value == null ? "" : formatNumber(value);
+  });
 }
 
 export function updateModeControls() {
@@ -263,6 +270,8 @@ export function renderIdleState() {
     elements.record.replaceChildren();
   }
   if (elements.summaryGrid) elements.summaryGrid.replaceChildren();
+  if (elements.summaryHero) elements.summaryHero.replaceChildren();
+  if (elements.summaryScope) elements.summaryScope.textContent = "";
   if (elements.formChips) elements.formChips.replaceChildren();
   if (elements.recordChart) elements.recordChart.replaceChildren();
   if (elements.goalsChart) elements.goalsChart.replaceChildren();
@@ -293,7 +302,7 @@ export function resetCurrentResults(options = {}) {
   resetFilters();
   setStageTabControls("overall");
   setDataControlsEnabled(false);
-  if (elements.stageMeta) elements.stageMeta.textContent = "";
+  setStageCounts();
   updateFilterCount();
   renderIdleState();
   updateSelectionControls();
@@ -303,6 +312,7 @@ export function resetCurrentResults(options = {}) {
 }
 
 function setStageFilterCardsVisible(visible) {
+  if (elements.controlsBar) elements.controlsBar.hidden = !visible;
   if (elements.stageCard) elements.stageCard.hidden = !visible;
   if (elements.filterCard) elements.filterCard.hidden = !visible;
 }
@@ -310,9 +320,8 @@ function setStageFilterCardsVisible(visible) {
 function maybeScrollToResults(options = {}) {
   if (options.restoreUrlState || options.scrollToResults === false) return;
   if (!window.matchMedia("(max-width: 900px)").matches) return;
-  const showMatchupResult = elements.matchupResult && !elements.matchupResult.hidden;
-  const target = showMatchupResult ? elements.matchupResult : elements.summarySection;
-  const heading = showMatchupResult ? elements.matchupResultTitle : elements.headline;
+  const target = elements.summarySection;
+  const heading = elements.headline;
   if (!target || target.hidden) return;
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   target.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "start" });
@@ -369,7 +378,7 @@ export async function handleCompare(options = {}) {
   state.baseMatches = [];
   state.stageMatches = [];
   state.filteredMatches = [];
-  if (elements.stageMeta) elements.stageMeta.textContent = "";
+  setStageCounts();
   setDataControlsEnabled(false);
   setStageFilterCardsVisible(false);
   setResultsSectionsVisible(false);
@@ -414,7 +423,7 @@ export async function handleCompare(options = {}) {
       }
       state.baseMatches = [];
       state.filteredMatches = [];
-      if (elements.stageMeta) elements.stageMeta.textContent = "";
+      setStageCounts();
       setDataControlsEnabled(false);
       setStageFilterCardsVisible(false);
       setResultsSectionsVisible(false);
@@ -448,7 +457,7 @@ export async function handleCompare(options = {}) {
       setStageTab("overall");
     }
     setLoading(false);
-    const completionMessage = `${matches.length} match${matches.length === 1 ? "" : "es"} loaded.`;
+    const completionMessage = `${formatNumber(matches.length)} match${matches.length === 1 ? "" : "es"} loaded.`;
     setStatus(completionMessage);
     setTimeout(() => {
       if (
@@ -582,7 +591,7 @@ export async function renderDataFreshness() {
   if (!meta || !meta.generated_at) return;
   const date = new Date(meta.generated_at);
   if (Number.isNaN(date.getTime())) return;
-  el.textContent = `Data updated ${date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}`;
+  el.textContent = `Data updated ${date.toLocaleDateString("en-GB", { year: "numeric", month: "short", day: "numeric" })}`;
   el.hidden = false;
 }
 

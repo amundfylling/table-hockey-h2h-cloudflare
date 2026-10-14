@@ -8,6 +8,7 @@ import {
 import {
   formatDate,
   formatDateRange,
+  formatNumber,
   getTournamentLevelLabel,
   getTournamentLevelKey,
   toNumber,
@@ -491,7 +492,7 @@ export function renderSeriesTable(seriesItems) {
   elements.matchesBody.appendChild(fragment);
 
   const end = Math.min(start + state.perPage, seriesItems.length);
-  elements.matchCount.textContent = `Showing ${start + 1}-${end} of ${seriesItems.length} series`;
+  elements.matchCount.textContent = `Showing ${start + 1}–${end} of ${formatNumber(seriesItems.length)} series`;
 }
 
 export function createSeriesDetailPanel(series) {
@@ -638,7 +639,7 @@ export function updatePagination(total) {
 }
 
 export function formatMatchCountText(start, end, total) {
-  return `Showing ${start + 1}-${end} of ${total} matches`;
+  return `Showing ${start + 1}–${end} of ${formatNumber(total)} matches`;
 }
 
 export function initPagination() {

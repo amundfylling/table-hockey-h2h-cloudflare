@@ -1,5 +1,5 @@
 import { state, elements, isSeriesMode, isSinglePlayerMode } from "./state.js";
-import { toNumber, formatDateRange, normalizeText, escapeHtml } from "./utils.js";
+import { toNumber, formatDate, formatDateRange, formatNumber, normalizeText } from "./utils.js";
 import {
   enrichPlayerRecord,
   formatWorldRank,
@@ -87,53 +87,99 @@ export function formatPercent(value) {
 export function formatCardValue(value) {
   if (value == null || value === "") return DASH;
   if (Number.isNaN(value)) return DASH;
-  return String(value);
+  return typeof value === "number" ? formatNumber(value) : String(value);
 }
 
-export function createScoreboardPlayer(player, fallback, className) {
-  const enriched = enrichPlayerRecord(player);
+function createHeroPlayer(player, fallback, side, isLeader) {
+  const enriched = player?.id != null ? enrichPlayerRecord(player) : player;
   const element = document.createElement("div");
-  element.className = className;
+  element.className = `hero-player hero-player--${side}`;
+  if (isLeader) element.classList.add("is-leader");
 
   const name = document.createElement("span");
-  name.className = "scoreboard-player-name";
+  name.className = "hero-player-name";
   name.textContent = enriched?.name || fallback;
   element.appendChild(name);
 
-  const rank = formatWorldRank(enriched);
+  const meta = document.createElement("span");
+  meta.className = "hero-player-meta";
+  const rank = player?.id != null ? formatWorldRank(enriched) : "";
   if (rank) {
-    const meta = document.createElement("span");
-    meta.className = "scoreboard-player-rank";
-    meta.textContent = rank;
-    meta.title = formatRankingTitle(enriched);
-    element.appendChild(meta);
+    const rankEl = document.createElement("span");
+    rankEl.className = "hero-player-rank";
+    rankEl.textContent = rank;
+    rankEl.title = formatRankingTitle(enriched);
+    meta.appendChild(rankEl);
   }
-
+  if (isLeader) {
+    const lead = document.createElement("span");
+    lead.className = "hero-lead-tag";
+    lead.textContent = "Leads";
+    meta.appendChild(lead);
+  }
+  if (meta.childNodes.length) element.appendChild(meta);
   return element;
 }
 
-export function createScoreHeader() {
-  const header = document.createElement("div");
-  header.className = "scoreboard-head";
+// The one place the headline result is shown: names either side, the record between them.
+export function createHero(winsA, winsB, caption) {
+  const single = isSinglePlayerMode();
+  const lead = winsA === winsB ? "tie" : winsA > winsB ? "a" : "b";
+  const hero = document.createElement("div");
+  hero.className = "hero";
+  hero.dataset.lead = lead;
 
-  const left = createScoreboardPlayer(
-    state.playerA,
-    "Player A",
-    "scoreboard-player scoreboard-player--a"
-  );
+  const left = createHeroPlayer(state.playerA, "Player A", "a", !single && lead === "a");
+  const right = single
+    ? createHeroPlayer({ id: null, name: "All opponents" }, "All opponents", "field", false)
+    : createHeroPlayer(state.playerB, "Player B", "b", lead === "b");
 
-  const title = document.createElement("div");
-  title.className = "scoreboard-title";
-  title.textContent = isSinglePlayerMode() ? "Career Stats" : isSeriesMode() ? "Playoff Series" : "Head to Head";
+  const score = document.createElement("div");
+  score.className = "hero-score";
+  const record = document.createElement("div");
+  record.className = "hero-record";
+  const numA = document.createElement("span");
+  numA.className = "hero-num hero-num--a";
+  numA.textContent = formatNumber(winsA);
+  const dash = document.createElement("span");
+  dash.className = "hero-dash";
+  dash.textContent = "–";
+  const numB = document.createElement("span");
+  numB.className = "hero-num hero-num--b";
+  numB.textContent = formatNumber(winsB);
+  record.append(numA, dash, numB);
+  score.appendChild(record);
+  if (caption) {
+    const captionEl = document.createElement("div");
+    captionEl.className = "hero-caption";
+    captionEl.textContent = caption;
+    score.appendChild(captionEl);
+  }
 
-  const right = isSinglePlayerMode()
-    ? createScoreboardPlayer({ id: null, name: "All Opponents" }, "All Opponents", "scoreboard-player scoreboard-player--b")
-    : createScoreboardPlayer(state.playerB, "Player B", "scoreboard-player scoreboard-player--b");
+  hero.append(left, score, right);
+  return hero;
+}
 
-  header.appendChild(left);
-  header.appendChild(title);
-  header.appendChild(right);
-  return header;
+function getScopeLabel() {
+  const stage = {
+    overall: "Overall",
+    "round-robin": "Round-robin",
+    playoff: isSeriesMode() ? "Playoff series" : "Playoff games",
+  }[state.stageTab] || "Overall";
+  const prefix = isSinglePlayerMode() ? "Career" : "Head to head";
+  const filtered = getActiveFilterCount() > 0 ? " · Filtered" : "";
+  return `${prefix} · ${stage}${filtered}`;
+}
+
+function renderHero(summary, caption) {
+  if (elements.summaryScope) elements.summaryScope.textContent = getScopeLabel();
+  if (elements.summaryHero) {
+    elements.summaryHero.replaceChildren(createHero(summary.winsA, summary.winsB, caption));
+  }
+}
+
+function plural(count, one, many) {
+  return `${formatNumber(count)} ${count === 1 ? one : many}`;
 }
 
 export function createScoreRow(label, leftValue, rightValue, options = {}) {
@@ -189,9 +235,16 @@ export function createScoreRow(label, leftValue, rightValue, options = {}) {
   rightEl.textContent = rightDisplay;
   if (lead === "b") rightEl.classList.add("is-lead");
 
-  row.appendChild(fillA);
-  if (hasMiddle) row.appendChild(fillMiddle);
-  row.appendChild(fillB);
+  if (options.leftSub) leftEl.appendChild(createScoreSub(options.leftSub));
+  if (options.rightSub) rightEl.appendChild(createScoreSub(options.rightSub));
+
+  const bar = document.createElement("div");
+  bar.className = "score-bar";
+  bar.setAttribute("aria-hidden", "true");
+  bar.appendChild(fillA);
+  if (hasMiddle) bar.appendChild(fillMiddle);
+  bar.appendChild(fillB);
+
   row.appendChild(leftEl);
   if (hasMiddle) {
     const centerEl = document.createElement("div");
@@ -217,6 +270,7 @@ export function createScoreRow(label, leftValue, rightValue, options = {}) {
     row.appendChild(labelEl);
   }
   row.appendChild(rightEl);
+  row.appendChild(bar);
   if (noteText) {
     const note = document.createElement("div");
     note.className = "score-note";
@@ -226,6 +280,13 @@ export function createScoreRow(label, leftValue, rightValue, options = {}) {
   return row;
 }
 
+function createScoreSub(text) {
+  const sub = document.createElement("span");
+  sub.className = "score-sub";
+  sub.textContent = text;
+  return sub;
+}
+
 export function getHighlightInfo(match, side) {
   if (!match) {
     return { score: DASH, date: DASH, opponent: DASH, tournament: DASH, url: "" };
@@ -233,17 +294,17 @@ export function getHighlightInfo(match, side) {
   if (isSinglePlayerMode()) {
     return {
       score: scoreFormat(match) || DASH,
-      date: match.date || DASH,
+      date: match.date ? formatDate(match.date) : DASH,
       opponent: match.opponent_name || DASH,
       tournament: match.tournament_name || DASH,
       url: getItemSourceUrl(match) || "",
     };
   }
-  const score = side === "b" ? `${match.goals_b}-${match.goals_a}` : scoreFormat(match);
+  const score = side === "b" ? `${match.goals_b}–${match.goals_a}` : scoreFormat(match);
   const opponent = side === "b" ? state.playerA?.name : state.playerB?.name;
   return {
     score: score || DASH,
-    date: match.date || DASH,
+    date: match.date ? formatDate(match.date) : DASH,
     opponent: opponent || DASH,
     tournament: match.tournament_name || DASH,
     url: getItemSourceUrl(match) || "",
@@ -254,7 +315,7 @@ export function getHighlightInfo(match, side) {
 function scoreFormat(match) {
   if (!match) return DASH;
   if (!Number.isFinite(match.goals_a) || !Number.isFinite(match.goals_b)) return DASH;
-  return `${match.goals_a}-${match.goals_b}`;
+  return `${match.goals_a}–${match.goals_b}`;
 }
 
 export function createHighlightBlock(label, info, side, tooltip = "") {
@@ -279,7 +340,7 @@ export function createHighlightBlock(label, info, side, tooltip = "") {
   meta.className = "highlight-meta";
   const opponent = info.opponent !== DASH ? `vs ${info.opponent}` : DASH;
   const date = info.date !== DASH ? info.date : DASH;
-  meta.textContent = hasResult ? `${opponent} | ${date}` : "For this selection";
+  meta.textContent = hasResult ? `${opponent} · ${date}` : "For this selection";
 
   let tour;
   if (hasResult && info.url) {
@@ -344,23 +405,23 @@ export function getSeriesHighlightInfo(series, side) {
   }
   if (isSinglePlayerMode()) {
     return {
-      score: `${series.game_wins_a}-${series.game_wins_b}`,
+      score: `${series.game_wins_a}–${series.game_wins_b}`,
       date: formatDateRange(series.date, series.end_date),
       opponent: series.opponent_name || DASH,
-      tournament: `${series.tournament_name || DASH} | ${formatSeriesLength(series)} | goals ${series.goals_a}-${series.goals_b}`,
+      tournament: `${series.tournament_name || DASH} · ${formatSeriesLength(series)} · goals ${series.goals_a}–${series.goals_b}`,
       url: getItemSourceUrl(series) || "",
     };
   }
   const score =
     side === "b"
-      ? `${series.game_wins_b}-${series.game_wins_a}`
-      : `${series.game_wins_a}-${series.game_wins_b}`;
-  const goalScore = side === "b" ? `${series.goals_b}-${series.goals_a}` : `${series.goals_a}-${series.goals_b}`;
+      ? `${series.game_wins_b}–${series.game_wins_a}`
+      : `${series.game_wins_a}–${series.game_wins_b}`;
+  const goalScore = side === "b" ? `${series.goals_b}–${series.goals_a}` : `${series.goals_a}–${series.goals_b}`;
   return {
     score,
     date: formatDateRange(series.date, series.end_date),
     opponent: side === "b" ? state.playerA?.name : state.playerB?.name,
-    tournament: `${series.tournament_name || DASH} | ${formatSeriesLength(series)} | goals ${goalScore}`,
+    tournament: `${series.tournament_name || DASH} · ${formatSeriesLength(series)} · goals ${goalScore}`,
     url: getItemSourceUrl(series) || "",
   };
 }
@@ -380,13 +441,7 @@ function renderMatchupResult(summary) {
 
   const { winsA, winsB, draws, total } = summary;
   const seriesMode = isSeriesMode();
-  const stage = {
-    overall: "Overall",
-    "round-robin": "Round-robin",
-    playoff: "Playoff",
-  }[state.stageTab];
-  const filtered = getActiveFilterCount() > 0 ? " · Filtered view" : "";
-  elements.matchupResultScope.textContent = `Head to head · ${stage}${filtered}`;
+  elements.matchupResultScope.textContent = getScopeLabel();
 
   if (winsA === winsB) {
     elements.matchupResultTitle.textContent = `Level at ${winsA}–${winsB}`;
@@ -394,82 +449,101 @@ function renderMatchupResult(summary) {
   } else {
     const leaderIsA = winsA > winsB;
     const leader = leaderIsA ? state.playerA : state.playerB;
-    const name = document.createElement("span");
-    name.className = "matchup-result-leader";
-    name.textContent = leader.name;
-    elements.matchupResultTitle.replaceChildren(
-      name,
-      ` leads ${Math.max(winsA, winsB)}–${Math.min(winsA, winsB)}`
-    );
+    elements.matchupResultTitle.textContent =
+      `${leader.name} leads ${Math.max(winsA, winsB)}–${Math.min(winsA, winsB)}`;
     elements.matchupResult.dataset.leader = leaderIsA ? "a" : "b";
   }
 
   const unit = seriesMode ? "playoff series" : (total === 1 ? "game" : "games");
   const drawUnit = seriesMode ? "tied series" : (draws === 1 ? "draw" : "draws");
-  elements.matchupResultDetail.textContent = `${total} ${unit} · ${draws} ${drawUnit}`;
+  elements.matchupResultDetail.textContent =
+    `${formatNumber(total)} ${unit} · ${formatNumber(draws)} ${drawUnit}`;
+}
+
+function formatSpan(firstDate, lastDate) {
+  if (!firstDate || !lastDate) return "";
+  const firstYear = String(firstDate).slice(0, 4);
+  const lastYear = String(lastDate).slice(0, 4);
+  return firstYear === lastYear ? firstYear : `${firstYear}–${lastYear}`;
+}
+
+function setSubhead(parts) {
+  elements.subhead.textContent = parts.filter(Boolean).join(" · ");
+}
+
+function createHighlights(summary, infoA, infoB, labelA, labelB) {
+  const highlights = document.createElement("div");
+  highlights.className = "scoreboard-highlights";
+  const canonTooltip = getCanonRivalryTooltip(summary.largestWin, summary.largestLoss);
+  const opponentLabel = isSinglePlayerMode() ? "Opponents" : state.playerB.name;
+  highlights.appendChild(createHighlightColumn(state.playerA.name, "a", infoA, labelA, canonTooltip));
+  highlights.appendChild(createHighlightColumn(opponentLabel, "b", infoB, labelB, canonTooltip));
+  return highlights;
 }
 
 export function renderGameSummary(matches) {
   updateFormTitle();
   if (!state.playerA || (!isSinglePlayerMode() && !state.playerB)) return;
-  elements.record.hidden = !isSinglePlayerMode();
+  const single = isSinglePlayerMode();
+  elements.record.hidden = true;
   const summary = computeSummary(matches);
   renderMatchupResult(summary);
   const total = summary.total || 0;
   const winPct = total ? (summary.winsA / total) * 100 : 0;
   const drawPct = total ? (summary.draws / total) * 100 : 0;
   const lossPct = total ? (summary.winsB / total) * 100 : 0;
-  const opponentLabel = isSinglePlayerMode() ? "Opponents" : state.playerB.name;
 
-  elements.headline.textContent = isSinglePlayerMode() ? state.playerA.name : `${state.playerA.name} vs ${state.playerB.name}`;
-  const dateRangeStr = (summary.firstDate && summary.lastDate)
-    ? ` (${summary.firstDate.date} – ${summary.lastDate.date})`
-    : "";
-  elements.subhead.textContent = total
-    ? `${total} ${total === 1 ? "game" : "games"} across ${summary.tournaments.size} tournaments${isSinglePlayerMode() ? dateRangeStr : ""}.`
-    : "No matches for this filter.";
+  elements.headline.textContent = single
+    ? state.playerA.name
+    : `${state.playerA.name} vs ${state.playerB.name}`;
+  if (total) {
+    setSubhead([
+      plural(total, "game", "games"),
+      plural(summary.tournaments.size, "tournament", "tournaments"),
+      formatSpan(summary.firstDate?.date, summary.lastDate?.date),
+    ]);
+  } else {
+    elements.subhead.textContent = "No matches for this filter.";
+  }
 
-  elements.record.innerHTML = `
-    <div class="muted">W-D-L record</div>
-    <div><strong>${summary.winsA}-${summary.draws}-${summary.winsB}</strong></div>
-    <div class="muted">${formatPercent(winPct)} wins</div>
-  `;
+  const caption = single
+    ? `${formatPercent(winPct)} wins · ${plural(summary.draws, "draw", "draws")}`
+    : plural(summary.draws, "draw", "draws");
+  renderHero(summary, caption);
 
-  elements.summaryGrid.innerHTML = "";
+  elements.summaryGrid.replaceChildren();
   const scoreboard = document.createElement("div");
   scoreboard.className = "h2h-scoreboard";
-
-  scoreboard.appendChild(createScoreHeader());
 
   const rows = document.createElement("div");
   rows.className = "score-rows";
   rows.appendChild(
     createScoreRow("Wins", summary.winsA, summary.winsB, {
-      leftDisplay: `${summary.winsA} (${formatPercent(winPct)})`,
-      rightDisplay: `${summary.winsB} (${formatPercent(lossPct)})`,
+      leftSub: formatPercent(winPct),
+      rightSub: formatPercent(lossPct),
       totalOverride: summary.winsA + summary.winsB + summary.draws,
       middleValue: summary.draws,
-      middleDisplay: `${summary.draws} (${formatPercent(drawPct)})`,
+      middleDisplay: `${formatNumber(summary.draws)} (${formatPercent(drawPct)})`,
       middleLabel: "Draws",
     })
   );
-  
+
   const goalDiff = summary.goalsA - summary.goalsB;
-  const diffSign = goalDiff > 0 ? `+${goalDiff}` : String(goalDiff);
+  const diffSign = goalDiff > 0 ? `+${formatNumber(goalDiff)}` : formatNumber(goalDiff);
   rows.appendChild(
     createScoreRow(
-      isSinglePlayerMode() ? "Goals for / against" : "Total goals scored",
+      single ? "Goals for / against" : "Goals scored",
       summary.goalsA,
       summary.goalsB,
-      isSinglePlayerMode() ? { note: `Goal difference: ${diffSign}` } : {}
+      single ? { note: `Goal difference ${diffSign}` } : {}
     )
   );
-  rows.appendChild(createScoreRow("Tight wins (1 goal)", summary.tightWins, summary.tightLosses));
-  if (isSinglePlayerMode()) {
+  rows.appendChild(createScoreRow("One-goal wins", summary.tightWins, summary.tightLosses));
+  if (single) {
     const otWinPct = summary.otGames ? (summary.otWinsA / summary.otGames) * 100 : 0;
     rows.appendChild(
       createScoreRow("Overtime wins", summary.otWinsA, summary.otWinsB, {
-        note: `OT games: ${summary.otGames} · OT win rate: ${formatPercent(otWinPct)}`,
+        note: `${plural(summary.otGames, "OT game", "OT games")} · ${formatPercent(otWinPct)} OT win rate`,
       })
     );
   } else {
@@ -477,20 +551,15 @@ export function renderGameSummary(matches) {
   }
   scoreboard.appendChild(rows);
 
-  const highlights = document.createElement("div");
-  highlights.className = "scoreboard-highlights";
-  const canonTooltip = getCanonRivalryTooltip(summary.largestWin, summary.largestLoss);
-  const highlightA = createHighlightColumn(state.playerA.name, "a", getHighlightInfo(summary.largestWin, "a"), "Biggest win", canonTooltip);
-  const highlightB = createHighlightColumn(
-    opponentLabel,
-    "b",
-    getHighlightInfo(summary.largestLoss, "b"),
-    isSinglePlayerMode() ? "Biggest loss" : "Biggest win",
-    canonTooltip
+  scoreboard.appendChild(
+    createHighlights(
+      summary,
+      getHighlightInfo(summary.largestWin, "a"),
+      getHighlightInfo(summary.largestLoss, "b"),
+      "Biggest win",
+      single ? "Biggest loss" : "Biggest win"
+    )
   );
-  highlights.appendChild(highlightA);
-  highlights.appendChild(highlightB);
-  scoreboard.appendChild(highlights);
 
   elements.summaryGrid.appendChild(scoreboard);
 }
@@ -498,7 +567,8 @@ export function renderGameSummary(matches) {
 export function renderSeriesSummary(seriesItems) {
   updateFormTitle();
   if (!state.playerA || (!isSinglePlayerMode() && !state.playerB)) return;
-  elements.record.hidden = !isSinglePlayerMode();
+  const single = isSinglePlayerMode();
+  elements.record.hidden = true;
   const summary = computeSeriesSummary(seriesItems);
   renderMatchupResult(summary);
   const total = summary.total || 0;
@@ -507,92 +577,83 @@ export function renderSeriesSummary(seriesItems) {
   const lossPct = total ? (summary.winsB / total) * 100 : 0;
   const avgGoalsA = total ? summary.goalsA / total : 0;
   const avgGoalsB = total ? summary.goalsB / total : 0;
-  const opponentLabel = isSinglePlayerMode() ? "Opponents" : state.playerB.name;
 
-  let firstDateStr = "";
-  let lastDateStr = "";
+  let firstDate = "";
+  let lastDate = "";
   if (seriesItems.length > 0) {
     const sorted = [...seriesItems].sort((a, b) => a.ts - b.ts);
-    firstDateStr = sorted[0].date;
-    lastDateStr = sorted[sorted.length - 1].end_date || sorted[sorted.length - 1].date;
+    firstDate = sorted[0].date;
+    lastDate = sorted[sorted.length - 1].end_date || sorted[sorted.length - 1].date;
   }
-  const dateRangeStr = (firstDateStr && lastDateStr) ? ` (${firstDateStr} – ${lastDateStr})` : "";
 
-  elements.headline.textContent = isSinglePlayerMode() ? state.playerA.name : `${state.playerA.name} vs ${state.playerB.name}`;
-  elements.subhead.textContent = total
-    ? `${total} playoff series, ${summary.totalGames} games across ${summary.tournaments.size} tournaments${isSinglePlayerMode() ? dateRangeStr : ""}.`
-    : "No playoff series for this filter.";
+  elements.headline.textContent = single
+    ? state.playerA.name
+    : `${state.playerA.name} vs ${state.playerB.name}`;
+  if (total) {
+    setSubhead([
+      plural(total, "playoff series", "playoff series"),
+      plural(summary.totalGames, "game", "games"),
+      plural(summary.tournaments.size, "tournament", "tournaments"),
+      formatSpan(firstDate, lastDate),
+    ]);
+  } else {
+    elements.subhead.textContent = "No playoff series for this filter.";
+  }
 
-  elements.record.innerHTML = `
-    <div class="muted">Series W-T-L record</div>
-    <div><strong>${summary.winsA}-${summary.draws}-${summary.winsB}</strong></div>
-    <div class="muted">${formatPercent(winPct)} series wins</div>
-  `;
+  const caption = single
+    ? `${formatPercent(winPct)} series wins · ${plural(summary.draws, "tied series", "tied series")}`
+    : plural(summary.draws, "tied series", "tied series");
+  renderHero(summary, caption);
 
-  elements.summaryGrid.innerHTML = "";
+  elements.summaryGrid.replaceChildren();
   const scoreboard = document.createElement("div");
   scoreboard.className = "h2h-scoreboard";
-
-  scoreboard.appendChild(createScoreHeader());
 
   const rows = document.createElement("div");
   rows.className = "score-rows";
   rows.appendChild(
     createScoreRow("Series wins", summary.winsA, summary.winsB, {
-      leftDisplay: `${summary.winsA} (${formatPercent(winPct)})`,
-      rightDisplay: `${summary.winsB} (${formatPercent(lossPct)})`,
+      leftSub: formatPercent(winPct),
+      rightSub: formatPercent(lossPct),
       totalOverride: summary.winsA + summary.winsB + summary.draws,
       middleValue: summary.draws,
-      middleDisplay: `${summary.draws} (${formatPercent(drawPct)})`,
-      middleLabel: "Tied series",
+      middleDisplay: `${formatNumber(summary.draws)} (${formatPercent(drawPct)})`,
+      middleLabel: "Tied",
     })
   );
   rows.appendChild(
     createScoreRow("Games won in series", summary.gameWinsA, summary.gameWinsB, {
-      note: `Drawn games ${summary.gameDraws}`,
+      note: `${plural(summary.gameDraws, "drawn game", "drawn games")}`,
     })
   );
-  
+
   const goalDiff = summary.goalsA - summary.goalsB;
-  const diffSign = goalDiff > 0 ? `+${goalDiff}` : String(goalDiff);
+  const diffSign = goalDiff > 0 ? `+${formatNumber(goalDiff)}` : formatNumber(goalDiff);
   rows.appendChild(
     createScoreRow(
-      isSinglePlayerMode() ? "Goals for / against in series" : "Total goals in series",
+      single ? "Goals for / against in series" : "Goals in series",
       summary.goalsA,
       summary.goalsB,
-      isSinglePlayerMode() ? { note: `Goal difference: ${diffSign}` } : {}
+      single ? { note: `Goal difference ${diffSign}` } : {}
     )
   );
   rows.appendChild(
-    createScoreRow("Avg goals / series", avgGoalsA, avgGoalsB, {
+    createScoreRow("Avg goals per series", avgGoalsA, avgGoalsB, {
       leftDisplay: avgGoalsA.toFixed(1),
       rightDisplay: avgGoalsB.toFixed(1),
     })
   );
   scoreboard.appendChild(rows);
 
-  const highlights = document.createElement("div");
-  highlights.className = "scoreboard-highlights";
-  const canonTooltip = getCanonRivalryTooltip(summary.largestWin, summary.largestLoss);
-  highlights.appendChild(
-    createHighlightColumn(
-      state.playerA.name,
-      "a",
+  scoreboard.appendChild(
+    createHighlights(
+      summary,
       getSeriesHighlightInfo(summary.largestWin, "a"),
-      isSinglePlayerMode() ? "Biggest series win" : "Largest win",
-      canonTooltip
-    )
-  );
-  highlights.appendChild(
-    createHighlightColumn(
-      opponentLabel,
-      "b",
       getSeriesHighlightInfo(summary.largestLoss, "b"),
-      isSinglePlayerMode() ? "Biggest series loss" : "Largest win",
-      canonTooltip
+      single ? "Biggest series win" : "Largest win",
+      single ? "Biggest series loss" : "Largest win"
     )
   );
-  scoreboard.appendChild(highlights);
 
   elements.summaryGrid.appendChild(scoreboard);
 }
