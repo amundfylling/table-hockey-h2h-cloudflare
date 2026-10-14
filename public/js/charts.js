@@ -145,7 +145,8 @@ export function renderRecordChart(matches) {
   const halfHeight = midY - padTop - 2;
 
   // One bar per result while each bar keeps ~2.5px plus a 1px gap; beyond that,
-  // consecutive results share a bar whose height is that bucket's win share.
+  // consecutive results share a bar. Bar height is the winning margin (goals, or
+  // games won in series mode); a shared bar shows its average margin per result.
   const maxBars = Math.max(1, Math.floor(plotWidth / 3.5));
   const perBar = Math.max(1, Math.ceil(ordered.length / maxBars));
   const buckets = [];
@@ -154,11 +155,18 @@ export function renderRecordChart(matches) {
   let draws = 0;
   for (let start = 0; start < ordered.length; start += perBar) {
     const items = ordered.slice(start, start + perBar);
-    const bucket = { start, end: start + items.length - 1, a: 0, b: 0, d: 0 };
+    const bucket = { start, end: start + items.length - 1, a: 0, b: 0, d: 0, marginA: 0, marginB: 0 };
     items.forEach((match) => {
-      if (match.result === "A") bucket.a += 1;
-      else if (match.result === "B") bucket.b += 1;
-      else bucket.d += 1;
+      const margin = match.type === "series"
+        ? Math.abs((match.game_wins_a || 0) - (match.game_wins_b || 0))
+        : Math.abs((match.goals_a || 0) - (match.goals_b || 0));
+      if (match.result === "A") {
+        bucket.a += 1;
+        bucket.marginA += Math.max(1, margin);
+      } else if (match.result === "B") {
+        bucket.b += 1;
+        bucket.marginB += Math.max(1, margin);
+      } else bucket.d += 1;
     });
     wins += bucket.a;
     losses += bucket.b;
@@ -166,6 +174,14 @@ export function renderRecordChart(matches) {
     buckets.push({ ...bucket, wins, losses, draws });
   }
 
+  const maxMargin = Math.max(
+    1,
+    ...buckets.map((bucket) => {
+      const size = bucket.a + bucket.b + bucket.d;
+      return Math.max(bucket.marginA, bucket.marginB) / size;
+    })
+  );
+  const marginHeight = (value) => (value > 0 ? Math.max(3, (value / maxMargin) * halfHeight) : 0);
   const slot = plotWidth / buckets.length;
   const gap = slot >= 3 ? Math.min(2, Math.max(1, slot * 0.2)) : 0;
   const barWidth = Math.max(0.5, slot - gap);
@@ -174,8 +190,8 @@ export function renderRecordChart(matches) {
     .map((bucket, index) => {
       const size = bucket.a + bucket.b + bucket.d;
       const x = xAt(index) + gap / 2;
-      const upHeight = (bucket.a / size) * halfHeight;
-      const downHeight = (bucket.b / size) * halfHeight;
+      const upHeight = marginHeight(bucket.marginA / size);
+      const downHeight = marginHeight(bucket.marginB / size);
       let markup = "";
       if (upHeight > 0) {
         markup += `<rect x="${x}" y="${midY - 1 - upHeight}" width="${barWidth}" height="${upHeight}" fill="var(--teal)" />`;
@@ -216,8 +232,12 @@ export function renderRecordChart(matches) {
   const opponentWinsLabel = isSinglePlayerMode() || !state.playerB?.name
     ? "Losses"
     : `${state.playerB.name} wins`;
-  const bucketNote = perBar > 1 ? `Each bar is ${perBar} ${units}` : `Oldest left, newest right`;
-  const chartDescription = `${ordered.length} ${units} in date order. Bars above the line are wins for ${state.playerA.name} (${wins}), bars below are ${isSinglePlayerMode() ? "losses" : `wins for ${state.playerB?.name}`} (${losses}), with ${draws} draws. Use the Left and Right arrow keys to inspect each bar.`;
+  const marginUnit = isSeries ? "games" : "goals";
+  const tallest = Number.isInteger(maxMargin) ? maxMargin : maxMargin.toFixed(1);
+  const bucketNote = perBar > 1
+    ? `Each bar is ${perBar} ${units}, height = average margin (tallest ${tallest} ${marginUnit})`
+    : `Height = winning margin (tallest ${tallest} ${marginUnit})`;
+  const chartDescription = `${ordered.length} ${units} in date order. Bars above the line are wins for ${state.playerA.name} (${wins}), bars below are ${isSinglePlayerMode() ? "losses" : `wins for ${state.playerB?.name}`} (${losses}), with ${draws} draws. Taller bars are bigger winning margins. Use the Left and Right arrow keys to inspect each bar.`;
 
   elements.recordChart.innerHTML = `
     <div class="chart-legend">
