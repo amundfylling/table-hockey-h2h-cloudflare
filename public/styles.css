@@ -4269,7 +4269,8 @@ body[data-theme="dark"] .chip.win { color: #0F1113; }
   border-radius: 8px;
   background-color: var(--surface);
   padding: 0 36px 0 12px;
-  font-size: 14px;
+  /* 1rem minimum: iOS Safari zooms into smaller form controls. */
+  font-size: 1rem;
   color: var(--ink);
   cursor: pointer;
   appearance: none;
@@ -4674,7 +4675,7 @@ a.g:hover {
 }
 
 .g .wa { color: var(--a); }
-.g .wb { color: var(--b); }
+.g .wb { color: var(--b-text); }
 .g small {
   font-size: 11px;
   color: var(--ink-3);

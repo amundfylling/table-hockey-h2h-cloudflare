@@ -55,6 +55,14 @@ test("tournaments are grouped newest first with a winner each", () => {
   assert.deepEqual(groups.map((g) => [g.name, g.games.length, g.winner]), [["New", 2, "b"], ["Old", 1, "a"]]);
 });
 
+test("name-only tournaments with the same name stay apart across years", () => {
+  const groups = groupTournaments([
+    { tournament_key: "name:Annual Cup", tournament_name: "Annual Cup", date: "2025-05-01", ts: 1, result: "A", goals_a: 3, goals_b: 1 },
+    { tournament_key: "name:Annual Cup", tournament_name: "Annual Cup", date: "2026-05-01", ts: 2, result: "B", goals_a: 1, goals_b: 3 },
+  ]);
+  assert.deepEqual(groups.map((g) => [g.date, g.winner]), [["2026-05-01", "b"], ["2025-05-01", "a"]]);
+});
+
 test("scoreline grid caps high scores into the last bucket", () => {
   const grid = scorelineGrid([
     { goals_a: 9, goals_b: 1, result: "A" },

@@ -69,10 +69,19 @@ function winnerOf(winsA, winsB) {
 }
 
 // One entry per tournament, newest first, with the games in playing order.
+// One event per key. Name-only tournaments are split by source id or year so
+// a recurring cup is not merged across seasons.
+function tournamentKey(game) {
+  if (game.tournament_id != null) return `id:${game.tournament_id}`;
+  if (game.source_tournament_id) return `source:${game.source || ""}:${game.source_tournament_id}`;
+  const name = game.tournament_key || `name:${game.tournament_name}`;
+  return `${name}:year:${game.year || String(game.date || "").slice(0, 4)}`;
+}
+
 export function groupTournaments(games) {
   const groups = new Map();
   getChronologicalItems(games).forEach((game) => {
-    const key = game.tournament_key || `name:${game.tournament_name}`;
+    const key = tournamentKey(game);
     let group = groups.get(key);
     if (!group) {
       group = {
