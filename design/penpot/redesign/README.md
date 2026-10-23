@@ -28,14 +28,17 @@ player 6344) and drawn on the "Redesign" page of the Penpot file.
 | --- | --- | --- | --- |
 | 0 Desktop / Home | s0 | 0, 0 | yes |
 | 1 Desktop / Matchup | s1 | 1600, 0 | yes |
-| 2 Desktop / Matchup (dark) | s2 | 3200, 0 | not yet |
+| 2 Desktop / Matchup (dark) | s2 | 3200, 0 | yes |
 | 3 Desktop / Player | s3 | 4800, 0 | yes |
 | 4 Mobile / Home | s4 | 0, 2900 | yes |
 | 5 Mobile / Matchup | s5 | 550, 2900 | yes |
 | 6 Mobile / Player | s6 | 1100, 2900 | yes |
 
-To finish: build screen 2 from `penpot-data/s2.b64` (send it in ~8,000
-character pieces into `storage.h2h.rdBuf[2]`), then export each board and
-check it. Cyrillic tournament names fall back to a serif font in Penpot
-because Schibsted Grotesk has no Cyrillic; swapping those rows to Inter
-Tight would fix it.
+All seven boards are built and checked. Hand fixes made in Penpot after the
+build: Cyrillic tournament names use Golos Text (Schibsted Grotesk has no
+Cyrillic), the mobile tournament names were rejoined into one wrapping text
+each, and the desktop player KPI row got its vertical dividers (the extractor
+only keeps bottom borders when borders differ per side).
+
+If the Penpot plugin reloads, `storage.h2h` is lost: re-run the builder
+helpers plus `rdUnpack`/`rdStart` before building again.

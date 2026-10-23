@@ -142,16 +142,19 @@ function dump(maxRows) {
         // cannot be one text box, so it is cut into one single-line item per rendered line.
         const mixed = cs.display === 'inline' || [...el.childNodes].some(k => k !== n && (k.nodeType === 1 || k.textContent.trim()));
         if (lines > 1 && mixed) {
-          const byLine = new Map(), re = /\S+/g; let m;
-          while ((m = re.exec(raw))) {
-            const wr = document.createRange(); wr.setStart(n, m.index); wr.setEnd(n, m.index + m[0].length);
-            const q = wr.getBoundingClientRect(); const key = Math.round(q.top);
-            const ln = byLine.get(key) || { words: [], l: q.left, t: q.top, r: q.right, b: q.bottom };
-            ln.words.push(m[0]); ln.l = Math.min(ln.l, q.left); ln.r = Math.max(ln.r, q.right); ln.b = Math.max(ln.b, q.bottom); ln.t = Math.min(ln.t, q.top);
+          // Grouped per character, so a word that breaks at a hyphen lands on both lines.
+          const byLine = new Map();
+          for (let i = 0; i < raw.length; i++) {
+            const cr = document.createRange(); cr.setStart(n, i); cr.setEnd(n, i + 1);
+            const q = cr.getBoundingClientRect(); if (!q.width && !q.height) continue;
+            const key = Math.round(q.top);
+            const ln = byLine.get(key) || { chars: '', l: q.left, t: q.top, r: q.right, b: q.bottom };
+            ln.chars += raw[i]; if (q.width) { ln.l = Math.min(ln.l, q.left); ln.r = Math.max(ln.r, q.right); } ln.b = Math.max(ln.b, q.bottom); ln.t = Math.min(ln.t, q.top);
             byLine.set(key, ln);
           }
           for (const ln of byLine.values()) {
-            const text = ln.words.join(' ');
+            const text = ln.chars.replace(/\s+/g, ' ').trim();
+            if (!text) continue;
             push({ k: 'text', sec: secOf(el), name: text.slice(0, 40), text, x: ln.l + sx, y: ln.t + sy, w: ln.r - ln.l, h: ln.b - ln.t, oneLine: true, ff: cs.fontFamily.split(',')[0].replace(/['"]/g, '').trim(), fs: parseFloat(cs.fontSize), fw: cs.fontWeight, color: rgbHex(cs.color), ls: cs.letterSpacing, lh: cs.lineHeight, align: 'left', fstyle: cs.fontStyle });
           }
           continue;
