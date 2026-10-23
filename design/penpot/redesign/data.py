@@ -22,6 +22,10 @@ def matchup():
         y[r] += 1; y['gf'] += x['goals_for_player']; y['ga'] += x['goals_for_opponent']
     peak = max(range(len(lead)), key=lambda i: lead[i])
     grid = collections.Counter((min(x['goals_for_player'], 7), min(x['goals_for_opponent'], 7)) for x in m)
+    # Capped cells (7+) can hold wins, draws and losses; keep the split to colour them honestly.
+    gridres = collections.defaultdict(collections.Counter)
+    for x in m:
+        gridres[(min(x['goals_for_player'], 7), min(x['goals_for_opponent'], 7))][res(x)] += 1
     margins = [x['goals_for_player'] - x['goals_for_opponent'] for x in m]
     def streak(t):
         best = run = 0
@@ -38,7 +42,13 @@ def matchup():
     for x in m:
         tours.setdefault(x['tournament_id'], {'name': x['tournament_name'], 'date': x['date'], 'games': []})['games'].append(x)
     since = [sum(1 for x in m if x['date'] >= '2024' and res(x) == t) for t in 'WL']
-    return dict(s=s, lead=lead, peak=peak, peak_date=m[peak]['date'], years=years, grid=grid, margins=margins,
+    after = [sum(1 for x in m[peak + 1:] if res(x) == t) for t in 'WL']
+    tw = [0, 0, 0]
+    for t in tours.values():
+        gw = sum(res(g) == 'W' for g in t['games']); gl = sum(res(g) == 'L' for g in t['games'])
+        t['winner'] = 'a' if gw > gl else 'b' if gl > gw else 'd'
+        tw['abd'.index(t['winner'])] += 1
+    return dict(s=s, lead=lead, peak=peak, peak_date=m[peak]['date'], years=years, grid=grid, gridres=gridres, after_peak=after, tour_wins=tw, margins=margins,
                 streak=[streak('W'), streak('L')], series=[sum(a > b for a, b in ser.values()), sum(b > a for a, b in ser.values())],
                 one=one, ot=ot, tours=list(tours.values()), since2024=since, matches=m)
 
