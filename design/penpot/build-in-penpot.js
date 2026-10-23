@@ -330,6 +330,7 @@ h2h.buildDesignSystem = async () => {
     const t = penpot.createText(str);
     h2h.applyFont(t, family, weight);
     t.fontSize = String(size);
+    t.lineHeight = "1.2";
     t.fills = [{ fillColor: color, fillOpacity: 1 }];
     Object.assign(t, extra);
     t.growType = "auto-width";
