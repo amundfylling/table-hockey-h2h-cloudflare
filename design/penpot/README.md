@@ -20,4 +20,7 @@ Scripts that rebuild the live site as a Penpot design file through the
    against a small stand-in for the Penpot API and renders the result to PNG,
    to check the output without a Penpot session.
 
+The single-player pages (`?p1=` only) are extracted too. Range inputs are
+rebuilt as a track and thumb because their pseudo-elements are not in the DOM.
+
 Long match lists are cut to a dozen rows so the artboards stay readable.

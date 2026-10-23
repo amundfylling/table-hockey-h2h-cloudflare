@@ -206,6 +206,92 @@ h2h.makeSvg = (it, ox, oy) => {
   return g;
 };
 
+// Plugin sandboxes lack fetch and DecompressionStream, so screen data can be
+// pasted into execute_code as base64 raw DEFLATE and unpacked here.
+h2h.inflate = (src) => {
+  let pos = 0, bit = 0;
+  const out = [];
+  const bits = (n) => { let v = 0; for (let i = 0; i < n; i++) { v |= ((src[pos] >> bit) & 1) << i; if (++bit === 8) { bit = 0; pos++; } } return v; };
+  const build = (lens) => {
+    const counts = new Array(16).fill(0), offs = new Array(16).fill(0), syms = [];
+    for (const l of lens) counts[l]++;
+    counts[0] = 0;
+    for (let i = 1; i < 16; i++) offs[i] = offs[i - 1] + counts[i - 1];
+    lens.forEach((l, s) => { if (l) syms[offs[l]++] = s; });
+    return { counts, syms };
+  };
+  const decode = (t) => {
+    let code = 0, first = 0, index = 0;
+    for (let len = 1; len < 16; len++) {
+      code |= bits(1);
+      const c = t.counts[len];
+      if (code - c < first) return t.syms[index + code - first];
+      index += c; first += c; first <<= 1; code <<= 1;
+    }
+    throw new Error("bad code");
+  };
+  const LB = [3,4,5,6,7,8,9,10,11,13,15,17,19,23,27,31,35,43,51,59,67,83,99,115,131,163,195,227,258];
+  const LE = [0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,0];
+  const DB = [1,2,3,4,5,7,9,13,17,25,33,49,65,97,129,193,257,385,513,769,1025,1537,2049,3073,4097,6145,8193,12289,16385,24577];
+  const DE = [0,0,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12,13,13];
+  let last;
+  do {
+    last = bits(1);
+    const type = bits(2);
+    if (type === 0) {
+      if (bit) { bit = 0; pos++; }
+      const len = src[pos] | (src[pos + 1] << 8); pos += 4;
+      for (let i = 0; i < len; i++) out.push(src[pos++]);
+      continue;
+    }
+    let lt, dt;
+    if (type === 1) {
+      const l = []; for (let i = 0; i < 288; i++) l.push(i < 144 ? 8 : i < 256 ? 9 : i < 280 ? 7 : 8);
+      lt = build(l); dt = build(new Array(30).fill(5));
+    } else {
+      const hl = bits(5) + 257, hd = bits(5) + 1, hc = bits(4) + 4;
+      const ord = [16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15], cl = new Array(19).fill(0);
+      for (let i = 0; i < hc; i++) cl[ord[i]] = bits(3);
+      const ct = build(cl), lens = [];
+      while (lens.length < hl + hd) {
+        const s = decode(ct);
+        if (s < 16) lens.push(s);
+        else if (s === 16) { const p = lens[lens.length - 1], r = 3 + bits(2); for (let i = 0; i < r; i++) lens.push(p); }
+        else { const r = s === 17 ? 3 + bits(3) : 11 + bits(7); for (let i = 0; i < r; i++) lens.push(0); }
+      }
+      lt = build(lens.slice(0, hl)); dt = build(lens.slice(hl));
+    }
+    for (;;) {
+      const s = decode(lt);
+      if (s < 256) out.push(s);
+      else if (s === 256) break;
+      else {
+        const len = LB[s - 257] + bits(LE[s - 257]), ds = decode(dt), d = DB[ds] + bits(DE[ds]);
+        for (let i = 0; i < len; i++) out.push(out[out.length - d]);
+      }
+    }
+  } while (!last);
+  return out;
+};
+h2h.utf8 = (b) => { let s = "", i = 0; while (i < b.length) { const c = b[i++]; if (c < 128) s += String.fromCharCode(c); else if (c < 224) s += String.fromCharCode(((c & 31) << 6) | (b[i++] & 63)); else if (c < 240) s += String.fromCharCode(((c & 15) << 12) | ((b[i++] & 63) << 6) | (b[i++] & 63)); else { const cp = (((c & 7) << 18) | ((b[i++] & 63) << 12) | ((b[i++] & 63) << 6) | (b[i++] & 63)) - 0x10000; s += String.fromCharCode(0xd800 + (cp >> 10), 0xdc00 + (cp & 1023)); } } return s; };
+// Screens can also arrive inline as base64 raw-deflate of [[section, items], ...] with Manrope / muted-text defaults and svgRef pointers into screen 1.
+h2h.unpackScreen = (b64, meta) => {
+  const bin = atob(b64), bytes = new Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  const secs = JSON.parse(h2h.utf8(h2h.inflate(bytes)));
+  const ref = h2h.screens[1].items, items = [];
+  for (const [sec, list] of secs) for (const it of list) {
+    it.sec = sec;
+    if (it.svgRef != null) { it.svg = ref[it.svgRef].svg; delete it.svgRef; }
+    if (it.k === "text") {
+      for (const [k, v] of [["ff", "Manrope"], ["color", "#4A5568"]]) { if (it[k] === undefined) it[k] = v; else if (it[k] === null) delete it[k]; }
+      if (it.ml) delete it.ml; else it.oneLine = 1;
+    }
+    items.push(it);
+  }
+  return { ...meta, items };
+};
+
 // A screen with the same geometry as another (dark against light), given as per-item changes.
 h2h.applyDiff = (baseIndex, { top, diff }) => {
   const base = h2h.screens[baseIndex];
@@ -224,7 +310,7 @@ h2h.applyDiff = (baseIndex, { top, diff }) => {
 // the few places where dark mode changes more than a colour. Checked to
 // reproduce the extracted dark screen exactly (see darkcheck.mjs).
 h2h.darkFrom = (light, top) => {
-  const M = { "#182025": "#F3F5F7", "#4A5568": "#A5B0BB", "#5c6770": "#a5b0bb", "#246857": "#7ED9C6", "#AD3F24": "#F08B6F", "#2A7564": "#5DC2AE", "#C44B2D": "#F08B6F", "#FFFDFA": "#1D242C", "#F0EBE3": "#151A1F" };
+  const M = { "#182025": "#F3F5F7", "#4A5568": "#A5B0BB", "#5c6770": "#a5b0bb", "#246857": "#7ED9C6", "#AD3F24": "#F08B6F", "#2A7564": "#5DC2AE", "#C44B2D": "#F08B6F", "#FFFDFA": "#1D242C", "#F0EBE3": "#151A1F", "#F6F2EC": "#0F1215" };
   const swap = (v) => JSON.parse(JSON.stringify(v).replace(/#[0-9A-Fa-f]{6}/g, (h) => M[h] ?? h));
   const items = light.items.map((it, i) => {
     if (i === 2) return it; // logo glyph stays white

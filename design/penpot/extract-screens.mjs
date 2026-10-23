@@ -9,7 +9,12 @@ const screens = [
   ['Desktop / Matchup (dark)', 1440, 900, 'dark', '?p1=6344&p2=10543'],
   ['Mobile / Home', 390, 844, 'light', ''],
   ['Mobile / Matchup', 390, 844, 'light', '?p1=6344&p2=10543'],
+  ['Desktop / Player', 1440, 900, 'light', '?p1=6344'],
+  ['Desktop / Player (dark)', 1440, 900, 'dark', '?p1=6344'],
+  ['Mobile / Player', 390, 844, 'light', '?p1=6344'],
 ];
+// Optional third argument: a regex picking which screens to extract.
+const only = process.argv[3] ? new RegExp(process.argv[3]) : null;
 const MAX_ROWS = { desktop: 12, mobile: 10 };
 
 function dump(maxRows) {
@@ -58,6 +63,14 @@ function dump(maxRows) {
     const cut = (r) => ({ x: Math.max(r.left, clip.l) + sx, y: Math.max(r.top, clip.t) + sy, w: Math.min(r.right, clip.r) - Math.max(r.left, clip.l), h: Math.min(r.bottom, clip.b) - Math.max(r.top, clip.t) });
     const box = cut(b);
     if (box.w <= 0 || box.h <= 0) return;
+    if (el.type === 'range') {
+      // Range inputs draw their track and thumb from pseudo-elements, so rebuild them from the theme colours.
+      const v = (n) => { const probe = document.createElement('i'); probe.style.color = `var(${n})`; el.parentElement.appendChild(probe); const c = rgbHex(getComputedStyle(probe).color); probe.remove(); return c; };
+      const t = (+el.value - +el.min) / (+el.max - +el.min), th = 16;
+      push({ k: 'box', sec: secOf(el), name: label(el) + ' track', x: box.x, y: box.y + box.h / 2 - 2, w: box.w, h: 4, fill: v('--border'), radius: 2 });
+      push({ k: 'box', sec: secOf(el), name: label(el) + ' thumb', x: box.x + (box.w - th) * t, y: box.y + box.h / 2 - th / 2, w: th, h: th, fill: v('--teal'), radius: th / 2, stroke: { ...v('--bg'), w: 2 }, shadow: '0px 1px 3px 0px rgba(0, 0, 0, 0.2)' });
+      return;
+    }
     if (el.tagName.toLowerCase() === 'svg') {
       const clone = el.cloneNode(true);
       const src = [el, ...el.querySelectorAll('*')], dst = [clone, ...clone.querySelectorAll('*')];
@@ -148,7 +161,7 @@ function dump(maxRows) {
 
 const b = await chromium.launch();
 const result = [];
-for (const [name, w, h, scheme, q] of screens) {
+for (const [name, w, h, scheme, q] of screens.filter(([n]) => !only || only.test(n))) {
   const ctx = await b.newContext({ viewport: { width: w, height: h }, colorScheme: scheme });
   const p = await ctx.newPage();
   await p.goto('http://localhost:8000/' + q, { waitUntil: 'networkidle' });

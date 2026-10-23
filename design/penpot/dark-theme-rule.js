@@ -1,7 +1,7 @@
 // Derives the dark theme of a screen from the light one: a palette swap plus
 // the few places where dark mode changes more than a colour.
 (light, top) => {
-  const M = { "#182025": "#F3F5F7", "#4A5568": "#A5B0BB", "#5c6770": "#a5b0bb", "#246857": "#7ED9C6", "#AD3F24": "#F08B6F", "#2A7564": "#5DC2AE", "#C44B2D": "#F08B6F", "#FFFDFA": "#1D242C", "#F0EBE3": "#151A1F" };
+  const M = { "#182025": "#F3F5F7", "#4A5568": "#A5B0BB", "#5c6770": "#a5b0bb", "#246857": "#7ED9C6", "#AD3F24": "#F08B6F", "#2A7564": "#5DC2AE", "#C44B2D": "#F08B6F", "#FFFDFA": "#1D242C", "#F0EBE3": "#151A1F", "#F6F2EC": "#0F1215" };
   const swap = (v) => JSON.parse(JSON.stringify(v).replace(/#[0-9A-Fa-f]{6}/g, (h) => M[h] ?? h));
   const items = light.items.map((it, i) => {
     if (i === 2) return it; // logo glyph stays white
