@@ -47,8 +47,8 @@ python -m unittest discover -s tests -v
 * **Python**: Follows PEP 8 coding standards. Imports are sorted. Pandas data operations should
   favor vectorization over slow iterative row loops.
 * **Frontend**: Vanilla ES6 JavaScript modules and vanilla CSS. Mobile-first design principles
-  using HSL-tailored colors, Manrope typography for data and controls, and Fraunces for display
-  headings as defined in `DESIGN.md`.
+  using the colour tokens in `public/styles.css`, Schibsted Grotesk (Golos Text for Cyrillic) and
+  Barlow Condensed numerals as defined in `DESIGN.md`.
 * **Formatting**: Line lengths should be wrapped to approximately 100 characters where possible.
 * **Commit-message template**:
   > TODO: A standard commit-message template is not configured in this repository.

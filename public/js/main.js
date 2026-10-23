@@ -52,8 +52,10 @@ import {
   addRecent,
   handleRecentClick,
   initRecent,
-  renderFeatured,
 } from "./recent.js";
+import { renderHome } from "./home.js";
+import { initNav, setFinderOpen, updateNav } from "./nav.js";
+import { renderTournaments } from "./tournaments.js";
 import {
   renderForm,
   resetFormPresentation,
@@ -66,6 +68,7 @@ import {
 } from "./table.js";
 import { setTheme, toggleTheme, initInfoPopovers } from "./theme.js";
 import { handleShareImage } from "./share.js";
+import { getAliasGroup } from "./players.js";
 
 // Global functions that were in app.js
 let compareRequestToken = 0;
@@ -82,6 +85,8 @@ export function setStatus(message) {
 
 function setHomeVisible(visible) {
   document.body.dataset.home = visible ? "true" : "false";
+  if (visible) setFinderOpen(false, null);
+  updateNav();
 }
 
 export function setLoading(isLoading) {
@@ -219,6 +224,7 @@ export function updateView() {
   renderSummary(state.filteredMatches);
   renderForm(state.filteredMatches, state.stageMatches);
   renderCharts(state.filteredMatches);
+  if (!isSinglePlayerMode()) renderTournaments(state.filteredMatches);
   renderTable(state.filteredMatches);
 
   if (isSinglePlayerMode()) {
@@ -230,6 +236,7 @@ export function updateView() {
 
   updateFilterCount();
   updateUrl();
+  updateNav();
 }
 
 export function setDataControlsEnabled(enabled) {
@@ -381,6 +388,7 @@ export async function handleCompare(options = {}) {
   const requestSignal = activeCompareController.signal;
 
   setLoading(true);
+  setFinderOpen(false, null);
   resetFormPresentation();
   setStatus(isSingle ? "Loading player stats..." : "Loading matchup...");
   state.baseMatches = [];
@@ -559,21 +567,28 @@ export function handleCopyLink() {
   const btn = elements.copyLinkBtn;
   const textEl = btn.querySelector("span") || btn;
   const originalText = textEl.textContent;
+
+  // Phones get the system share sheet; everything else copies the link.
+  const touch = window.matchMedia("(pointer: coarse)").matches;
+  if (touch && typeof navigator.share === "function") {
+    const title = isSinglePlayerMode()
+      ? `${state.playerA?.name} · Table Hockey H2H`
+      : `${state.playerA?.name} vs ${state.playerB?.name} · Table Hockey H2H`;
+    navigator.share({ title, url: link }).catch(() => {});
+    return;
+  }
+
   if (navigator.clipboard) {
     copyLinkBusy = true;
     btn.disabled = true;
     btn.setAttribute("aria-busy", "true");
     navigator.clipboard.writeText(link).then(
       () => {
-        textEl.textContent = "✓ Copied!";
-        btn.style.borderColor = "var(--teal)";
-        btn.style.color = "var(--teal)";
-        btn.style.background = "var(--teal-soft)";
+        textEl.textContent = "Copied";
+        btn.classList.add("is-done");
         setTimeout(() => {
           textEl.textContent = originalText;
-          btn.style.borderColor = "";
-          btn.style.color = "";
-          btn.style.background = "";
+          btn.classList.remove("is-done");
           btn.removeAttribute("aria-busy");
           copyLinkBusy = false;
           updateSelectionControls();
@@ -599,25 +614,15 @@ export async function renderDataFreshness() {
   if (!meta || !meta.generated_at) return;
   const date = new Date(meta.generated_at);
   if (Number.isNaN(date.getTime())) return;
-  el.textContent = `Data updated ${date.toLocaleDateString("en-GB", { year: "numeric", month: "short", day: "numeric" })}`;
+  el.textContent = `Updated ${date.toLocaleDateString("en-GB", { year: "numeric", month: "short", day: "numeric" })}`;
   el.hidden = false;
   const stats = document.getElementById("home-stats");
   if (stats && Number(meta.players) && Number(meta.matches)) {
-    stats.replaceChildren(
-      ...[
-        [formatNumber(meta.players), "players"],
-        [formatNumber(meta.matches), "matches"],
-        [date.toLocaleDateString("en-GB", { day: "numeric", month: "short" }), "last update"],
-      ].map(([value, label]) => {
-        const item = document.createElement("span");
-        item.className = "home-stat";
-        const strong = document.createElement("strong");
-        strong.textContent = value;
-        item.append(strong, ` ${label}`);
-        return item;
-      })
-    );
+    stats.textContent = `${formatNumber(meta.players)} players · ${formatNumber(meta.matches)} matches`;
     stats.hidden = false;
+    const title = document.getElementById("home-title");
+    if (title) title.textContent = `${formatNumber(meta.matches)} games. Every rivalry, settled.`;
+    elements.playerA.placeholder = `Search ${formatNumber(meta.players)} players`;
   }
 }
 
@@ -772,6 +777,65 @@ async function onPlayerASubmitted() {
   await onPlayerASelected(selection);
 }
 
+function goHome() {
+  cancelOpponentLoading();
+  clearInputPlayer(elements.playerA, elements.listA);
+  clearInputPlayer(elements.playerB, elements.listB);
+  state.opponentsOfA = new Map();
+  elements.playerB.disabled = true;
+  elements.playerB.placeholder = "Pick a player first";
+  resetCurrentResults({ clearStoredSelection: true, clearUrl: true, message: "" });
+  setHomeVisible(true);
+}
+
+// Opens a view asked for by a link, breadcrumb, chart or list elsewhere.
+async function openView(detail) {
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (detail.action === "home" || detail.action === "rivalries") {
+    goHome();
+    const target = detail.action === "rivalries" ? document.getElementById("rivalries") : null;
+    if (target) target.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "start" });
+    else window.scrollTo({ top: 0 });
+    return;
+  }
+  if (detail.action === "players") {
+    setFinderOpen(true, elements.playerA);
+    return;
+  }
+  if (detail.action === "compare-with") {
+    elements.playerB.disabled = false;
+    setFinderOpen(true, elements.playerB);
+    return;
+  }
+
+  const p2 = Number(detail.p2);
+  if (!detail.p1 && Number.isInteger(p2) && state.playersById.has(p2)) {
+    // Keep the current player, pick an opponent.
+    elements.playerB.disabled = false;
+    setInputPlayer(elements.playerB, { ...getPlayerById(p2), ids: getAliasGroup(p2) });
+    window.scrollTo({ top: 0 });
+    await handleCompare({ scrollToResults: false });
+    return;
+  }
+
+  const p1 = Number(detail.p1);
+  if (!Number.isInteger(p1) || !state.playersById.has(p1)) return;
+  const idsA = detail.p1Ids?.length ? detail.p1Ids : getAliasGroup(p1);
+  cancelOpponentLoading();
+  setInputPlayer(elements.playerA, { ...getPlayerById(p1), ids: idsA });
+  window.scrollTo({ top: 0 });
+  if (Number.isInteger(p2) && state.playersById.has(p2)) {
+    elements.playerB.disabled = false;
+    setInputPlayer(elements.playerB, { ...getPlayerById(p2), ids: getAliasGroup(p2) });
+    await Promise.all([
+      handleCompare({ scrollToResults: false }),
+      loadOpponentsForPlayer(p1, idsA, activeCompareController?.signal),
+    ]);
+    return;
+  }
+  await onPlayerASelected({ ...getPlayerById(p1), ids: idsA });
+}
+
 export async function init() {
   const savedTheme = safeStorageGet(STORAGE_KEYS.theme, null);
   const preferredTheme = savedTheme === "dark" || savedTheme === "light"
@@ -816,7 +880,7 @@ export async function init() {
         clearInputPlayer(elements.playerB, elements.listB);
         state.opponentsOfA = new Map();
         elements.playerB.disabled = true;
-        elements.playerB.placeholder = "Select Player 1 first";
+        elements.playerB.placeholder = "Pick a player first";
         resetCurrentResults({
           clearStoredSelection: true,
           clearUrl: true,
@@ -876,7 +940,10 @@ export async function init() {
   initModeToggle();
   initGoalsModeToggle();
   initScoreBug();
-  if (elements.featuredList) elements.featuredList.addEventListener("click", handleRecentClick);
+  initNav();
+  document.addEventListener("h2h:open", (event) => {
+    openView(event.detail || {}).catch((err) => console.error(err));
+  });
 
   // Phones get shorter pages; desktop keeps the 50-row default.
   if (elements.pageSize && window.matchMedia("(max-width: 600px)").matches) {
@@ -891,7 +958,7 @@ export async function init() {
 
   await loadPlayers();
   renderRecent();
-  renderFeatured();
+  renderHome();
   renderDataFreshness().catch((err) => console.warn("Could not load data freshness:", err));
 
   const urlSelection = getUrlSelection();

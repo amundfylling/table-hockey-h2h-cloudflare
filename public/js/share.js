@@ -69,13 +69,13 @@ function drawTruncatedText(ctx, text, x, y, maxWidth, font, color, textAlign = "
 // Draw player name with auto-scaling to prevent overlapping
 function drawPlayerName(ctx, name, x, y, isRightAligned, colors, dryRun = false) {
   let fontSize = 42; // Increased from 38px
-  ctx.font = `bold ${fontSize}px Fraunces`;
+  ctx.font = `bold ${fontSize}px "Barlow Condensed", "Schibsted Grotesk", sans-serif`;
   ctx.textAlign = isRightAligned ? "right" : "left";
   
   // Max width: 420px
   while (ctx.measureText(name).width > 420 && fontSize > 20) {
     fontSize -= 2;
-    ctx.font = `bold ${fontSize}px Fraunces`;
+    ctx.font = `bold ${fontSize}px "Barlow Condensed", "Schibsted Grotesk", sans-serif`;
   }
   
   const textWidth = ctx.measureText(name).width;
@@ -98,17 +98,17 @@ async function waitForShareFonts(timeoutMs = 4000) {
       (async () => {
         await document.fonts.ready;
         await Promise.all([
-          document.fonts.load("bold 42px Fraunces"),
-          document.fonts.load("bold 22px Manrope"),
-          document.fonts.load("bold 20px Manrope"),
-          document.fonts.load("bold 16px Manrope"),
-          document.fonts.load("bold 15px Manrope"),
-          document.fonts.load("bold 14px Manrope"),
-          document.fonts.load("bold 24px Manrope"),
-          document.fonts.load("bold 32px Manrope"),
-          document.fonts.load("bold 60px Fraunces"),
-          document.fonts.load("bold 12px Manrope"),
-          document.fonts.load("bold 13px Manrope"),
+          document.fonts.load("bold 42px \"Barlow Condensed\""),
+          document.fonts.load("bold 22px \"Schibsted Grotesk\", \"Golos Text\", sans-serif"),
+          document.fonts.load("bold 20px \"Schibsted Grotesk\", \"Golos Text\", sans-serif"),
+          document.fonts.load("bold 16px \"Schibsted Grotesk\", \"Golos Text\", sans-serif"),
+          document.fonts.load("bold 15px \"Schibsted Grotesk\", \"Golos Text\", sans-serif"),
+          document.fonts.load("bold 14px \"Schibsted Grotesk\", \"Golos Text\", sans-serif"),
+          document.fonts.load("bold 24px \"Schibsted Grotesk\", \"Golos Text\", sans-serif"),
+          document.fonts.load("bold 32px \"Schibsted Grotesk\", \"Golos Text\", sans-serif"),
+          document.fonts.load("bold 60px \"Barlow Condensed\""),
+          document.fonts.load("bold 12px \"Schibsted Grotesk\", \"Golos Text\", sans-serif"),
+          document.fonts.load("bold 13px \"Schibsted Grotesk\", \"Golos Text\", sans-serif"),
         ]);
       })(),
       new Promise((_, reject) => {
@@ -166,18 +166,18 @@ export async function handleShareImage() {
   // 3. Theme Colors
   const isDark = document.body.getAttribute("data-theme") === "dark";
   const colors = {
-    bg: isDark ? "#0f1215" : "#f6f2ec",
-    surface: isDark ? "#1b2128" : "#ffffff",
-    text: isDark ? "#f3f5f7" : "#182025",
-    muted: isDark ? "#a5b0bb" : "#5c6770",
-    border: isDark ? "#262e38" : "#e4dfd5",
-    teal: "#2a7564",
-    orange: "#ef6c44",
-    orangeText: isDark ? "#ff8a65" : "#ad3f24",
-    draw: isDark ? "#2f3944" : "#e4dfd5",
-    drawChipBg: isDark ? "#3a4654" : "#d8d2c5",
-    drawPillBg: isDark ? "#222a33" : "#ffffff",
-    drawPillText: isDark ? "#f3f5f7" : "#182025",
+    bg: isDark ? "#0F1113" : "#F4F3EF",
+    surface: isDark ? "#171A1D" : "#FFFFFF",
+    text: isDark ? "#EEF0F2" : "#15181B",
+    muted: isDark ? "#A9B0B8" : "#4A525B",
+    border: isDark ? "#262B30" : "#E2DFD8",
+    teal: isDark ? "#4DBFA3" : "#1D6A59",
+    orange: isDark ? "#F07A52" : "#D4532A",
+    orangeText: isDark ? "#F07A52" : "#B4441F",
+    draw: isDark ? "#59606A" : "#B6BABF",
+    drawChipBg: isDark ? "#343A40" : "#CFCBC2",
+    drawPillBg: isDark ? "#1E2226" : "#FFFFFF",
+    drawPillText: isDark ? "#EEF0F2" : "#15181B",
     tealSoft: isDark ? "rgba(42, 117, 100, 0.25)" : "rgba(42, 117, 100, 0.08)",
     orangeSoft: isDark ? "rgba(239, 108, 68, 0.25)" : "rgba(239, 108, 68, 0.08)"
   };
@@ -197,7 +197,7 @@ export async function handleShareImage() {
   // Player B
   let nameB = "";
   let rankB = null;
-  let fontSizeB = 32; // Default for "ALL OPPONENTS" (bold 32px Manrope)
+  let fontSizeB = 32; // Default for "ALL OPPONENTS" (bold 32px Schibsted Grotesk)
   
   if (!isSingle) {
     nameB = playerB?.name || "Player B";
@@ -215,7 +215,7 @@ export async function handleShareImage() {
   
   // Draw B name
   if (isSingle) {
-    ctx.font = "bold 32px Manrope";
+    ctx.font = "bold 32px \"Schibsted Grotesk\", \"Golos Text\", sans-serif";
     ctx.fillStyle = colors.muted;
     ctx.textAlign = "right";
     ctx.fillText("ALL OPPONENTS", 1016, nameBaselineY);
@@ -231,7 +231,7 @@ export async function handleShareImage() {
   
   if (rankA) {
     drawRoundRect(ctx, 64, rankPillY, pillW, pillH, 6, colors.tealSoft, null);
-    ctx.font = "bold 16px Manrope";
+    ctx.font = "bold 16px \"Schibsted Grotesk\", \"Golos Text\", sans-serif";
     ctx.fillStyle = colors.teal;
     ctx.textAlign = "center";
     ctx.fillText(rankA, 64 + (pillW / 2), rankPillY + 22);
@@ -239,7 +239,7 @@ export async function handleShareImage() {
   
   if (rankB && !isSingle) {
     drawRoundRect(ctx, 1016 - pillW, rankPillY, pillW, pillH, 6, colors.orangeSoft, null);
-    ctx.font = "bold 16px Manrope";
+    ctx.font = "bold 16px \"Schibsted Grotesk\", \"Golos Text\", sans-serif";
     ctx.fillStyle = colors.orangeText;
     ctx.textAlign = "center";
     ctx.fillText(rankB, 1016 - (pillW / 2), rankPillY + 22);
@@ -261,7 +261,7 @@ export async function handleShareImage() {
     const gap = 8;
     
     // Draw label
-    ctx.font = "bold 14px Manrope";
+    ctx.font = "bold 14px \"Schibsted Grotesk\", \"Golos Text\", sans-serif";
     ctx.fillStyle = colors.muted;
     ctx.textAlign = "center";
     if ('letterSpacing' in ctx) ctx.letterSpacing = "1px";
@@ -295,7 +295,7 @@ export async function handleShareImage() {
       
       drawRoundRect(ctx, x, y, chipW, chipH, 8, bg, colors.border);
       
-      ctx.font = "bold 20px Manrope";
+      ctx.font = "bold 20px \"Schibsted Grotesk\", \"Golos Text\", sans-serif";
       ctx.fillStyle = textColor;
       ctx.textAlign = "center";
       ctx.fillText(letter, x + chipW / 2, y + chipH / 2);
@@ -307,7 +307,7 @@ export async function handleShareImage() {
   
   // 6c. Games Count Badge
   const gamesCountY = cursorY + 18;
-  ctx.font = "bold 14px Manrope";
+  ctx.font = "bold 14px \"Schibsted Grotesk\", \"Golos Text\", sans-serif";
   ctx.fillStyle = colors.muted;
   ctx.textAlign = "center";
   if ('letterSpacing' in ctx) ctx.letterSpacing = "0.5px";
@@ -368,7 +368,7 @@ export async function handleShareImage() {
   ctx.restore();
   
   // Draw win segments text
-  ctx.font = "bold 24px Manrope";
+  ctx.font = "bold 24px \"Schibsted Grotesk\", \"Golos Text\", sans-serif";
   
   // Teal wins text
   if (summary.winsA > 0) {
@@ -405,7 +405,7 @@ export async function handleShareImage() {
   
   // 7a. Draws Summary (below bar)
   const drawsSummaryY = cursorY + 20;
-  ctx.font = "bold 14px Manrope";
+  ctx.font = "bold 14px \"Schibsted Grotesk\", \"Golos Text\", sans-serif";
   ctx.fillStyle = colors.muted;
   ctx.textAlign = "center";
   
@@ -471,7 +471,7 @@ export async function handleShareImage() {
   const filterBarH = 34;
   
   if (!hasActiveFilters) {
-    ctx.font = "bold 16px Manrope";
+    ctx.font = "bold 16px \"Schibsted Grotesk\", \"Golos Text\", sans-serif";
     ctx.fillStyle = colors.muted;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -479,12 +479,12 @@ export async function handleShareImage() {
     ctx.fillText(noFilterText, 540, filterBarY + filterBarH / 2);
     ctx.textBaseline = "alphabetic";
   } else {
-    ctx.font = "bold 15px Manrope";
+    ctx.font = "bold 15px \"Schibsted Grotesk\", \"Golos Text\", sans-serif";
     const pillWidths = filterLabels.map(label => {
       return ctx.measureText(label).width + 28;
     });
     
-    ctx.font = "bold 13px Manrope";
+    ctx.font = "bold 13px \"Schibsted Grotesk\", \"Golos Text\", sans-serif";
     const prefixWidth = ctx.measureText("FILTERS:").width + 10;
     
     let totalWidth = prefixWidth;
@@ -499,7 +499,7 @@ export async function handleShareImage() {
     let computedTotalWidth = totalWidth;
     
     if (computedTotalWidth > 952) {
-      ctx.font = "bold 15px Manrope";
+      ctx.font = "bold 15px \"Schibsted Grotesk\", \"Golos Text\", sans-serif";
       const morePillWidth = ctx.measureText("+9 more").width + 28;
       
       let currentWidth = prefixWidth;
@@ -518,7 +518,7 @@ export async function handleShareImage() {
       
       const remainingCount = filterLabels.length - visibleCount;
       if (remainingCount > 0) {
-        ctx.font = "bold 15px Manrope";
+        ctx.font = "bold 15px \"Schibsted Grotesk\", \"Golos Text\", sans-serif";
         const actualMorePillWidth = ctx.measureText(`+${remainingCount} more`).width + 28;
         computedTotalWidth = currentWidth + 8 + actualMorePillWidth;
       } else {
@@ -529,7 +529,7 @@ export async function handleShareImage() {
     let filterStartX = (1080 - computedTotalWidth) / 2;
     let currentX = filterStartX;
     
-    ctx.font = "bold 13px Manrope";
+    ctx.font = "bold 13px \"Schibsted Grotesk\", \"Golos Text\", sans-serif";
     ctx.fillStyle = colors.muted;
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
@@ -554,7 +554,7 @@ export async function handleShareImage() {
         null
       );
       
-      ctx.font = "bold 15px Manrope";
+      ctx.font = "bold 15px \"Schibsted Grotesk\", \"Golos Text\", sans-serif";
       ctx.fillStyle = colors.muted;
       ctx.textAlign = "center";
       ctx.fillText(label, currentX + pW / 2, filterBarY + filterBarH / 2);
@@ -564,7 +564,7 @@ export async function handleShareImage() {
     
     const remainingCount = filterLabels.length - visibleCount;
     if (remainingCount > 0) {
-      ctx.font = "bold 15px Manrope";
+      ctx.font = "bold 15px \"Schibsted Grotesk\", \"Golos Text\", sans-serif";
       const moreLabel = `+${remainingCount} more`;
       const pW = ctx.measureText(moreLabel).width + 28;
       
@@ -596,7 +596,7 @@ export async function handleShareImage() {
   drawRoundRect(ctx, cardX, cardY, cardW, cardH, 12, colors.surface, colors.border);
   
   // Header bar
-  ctx.font = "bold 12px Manrope";
+  ctx.font = "bold 12px \"Schibsted Grotesk\", \"Golos Text\", sans-serif";
   ctx.fillStyle = colors.muted;
   ctx.textAlign = "left";
   if ('letterSpacing' in ctx) ctx.letterSpacing = "1.5px";
@@ -653,13 +653,13 @@ export async function handleShareImage() {
     const rData = rowData[i];
     
     // Draw left value
-    ctx.font = "bold 32px Manrope";
+    ctx.font = "bold 32px \"Schibsted Grotesk\", \"Golos Text\", sans-serif";
     ctx.fillStyle = colors.teal;
     ctx.textAlign = "left";
     ctx.fillText(String(rData.left), cardX + 32, centerY);
     
     // Draw center label
-    ctx.font = "bold 16px Manrope";
+    ctx.font = "bold 16px \"Schibsted Grotesk\", \"Golos Text\", sans-serif";
     ctx.fillStyle = colors.muted;
     ctx.textAlign = "center";
     if ('letterSpacing' in ctx) ctx.letterSpacing = "1px";
@@ -667,7 +667,7 @@ export async function handleShareImage() {
     if ('letterSpacing' in ctx) ctx.letterSpacing = "0px";
     
     // Draw right value
-    ctx.font = "bold 32px Manrope";
+    ctx.font = "bold 32px \"Schibsted Grotesk\", \"Golos Text\", sans-serif";
     ctx.fillStyle = colors.orange;
     ctx.textAlign = "right";
     ctx.fillText(String(rData.right), cardX + cardW - 32, centerY);
@@ -716,7 +716,7 @@ export async function handleShareImage() {
   
   // Panel A
   drawRoundRect(ctx, panelLA_X, panelY, panelW, panelH, 12, colors.surface, colors.border);
-  ctx.font = "bold 13px Manrope";
+  ctx.font = "bold 13px \"Schibsted Grotesk\", \"Golos Text\", sans-serif";
   ctx.fillStyle = colors.teal;
   ctx.textAlign = "left";
   if ('letterSpacing' in ctx) ctx.letterSpacing = "1px";
@@ -724,25 +724,25 @@ export async function handleShareImage() {
   if ('letterSpacing' in ctx) ctx.letterSpacing = "0px";
   
   if (infoA && infoA.score && infoA.score !== "—") {
-    ctx.font = "bold 60px Fraunces";
+    ctx.font = "bold 60px \"Barlow Condensed\"";
     ctx.fillStyle = colors.teal;
     ctx.fillText(infoA.score, panelLA_X + 32, panelY + 105);
     
     const oppStr = infoA.opponent !== "—" ? `vs ${infoA.opponent}` : "";
     const dateStr = infoA.date !== "—" ? ` | ${infoA.date}` : "";
-    drawTruncatedText(ctx, `${oppStr}${dateStr}`, panelLA_X + 32, panelY + 148, panelW - 64, "15px Manrope", colors.muted);
-    drawTruncatedText(ctx, infoA.tournament, panelLA_X + 32, panelY + 178, panelW - 64, "14px Manrope", colors.muted);
+    drawTruncatedText(ctx, `${oppStr}${dateStr}`, panelLA_X + 32, panelY + 148, panelW - 64, "15px \"Schibsted Grotesk\", \"Golos Text\", sans-serif", colors.muted);
+    drawTruncatedText(ctx, infoA.tournament, panelLA_X + 32, panelY + 178, panelW - 64, "14px \"Schibsted Grotesk\", \"Golos Text\", sans-serif", colors.muted);
   } else {
-    ctx.font = "bold 26px Fraunces";
+    ctx.font = "bold 26px \"Barlow Condensed\"";
     ctx.fillStyle = colors.muted;
     ctx.fillText("No wins", panelLA_X + 32, panelY + 110);
-    ctx.font = "14px Manrope";
+    ctx.font = "14px \"Schibsted Grotesk\", \"Golos Text\", sans-serif";
     ctx.fillText("For this selection", panelLA_X + 32, panelY + 165);
   }
   
   // Panel B
   drawRoundRect(ctx, panelRB_X, panelY, panelW, panelH, 12, colors.surface, colors.border);
-  ctx.font = "bold 13px Manrope";
+  ctx.font = "bold 13px \"Schibsted Grotesk\", \"Golos Text\", sans-serif";
   ctx.fillStyle = colors.orangeText;
   ctx.textAlign = "left";
   if ('letterSpacing' in ctx) ctx.letterSpacing = "1px";
@@ -750,19 +750,19 @@ export async function handleShareImage() {
   if ('letterSpacing' in ctx) ctx.letterSpacing = "0px";
   
   if (infoB && infoB.score && infoB.score !== "—") {
-    ctx.font = "bold 60px Fraunces";
+    ctx.font = "bold 60px \"Barlow Condensed\"";
     ctx.fillStyle = colors.orange;
     ctx.fillText(infoB.score, panelRB_X + 32, panelY + 105);
     
     const oppStr = infoB.opponent !== "—" ? `vs ${infoB.opponent}` : "";
     const dateStr = infoB.date !== "—" ? ` | ${infoB.date}` : "";
-    drawTruncatedText(ctx, `${oppStr}${dateStr}`, panelRB_X + 32, panelY + 148, panelW - 64, "15px Manrope", colors.muted);
-    drawTruncatedText(ctx, infoB.tournament, panelRB_X + 32, panelY + 178, panelW - 64, "14px Manrope", colors.muted);
+    drawTruncatedText(ctx, `${oppStr}${dateStr}`, panelRB_X + 32, panelY + 148, panelW - 64, "15px \"Schibsted Grotesk\", \"Golos Text\", sans-serif", colors.muted);
+    drawTruncatedText(ctx, infoB.tournament, panelRB_X + 32, panelY + 178, panelW - 64, "14px \"Schibsted Grotesk\", \"Golos Text\", sans-serif", colors.muted);
   } else {
-    ctx.font = "bold 26px Fraunces";
+    ctx.font = "bold 26px \"Barlow Condensed\"";
     ctx.fillStyle = colors.muted;
     ctx.fillText(isSingle ? "No losses" : "No wins", panelRB_X + 32, panelY + 110);
-    ctx.font = "14px Manrope";
+    ctx.font = "14px \"Schibsted Grotesk\", \"Golos Text\", sans-serif";
     ctx.fillText("For this selection", panelRB_X + 32, panelY + 165);
   }
   
@@ -787,7 +787,7 @@ export async function handleShareImage() {
   ctx.stroke();
   
   // Left: Domain Name & Generation Date
-  ctx.font = "bold 16px Manrope";
+  ctx.font = "bold 16px \"Schibsted Grotesk\", \"Golos Text\", sans-serif";
   ctx.fillStyle = colors.text;
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
@@ -795,12 +795,12 @@ export async function handleShareImage() {
   
   const dateOptions = { month: "long", day: "numeric", year: "numeric" };
   const dateStr = new Date().toLocaleDateString("en-US", dateOptions);
-  ctx.font = "12px Manrope";
+  ctx.font = "12px \"Schibsted Grotesk\", \"Golos Text\", sans-serif";
   ctx.fillStyle = colors.muted;
   ctx.fillText(dateStr, 64, footerDateY);
   
   // Right: Brand badge icon & Title
-  ctx.font = "bold 18px Manrope";
+  ctx.font = "bold 18px \"Schibsted Grotesk\", \"Golos Text\", sans-serif";
   ctx.fillStyle = colors.orangeText;
   ctx.textAlign = "right";
   ctx.fillText("Table Hockey H2H", 1016, footerTextY);
@@ -814,7 +814,7 @@ export async function handleShareImage() {
   drawRoundRect(ctx, iconX, iconY, iconSize, iconSize, 6, colors.orange, null);
   
   // Draw white "H" in badge
-  ctx.font = "bold 16px Manrope";
+  ctx.font = "bold 16px \"Schibsted Grotesk\", \"Golos Text\", sans-serif";
   ctx.fillStyle = "#ffffff";
   ctx.textAlign = "center";
   ctx.fillText("H", iconX + iconSize / 2, iconY + iconSize / 2);

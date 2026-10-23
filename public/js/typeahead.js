@@ -163,7 +163,7 @@ export function setupTypeahead(inputEl, listEl, options = {}) {
       if (!resolvePlayerId(elements.playerA)) {
         const msg = document.createElement("div");
         msg.className = "empty-message";
-        msg.textContent = "Select Player 1 first";
+        msg.textContent = "Pick a player first";
         msg.setAttribute("role", "option");
         msg.setAttribute("aria-disabled", "true");
         listEl.appendChild(msg);
@@ -271,7 +271,7 @@ export function setupTypeahead(inputEl, listEl, options = {}) {
       clearInputPlayer(elements.playerB, elements.listB);
       state.opponentsOfA = new Map();
       elements.playerB.disabled = true;
-      elements.playerB.placeholder = "Select Player 1 first";
+      elements.playerB.placeholder = "Pick a player first";
       if (options.onReset) options.onReset();
     }
     debouncedUpdate();

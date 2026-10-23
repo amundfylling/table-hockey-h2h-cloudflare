@@ -1189,6 +1189,51 @@ def build_player_files(
 
 
 
+def build_rivalries(player_payloads: Dict[int, dict], limit: int = 20) -> list:
+    """Most-played pairs for the home page, each pair listed once (lower id first).
+
+    The top pair also carries its results in order ("W", "L" or "D" for the first
+    player) so the home page can draw its lead chart without loading a player file.
+    """
+    pairs = []
+    for pid, payload in player_payloads.items():
+        for opponent_id, opponent in payload["opponents"].items():
+            if int(opponent_id) <= int(pid):
+                continue
+            summary = opponent["summary"]
+            pairs.append(
+                {
+                    "p1": payload["player"],
+                    "p2": opponent["player"],
+                    "games": summary.get("total_matches", 0),
+                    "wins_p1": summary.get("wins_player", 0),
+                    "wins_p2": summary.get("wins_opponent", 0),
+                    "draws": summary.get("draws", 0),
+                    "first_meeting_date": summary.get("first_meeting_date"),
+                    "last_meeting_date": summary.get("last_meeting_date"),
+                    "_matches": opponent["matches"],
+                }
+            )
+    pairs.sort(key=lambda pair: (-pair["games"], pair["p1"]["id"], pair["p2"]["id"]))
+    top = pairs[:limit]
+    for index, pair in enumerate(top):
+        matches = pair.pop("_matches")
+        if index == 0:
+            pair["results"] = "".join(
+                "W" if m["goals_for_player"] > m["goals_for_opponent"]
+                else "L" if m["goals_for_player"] < m["goals_for_opponent"]
+                else "D"
+                for m in matches
+            )
+            year_starts = {}
+            for position, match in enumerate(matches):
+                year = str(match.get("date") or "")[:4]
+                if year and year not in year_starts:
+                    year_starts[year] = position
+            pair["year_starts"] = year_starts
+    return top
+
+
 def download_cached(url: str, path: Path) -> None:
     parsed_url = urlparse(url)
     if parsed_url.scheme not in {"http", "https"} or not parsed_url.netloc:
@@ -1397,12 +1442,13 @@ def main() -> int:
     write_json(DATA_STAGING_DIR / "players.json", players)
 
     print("Building H2H player files...")
-    build_player_files(
+    player_payloads = build_player_files(
         matches,
         player_names,
         DATA_STAGING_DIR / "h2h",
         DATA_STAGING_DIR / "og",
     )
+    write_json(DATA_STAGING_DIR / "rivalries.json", build_rivalries(player_payloads))
 
     write_json(
         DATA_STAGING_DIR / "meta.json",

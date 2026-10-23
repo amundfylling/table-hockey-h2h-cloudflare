@@ -4,8 +4,8 @@
   "description": "Head-to-head records, form and playoff series for competitive table hockey.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f6f2ec",
-  "theme_color": "#f6f2ec",
+  "background_color": "#F4F3EF",
+  "theme_color": "#F4F3EF",
   "icons": [
     { "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml" },
     { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
