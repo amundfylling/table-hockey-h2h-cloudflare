@@ -3,7 +3,8 @@
 import { chromium } from 'playwright';
 import fs from 'fs';
 const out = process.argv[2];
-const screens = [
+// SCREENS=list.json swaps in another set of [name, w, h, scheme, url] rows (used for the redesign pages).
+const screens = process.env.SCREENS ? JSON.parse(fs.readFileSync(process.env.SCREENS, 'utf8')) : [
   ['Desktop / Home', 1440, 900, 'light', ''],
   ['Desktop / Matchup', 1440, 900, 'light', '?p1=6344&p2=10543'],
   ['Desktop / Matchup (dark)', 1440, 900, 'dark', '?p1=6344&p2=10543'],
@@ -40,7 +41,9 @@ function dump(maxRows) {
   };
   const sx = scrollX, sy = scrollY;
   // Top-level section an element belongs to; becomes a nested board in Penpot.
-  const SECTION_NAMES = { 'site-header': 'Header', 'home-hero': 'Hero', 'selection-card': 'Player selection', 'featured': 'Featured matchups', 'summary-section': 'Head-to-head summary', 'controls-bar': 'Filter bar', 'single-player-section': 'Opponents', 'visualizations-section': 'Charts', 'matches-section': 'Match list', 'site-footer': 'Footer' };
+  const SECTION_NAMES = { 'site-header': 'Header', 'home-hero': 'Hero', 'selection-card': 'Player selection', 'featured': 'Featured matchups', 'summary-section': 'Head-to-head summary', 'controls-bar': 'Filter bar', 'single-player-section': 'Opponents', 'visualizations-section': 'Charts', 'matches-section': 'Match list', 'site-footer': 'Footer',
+    topbar: 'Header', footer: 'Footer', scoreboard: 'Scoreboard', momentum: 'Momentum', breakdown: 'Breakdown', seasons: 'Seasons', tournaments: 'Tournaments',
+    profile: 'Profile', rivals: 'Rival map', opponents: 'Opponents', hero: 'Hero', rivalries: 'Biggest rivalries' };
   const secOf = (el) => {
     let e = el;
     while (e && e.parentElement && e.parentElement !== document.body && e.parentElement.tagName !== 'MAIN') e = e.parentElement;
@@ -135,6 +138,24 @@ function dump(maxRows) {
         const L = Math.min(...rects.map(q => q.left)), T = Math.min(...rects.map(q => q.top)), R = Math.max(...rects.map(q => q.right)), B = Math.max(...rects.map(q => q.bottom));
         if (R < clip.l || L > clip.r || B < clip.t || T > clip.b) continue;
         const lines = new Set(rects.map(q => Math.round(q.top))).size;
+        // A wrapping run that shares its paragraph with other inline runs (a bold phrase mid-sentence)
+        // cannot be one text box, so it is cut into one single-line item per rendered line.
+        const mixed = cs.display === 'inline' || [...el.childNodes].some(k => k !== n && (k.nodeType === 1 || k.textContent.trim()));
+        if (lines > 1 && mixed) {
+          const byLine = new Map(), re = /\S+/g; let m;
+          while ((m = re.exec(raw))) {
+            const wr = document.createRange(); wr.setStart(n, m.index); wr.setEnd(n, m.index + m[0].length);
+            const q = wr.getBoundingClientRect(); const key = Math.round(q.top);
+            const ln = byLine.get(key) || { words: [], l: q.left, t: q.top, r: q.right, b: q.bottom };
+            ln.words.push(m[0]); ln.l = Math.min(ln.l, q.left); ln.r = Math.max(ln.r, q.right); ln.b = Math.max(ln.b, q.bottom); ln.t = Math.min(ln.t, q.top);
+            byLine.set(key, ln);
+          }
+          for (const ln of byLine.values()) {
+            const text = ln.words.join(' ');
+            push({ k: 'text', sec: secOf(el), name: text.slice(0, 40), text, x: ln.l + sx, y: ln.t + sy, w: ln.r - ln.l, h: ln.b - ln.t, oneLine: true, ff: cs.fontFamily.split(',')[0].replace(/['"]/g, '').trim(), fs: parseFloat(cs.fontSize), fw: cs.fontWeight, color: rgbHex(cs.color), ls: cs.letterSpacing, lh: cs.lineHeight, align: 'left', fstyle: cs.fontStyle });
+          }
+          continue;
+        }
         let text = n.textContent.replace(/\s+/g, ' ');
         // Bake CSS ellipsis truncation into the text itself.
         let ell = null;
@@ -164,7 +185,7 @@ const result = [];
 for (const [name, w, h, scheme, q] of screens.filter(([n]) => !only || only.test(n))) {
   const ctx = await b.newContext({ viewport: { width: w, height: h }, colorScheme: scheme });
   const p = await ctx.newPage();
-  await p.goto('http://localhost:8000/' + q, { waitUntil: 'networkidle' });
+  await p.goto(q.includes('://') ? q : 'http://localhost:8000/' + q, { waitUntil: 'networkidle' });
   await p.waitForTimeout(1500);
   const d = await p.evaluate(dump, w < 600 ? MAX_ROWS.mobile : MAX_ROWS.desktop);
   const slug = name.toLowerCase().replace(/[^a-z]+/g, '-').replace(/-$/, '');
