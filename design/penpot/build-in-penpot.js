@@ -140,7 +140,9 @@ h2h.applyFont = (text, family, weight, style) => {
 
 // --- shape factories --------------------------------------------------------
 
-h2h.fill = (c) => (c ? [{ fillColor: c.hex, fillOpacity: c.a }] : []);
+// Colours arrive as "#RRGGBB" (opaque) or { hex, a }.
+h2h.col = (c) => (typeof c === "string" ? { hex: c, a: 1 } : c);
+h2h.fill = (c) => (c ? [{ fillColor: h2h.col(c).hex, fillOpacity: h2h.col(c).a }] : []);
 
 h2h.makeBox = (it, ox, oy) => {
   const r = penpot.createRectangle();
