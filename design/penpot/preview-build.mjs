@@ -28,14 +28,14 @@ const penpot = {
 };
 const all = (r) => [r, ...r.children.flatMap(all)];
 const penpotUtils = { getPages: () => pages, getPageByName: (n) => pages.find(p => p.name === n) || null,
-  findShape: (pred, root) => all(root).find(s => s !== root && pred(s)) || null };
+  findShape: (pred, root) => all(root).find(s => s !== root && pred(s)) || null, findShapeById: (id) => pages.flatMap(p => all(p.root)).find(s => s.id === id) || null };
 const storage = {};
 const code = fs.readFileSync(builderPath, 'utf8');
 const fn = new Function('penpot', 'penpotUtils', 'storage', 'fetch', `return (async () => { ${code} })();`);
 console.log(await fn(penpot, penpotUtils, storage, fetch));
 storage.h2h.screens = JSON.parse(fs.readFileSync(screensPath, 'utf8'));
 console.log(JSON.stringify(await storage.h2h.buildDesignSystem()));
-for (let i = 0; i < storage.h2h.screens.length; i++) { const r = await storage.h2h.buildScreen(i); console.log(r.screen, JSON.stringify(r.counts), r.failures.join('; ')); }
+for (let i = 0; i < storage.h2h.screens.length; i++) { const r = await storage.h2h.buildScreen(i); console.log(storage.h2h.screens[i].name, JSON.stringify(r.counts), r.failures.join('; ')); }
 
 // --- render to SVG ---
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
