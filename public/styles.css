@@ -2,7 +2,11 @@
    the previous design (match table, typeahead, filters, playoff panels), then
    the redesigned layout and views, which override those where they overlap. */
 
-:root {
+/* Declared on body as well as :root so the aliases below resolve against the
+   palette body actually has. The dark palette is set on body, and an alias
+   resolved on :root would keep the light colours. */
+:root,
+body {
   --bg: #F4F3EF;
   --surface: #FFFFFF;
   --sunk: #ECEAE4;
@@ -647,6 +651,8 @@ button.streak-chip:focus-visible {
 
 .filter-bar-search-icon {
   position: absolute;
+  width: 16px;
+  height: 16px;
   left: 10px;
   top: 50%;
   transform: translateY(-50%);
@@ -4333,6 +4339,11 @@ body[data-theme="dark"] .chip.win { color: #0F1113; }
 
 .filter-bar-group--search {
   grid-column: 1 / -1;
+}
+
+/* Inside the column-direction group the old flex-basis became a 180px height. */
+.filter-bar-group--search .filter-bar-search {
+  flex: none;
 }
 
 .filter-bar-search input {

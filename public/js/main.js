@@ -46,6 +46,7 @@ import {
   restoreStateFromUrl,
   getUrlSelection,
   clearUrlSelection,
+  setHistoryPushEnabled,
 } from "./url-state.js";
 import {
   renderRecent,
@@ -1025,6 +1026,37 @@ export async function init() {
   const hasUrlPlayer = new URLSearchParams(window.location.search).has("p1");
   const selection = hasUrlPlayer ? urlSelection : lastSelection;
   if (hasUrlPlayer && !urlSelection) clearUrlSelection();
+  await showSelection(selection, Boolean(urlSelection));
+  setHistoryPushEnabled(true);
+  window.addEventListener("popstate", () => {
+    restoreFromHistory().catch((err) => console.error(err));
+  });
+
+  updatePrimaryActionLabel();
+  updateSelectionControls();
+}
+
+// Back and Forward: show whatever the URL now names, without adding history.
+async function restoreFromHistory() {
+  setHistoryPushEnabled(false);
+  try {
+    const selection = getUrlSelection();
+    if (!selection) {
+      goHome();
+      window.scrollTo({ top: 0 });
+      return;
+    }
+    clearInputPlayer(elements.playerB, elements.listB);
+    resetFilters();
+    window.scrollTo({ top: 0 });
+    await showSelection(selection, true);
+  } finally {
+    setHistoryPushEnabled(true);
+  }
+}
+
+// Fills the finder from a URL or saved selection and loads that view.
+async function showSelection(selection, fromUrl) {
   if (selection) {
     const validateSelectionIds = (primaryId, values) => {
       const allowed = new Set(state.aliasMap.get(primaryId) || [primaryId]);
@@ -1040,7 +1072,7 @@ export async function init() {
       const player2 = { ...(getPlayerById(selection.p2) || { id: selection.p2, name: `Player ${selection.p2}` }), ids: p2Ids };
       setInputPlayer(elements.playerB, player2);
     }
-    if (urlSelection) {
+    if (fromUrl) {
       restoreStateFromUrl();
       const comparePromise = handleCompare({ restoreUrlState: true });
       const opponentsPromise = loadOpponentsForPlayer(
@@ -1061,9 +1093,6 @@ export async function init() {
   } else {
     resetCurrentResults({ message: "" });
   }
-
-  updatePrimaryActionLabel();
-  updateSelectionControls();
 }
 
 init().catch((err) => {

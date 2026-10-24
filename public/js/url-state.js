@@ -8,10 +8,28 @@ import {
   selectionsShareIdentity,
 } from "./players.js";
 
+// Changing who is shown (home, a player, a matchup) adds a history entry so the
+// browser's Back button steps back through views. Filter and sort changes
+// replace the current entry. Pushing is off until startup has restored the
+// first view, and while a Back or Forward step is being restored.
+let historyPushEnabled = false;
+
+export function setHistoryPushEnabled(enabled) {
+  historyPushEnabled = Boolean(enabled);
+}
+
+function writeUrl(url) {
+  const current = new URLSearchParams(window.location.search);
+  const changesView = ["p1", "p1g", "p2", "p2g"]
+    .some((key) => (current.get(key) || "") !== (url.searchParams.get(key) || ""));
+  if (historyPushEnabled && changesView) window.history.pushState({}, "", url);
+  else window.history.replaceState({}, "", url);
+}
+
 export function clearUrlSelection() {
   const url = new URL(window.location.href);
   URL_PARAM_KEYS.forEach((key) => url.searchParams.delete(key));
-  window.history.replaceState({}, "", url);
+  writeUrl(url);
 }
 
 export function updateUrl(p1, p2 = null, p1Ids = [], p2Ids = []) {
@@ -23,7 +41,7 @@ export function updateUrl(p1, p2 = null, p1Ids = [], p2Ids = []) {
   const url = new URL(window.location.href);
   if (!idA) {
     URL_PARAM_KEYS.forEach((key) => url.searchParams.delete(key));
-    window.history.replaceState({}, "", url);
+    writeUrl(url);
     return;
   }
 
@@ -119,7 +137,7 @@ export function updateUrl(p1, p2 = null, p1Ids = [], p2Ids = []) {
     url.searchParams.delete("bestOf");
   }
 
-  window.history.replaceState({}, "", url);
+  writeUrl(url);
 }
 
 export function restoreStateFromUrl() {
