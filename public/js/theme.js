@@ -15,7 +15,7 @@ export function setTheme(mode, options = {}) {
   document.body.setAttribute("data-theme", resolvedMode);
   document.documentElement.style.colorScheme = resolvedMode;
   const themeColor = document.querySelector('meta[name="theme-color"]');
-  if (themeColor) themeColor.content = resolvedMode === "dark" ? "#0f1215" : "#f6f2ec";
+  if (themeColor) themeColor.content = resolvedMode === "dark" ? "#0F1113" : "#F4F3EF";
   if (elements.themeToggle) {
     const isDark = resolvedMode === "dark";
     const actionLabel = isDark ? "Switch to light mode" : "Switch to dark mode";

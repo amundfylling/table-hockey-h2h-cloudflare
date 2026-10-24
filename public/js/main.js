@@ -46,14 +46,17 @@ import {
   restoreStateFromUrl,
   getUrlSelection,
   clearUrlSelection,
+  setHistoryPushEnabled,
 } from "./url-state.js";
 import {
   renderRecent,
   addRecent,
   handleRecentClick,
   initRecent,
-  renderFeatured,
 } from "./recent.js";
+import { renderHome } from "./home.js";
+import { initNav, setFinderOpen, updateNav } from "./nav.js";
+import { renderTournaments } from "./tournaments.js";
 import {
   renderForm,
   resetFormPresentation,
@@ -66,6 +69,7 @@ import {
 } from "./table.js";
 import { setTheme, toggleTheme, initInfoPopovers } from "./theme.js";
 import { handleShareImage } from "./share.js";
+import { getAliasGroup } from "./players.js";
 
 // Global functions that were in app.js
 let compareRequestToken = 0;
@@ -82,6 +86,25 @@ export function setStatus(message) {
 
 function setHomeVisible(visible) {
   document.body.dataset.home = visible ? "true" : "false";
+  if (visible) setFinderOpen(false, null);
+  updateNav();
+  updateFinderPrompt();
+}
+
+// With a player picked but no opponent yet, the finder offers that player's
+// career page and waits for an opponent instead of opening the career page.
+function updateFinderPrompt() {
+  const button = document.getElementById("view-player-btn");
+  const hint = document.getElementById("finder-hint");
+  const idA = resolvePlayerId(elements.playerA);
+  const waiting = Boolean(idA) && !resolvePlayerId(elements.playerB) && !state.baseMatches.length;
+  if (button) button.hidden = !waiting;
+  if (hint) {
+    const name = waiting ? getSelectionPlayer(elements.playerA, idA)?.name : "";
+    hint.textContent = waiting
+      ? `Now pick an opponent, or view ${name}'s whole career.`
+      : "Pick a player, then an opponent for the head-to-head.";
+  }
 }
 
 export function setLoading(isLoading) {
@@ -219,6 +242,7 @@ export function updateView() {
   renderSummary(state.filteredMatches);
   renderForm(state.filteredMatches, state.stageMatches);
   renderCharts(state.filteredMatches);
+  if (!isSinglePlayerMode()) renderTournaments(state.filteredMatches);
   renderTable(state.filteredMatches);
 
   if (isSinglePlayerMode()) {
@@ -230,6 +254,7 @@ export function updateView() {
 
   updateFilterCount();
   updateUrl();
+  updateNav();
 }
 
 export function setDataControlsEnabled(enabled) {
@@ -261,7 +286,8 @@ export function renderIdleState() {
   if (elements.filterEmptyState) elements.filterEmptyState.hidden = true;
   const selectedId = resolvePlayerId(elements.playerA);
   const selectedPlayer = selectedId ? getSelectionPlayer(elements.playerA, selectedId) : null;
-  setHomeVisible(!selectedPlayer);
+  // A picked player keeps the finder up so the opponent is one step away.
+  setHomeVisible(true);
 
   if (elements.emptyState) elements.emptyState.hidden = true;
   if (elements.errorState) elements.errorState.hidden = true;
@@ -381,6 +407,7 @@ export async function handleCompare(options = {}) {
   const requestSignal = activeCompareController.signal;
 
   setLoading(true);
+  setFinderOpen(false, null);
   resetFormPresentation();
   setStatus(isSingle ? "Loading player stats..." : "Loading matchup...");
   state.baseMatches = [];
@@ -559,21 +586,28 @@ export function handleCopyLink() {
   const btn = elements.copyLinkBtn;
   const textEl = btn.querySelector("span") || btn;
   const originalText = textEl.textContent;
+
+  // Phones get the system share sheet; everything else copies the link.
+  const touch = window.matchMedia("(pointer: coarse)").matches;
+  if (touch && typeof navigator.share === "function") {
+    const title = isSinglePlayerMode()
+      ? `${state.playerA?.name} · Table Hockey H2H`
+      : `${state.playerA?.name} vs ${state.playerB?.name} · Table Hockey H2H`;
+    navigator.share({ title, url: link }).catch(() => {});
+    return;
+  }
+
   if (navigator.clipboard) {
     copyLinkBusy = true;
     btn.disabled = true;
     btn.setAttribute("aria-busy", "true");
     navigator.clipboard.writeText(link).then(
       () => {
-        textEl.textContent = "✓ Copied!";
-        btn.style.borderColor = "var(--teal)";
-        btn.style.color = "var(--teal)";
-        btn.style.background = "var(--teal-soft)";
+        textEl.textContent = "Copied";
+        btn.classList.add("is-done");
         setTimeout(() => {
           textEl.textContent = originalText;
-          btn.style.borderColor = "";
-          btn.style.color = "";
-          btn.style.background = "";
+          btn.classList.remove("is-done");
           btn.removeAttribute("aria-busy");
           copyLinkBusy = false;
           updateSelectionControls();
@@ -599,25 +633,15 @@ export async function renderDataFreshness() {
   if (!meta || !meta.generated_at) return;
   const date = new Date(meta.generated_at);
   if (Number.isNaN(date.getTime())) return;
-  el.textContent = `Data updated ${date.toLocaleDateString("en-GB", { year: "numeric", month: "short", day: "numeric" })}`;
+  el.textContent = `Updated ${date.toLocaleDateString("en-GB", { year: "numeric", month: "short", day: "numeric" })}`;
   el.hidden = false;
   const stats = document.getElementById("home-stats");
   if (stats && Number(meta.players) && Number(meta.matches)) {
-    stats.replaceChildren(
-      ...[
-        [formatNumber(meta.players), "players"],
-        [formatNumber(meta.matches), "matches"],
-        [date.toLocaleDateString("en-GB", { day: "numeric", month: "short" }), "last update"],
-      ].map(([value, label]) => {
-        const item = document.createElement("span");
-        item.className = "home-stat";
-        const strong = document.createElement("strong");
-        strong.textContent = value;
-        item.append(strong, ` ${label}`);
-        return item;
-      })
-    );
+    stats.textContent = `${formatNumber(meta.players)} players · ${formatNumber(meta.matches)} matches`;
     stats.hidden = false;
+    const title = document.getElementById("home-title");
+    if (title) title.textContent = `${formatNumber(meta.matches)} games. Every rivalry, settled.`;
+    elements.playerA.placeholder = `Search ${formatNumber(meta.players)} players`;
   }
 }
 
@@ -747,7 +771,22 @@ export async function loadPlayers() {
   setStatus("Ready.");
 }
 
+// Picking the first player readies the opponent box rather than opening the
+// career page, so a head-to-head takes two picks. The career page is one
+// click on "View player", or Enter in the empty opponent box.
 async function onPlayerASelected(player) {
+  if (!player || !player.id) return;
+  clearInputPlayer(elements.playerB, elements.listB);
+  resetCurrentResults({ keepPlayerA: true, cancelOpponents: true, message: "" });
+  updateFinderPrompt();
+  await loadOpponentsForPlayer(player.id, player.ids || [player.id], null);
+  // The opponent box is disabled while the opponent list loads.
+  if (resolvePlayerId(elements.playerA) === player.id && !elements.playerB.disabled) {
+    elements.playerB.focus();
+  }
+}
+
+async function onPlayerAViewed(player) {
   if (!player || !player.id) return;
   clearInputPlayer(elements.playerB, elements.listB);
   resetCurrentResults({ keepPlayerA: true, cancelOpponents: true, message: "" });
@@ -769,7 +808,66 @@ async function onPlayerASubmitted() {
   }
   const selection = { ...player, ids: getSelectionIds(elements.playerA) };
   setInputPlayer(elements.playerA, selection);
-  await onPlayerASelected(selection);
+  await onPlayerAViewed(selection);
+}
+
+function goHome() {
+  cancelOpponentLoading();
+  clearInputPlayer(elements.playerA, elements.listA);
+  clearInputPlayer(elements.playerB, elements.listB);
+  state.opponentsOfA = new Map();
+  elements.playerB.disabled = true;
+  elements.playerB.placeholder = "Pick a player first";
+  resetCurrentResults({ clearStoredSelection: true, clearUrl: true, message: "" });
+  setHomeVisible(true);
+}
+
+// Opens a view asked for by a link, breadcrumb, chart or list elsewhere.
+async function openView(detail) {
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (detail.action === "home" || detail.action === "rivalries") {
+    goHome();
+    const target = detail.action === "rivalries" ? document.getElementById("rivalries") : null;
+    if (target) target.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "start" });
+    else window.scrollTo({ top: 0 });
+    return;
+  }
+  if (detail.action === "players") {
+    setFinderOpen(true, elements.playerA);
+    return;
+  }
+  if (detail.action === "compare-with") {
+    elements.playerB.disabled = false;
+    setFinderOpen(true, elements.playerB);
+    return;
+  }
+
+  const p2 = Number(detail.p2);
+  if (!detail.p1 && Number.isInteger(p2) && state.playersById.has(p2)) {
+    // Keep the current player, pick an opponent.
+    elements.playerB.disabled = false;
+    setInputPlayer(elements.playerB, { ...getPlayerById(p2), ids: getAliasGroup(p2) });
+    window.scrollTo({ top: 0 });
+    await handleCompare({ scrollToResults: false });
+    return;
+  }
+
+  const p1 = Number(detail.p1);
+  if (!Number.isInteger(p1) || !state.playersById.has(p1)) return;
+  const idsA = detail.p1Ids?.length ? detail.p1Ids : getAliasGroup(p1);
+  cancelOpponentLoading();
+  setInputPlayer(elements.playerA, { ...getPlayerById(p1), ids: idsA });
+  window.scrollTo({ top: 0 });
+  if (Number.isInteger(p2) && state.playersById.has(p2)) {
+    elements.playerB.disabled = false;
+    setInputPlayer(elements.playerB, { ...getPlayerById(p2), ids: getAliasGroup(p2) });
+    await Promise.all([
+      handleCompare({ scrollToResults: false }),
+      loadOpponentsForPlayer(p1, idsA, activeCompareController?.signal),
+    ]);
+    return;
+  }
+  await onPlayerAViewed({ ...getPlayerById(p1), ids: idsA });
 }
 
 export async function init() {
@@ -816,7 +914,7 @@ export async function init() {
         clearInputPlayer(elements.playerB, elements.listB);
         state.opponentsOfA = new Map();
         elements.playerB.disabled = true;
-        elements.playerB.placeholder = "Select Player 1 first";
+        elements.playerB.placeholder = "Pick a player first";
         resetCurrentResults({
           clearStoredSelection: true,
           clearUrl: true,
@@ -840,6 +938,11 @@ export async function init() {
     });
   });
 
+  document.getElementById("view-player-btn")?.addEventListener("click", () => {
+    const playerId = resolvePlayerId(elements.playerA);
+    const player = getPlayerById(playerId);
+    if (player) onPlayerAViewed({ ...player, ids: getSelectionIds(elements.playerA) });
+  });
   if (elements.swapBtn) elements.swapBtn.addEventListener("click", handleSwap);
   if (elements.copyLinkBtn) elements.copyLinkBtn.addEventListener("click", handleCopyLink);
   if (elements.shareImageBtn) elements.shareImageBtn.addEventListener("click", handleShareImage);
@@ -876,7 +979,10 @@ export async function init() {
   initModeToggle();
   initGoalsModeToggle();
   initScoreBug();
-  if (elements.featuredList) elements.featuredList.addEventListener("click", handleRecentClick);
+  initNav();
+  document.addEventListener("h2h:open", (event) => {
+    openView(event.detail || {}).catch((err) => console.error(err));
+  });
 
   // Phones get shorter pages; desktop keeps the 50-row default.
   if (elements.pageSize && window.matchMedia("(max-width: 600px)").matches) {
@@ -891,7 +997,7 @@ export async function init() {
 
   await loadPlayers();
   renderRecent();
-  renderFeatured();
+  renderHome();
   renderDataFreshness().catch((err) => console.warn("Could not load data freshness:", err));
 
   const urlSelection = getUrlSelection();
@@ -920,6 +1026,37 @@ export async function init() {
   const hasUrlPlayer = new URLSearchParams(window.location.search).has("p1");
   const selection = hasUrlPlayer ? urlSelection : lastSelection;
   if (hasUrlPlayer && !urlSelection) clearUrlSelection();
+  await showSelection(selection, Boolean(urlSelection));
+  setHistoryPushEnabled(true);
+  window.addEventListener("popstate", () => {
+    restoreFromHistory().catch((err) => console.error(err));
+  });
+
+  updatePrimaryActionLabel();
+  updateSelectionControls();
+}
+
+// Back and Forward: show whatever the URL now names, without adding history.
+async function restoreFromHistory() {
+  setHistoryPushEnabled(false);
+  try {
+    const selection = getUrlSelection();
+    if (!selection) {
+      goHome();
+      window.scrollTo({ top: 0 });
+      return;
+    }
+    clearInputPlayer(elements.playerB, elements.listB);
+    resetFilters();
+    window.scrollTo({ top: 0 });
+    await showSelection(selection, true);
+  } finally {
+    setHistoryPushEnabled(true);
+  }
+}
+
+// Fills the finder from a URL or saved selection and loads that view.
+async function showSelection(selection, fromUrl) {
   if (selection) {
     const validateSelectionIds = (primaryId, values) => {
       const allowed = new Set(state.aliasMap.get(primaryId) || [primaryId]);
@@ -935,7 +1072,7 @@ export async function init() {
       const player2 = { ...(getPlayerById(selection.p2) || { id: selection.p2, name: `Player ${selection.p2}` }), ids: p2Ids };
       setInputPlayer(elements.playerB, player2);
     }
-    if (urlSelection) {
+    if (fromUrl) {
       restoreStateFromUrl();
       const comparePromise = handleCompare({ restoreUrlState: true });
       const opponentsPromise = loadOpponentsForPlayer(
@@ -956,9 +1093,6 @@ export async function init() {
   } else {
     resetCurrentResults({ message: "" });
   }
-
-  updatePrimaryActionLabel();
-  updateSelectionControls();
 }
 
 init().catch((err) => {

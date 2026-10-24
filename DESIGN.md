@@ -2,37 +2,37 @@
 name: Table Hockey H2H
 description: Serious head-to-head table hockey statistics with fast player comparison and mobile-first match inspection.
 colors:
-  rink-cream: "#f6f2ec"
-  rink-cream-pressed: "#f0ebe3"
+  rink-cream: "#F4F3EF"
+  rink-cream-pressed: "#ECEAE4"
   clean-surface: "#ffffff"
-  ink: "#182025"
-  slate-muted: "#5c6770"
-  puck-orange: "#ef6c44"
-  puck-orange-deep: "#cc5132"
-  player-teal: "#2a7564"
-  night-bg: "#0f1215"
-  night-surface: "#1b2128"
-  night-ink: "#f3f5f7"
-  night-muted: "#a5b0bb"
+  ink: "#15181B"
+  slate-muted: "#4A525B"
+  puck-orange: "#D4532A"
+  puck-orange-deep: "#B4441F"
+  player-teal: "#1D6A59"
+  night-bg: "#0F1113"
+  night-surface: "#171A1D"
+  night-ink: "#EEF0F2"
+  night-muted: "#A9B0B8"
 typography:
   display:
-    fontFamily: "Fraunces, Georgia, serif"
+    fontFamily: "Schibsted Grotesk, Golos Text, sans-serif"
     fontWeight: 700
     lineHeight: 1.1
     letterSpacing: "0"
   headline:
-    fontFamily: "Fraunces, Georgia, serif"
+    fontFamily: "Schibsted Grotesk, Golos Text, sans-serif"
     fontWeight: 600
     lineHeight: 1.15
     letterSpacing: "0"
   body:
-    fontFamily: "Manrope, Segoe UI, sans-serif"
+    fontFamily: "Schibsted Grotesk, Golos Text, sans-serif"
     fontSize: "1rem"
     fontWeight: 400
     lineHeight: 1.5
     letterSpacing: "0"
   label:
-    fontFamily: "Manrope, Segoe UI, sans-serif"
+    fontFamily: "Schibsted Grotesk, Golos Text, sans-serif"
     fontSize: "0.85rem"
     fontWeight: 600
     lineHeight: 1.2
@@ -83,7 +83,7 @@ components:
 
 The design system should feel like a focused stats bench beside a competitive table hockey rink: warm enough to belong to the sport, disciplined enough to make the numbers trustworthy. Users arrive with a matchup question, so every visual choice should shorten the path from player selection to evidence.
 
-The current system uses a warm rink-cream base, orange and teal player contrast, Fraunces headings, Manrope interface text, tight card radii, and layered surfaces. Keep the serious stats-tool posture from `PRODUCT.md`: sharp, credible, sporting. The system rejects spreadsheet density, generic SaaS dashboard patterns, sportsbook drama, and startup landing-page gloss.
+The current system uses a warm rink-cream base, orange and teal player contrast, Schibsted Grotesk text with Golos Text for Cyrillic, Barlow Condensed numerals, tight card radii, and layered surfaces. Keep the serious stats-tool posture from `PRODUCT.md`: sharp, credible, sporting. The system rejects spreadsheet density, generic SaaS dashboard patterns, sportsbook drama, and startup landing-page gloss.
 
 **Key Characteristics:**
 - Comparison-first composition with Player A and Player B colors kept consistent.
@@ -126,11 +126,10 @@ The palette is a restrained sports-stat palette: warm rink neutrals, one puck-or
 
 ## 3. Typography
 
-**Display Font:** Fraunces, with Georgia and serif fallback.
-**Body Font:** Manrope, with Segoe UI and sans-serif fallback.
-**Label/Mono Font:** Manrope.
+**Display and Body Font:** Schibsted Grotesk, with Golos Text as the Cyrillic fallback so Russian tournament and player names keep the same weight and width.
+**Numerals:** Barlow Condensed for scores, counts and chart figures.
 
-**Character:** Fraunces gives the product a sporting editorial signature without turning the app into a landing page. Manrope keeps controls, tables, charts, and filters clear at small sizes.
+**Character:** One grotesk family keeps headings, controls and tables consistent. The condensed numerals give scores a scoreboard feel and let large records fit on phones.
 
 ### Hierarchy
 - **Display** (700, heading scale, line-height 1.1): App title and rare high-level identity moments.

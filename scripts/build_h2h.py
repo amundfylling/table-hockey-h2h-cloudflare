@@ -1189,6 +1189,79 @@ def build_player_files(
 
 
 
+def _rivalry_entry(payload: dict, opponent: dict) -> dict:
+    summary = opponent["summary"]
+    return {
+        "p1": payload["player"],
+        "p2": opponent["player"],
+        "games": summary.get("total_matches", 0),
+        "wins_p1": summary.get("wins_player", 0),
+        "wins_p2": summary.get("wins_opponent", 0),
+        "draws": summary.get("draws", 0),
+        "first_meeting_date": summary.get("first_meeting_date"),
+        "last_meeting_date": summary.get("last_meeting_date"),
+    }
+
+
+def build_rivalries(
+    player_payloads: Dict[int, dict],
+    players: Optional[list] = None,
+    limit: int = 20,
+    ranked_players: int = 10,
+) -> dict:
+    """Home-page rivalries, each pair listed once.
+
+    "most_played" holds the pairs with the most games (lower id first). The top
+    pair also carries its results in order ("W", "L" or "D" for the first player)
+    so the home page can draw its lead chart without loading a player file.
+
+    "top_ranked" holds the pairs between the best-ranked players that have met,
+    in ranking order: #1 v #2, #1 v #3, #2 v #3, #1 v #4 and so on. The
+    better-ranked player is listed first.
+    """
+    pairs = []
+    for pid, payload in player_payloads.items():
+        for opponent_id, opponent in payload["opponents"].items():
+            if int(opponent_id) <= int(pid):
+                continue
+            pair = _rivalry_entry(payload, opponent)
+            pair["_matches"] = opponent["matches"]
+            pairs.append(pair)
+    pairs.sort(key=lambda pair: (-pair["games"], pair["p1"]["id"], pair["p2"]["id"]))
+    most_played = pairs[:limit]
+    for index, pair in enumerate(most_played):
+        matches = pair.pop("_matches")
+        if index == 0:
+            pair["results"] = "".join(
+                "W" if m["goals_for_player"] > m["goals_for_opponent"]
+                else "L" if m["goals_for_player"] < m["goals_for_opponent"]
+                else "D"
+                for m in matches
+            )
+            year_starts = {}
+            for position, match in enumerate(matches):
+                year = str(match.get("date") or "")[:4]
+                if year and year not in year_starts:
+                    year_starts[year] = position
+            pair["year_starts"] = year_starts
+
+    ranks = {}
+    for player in players or []:
+        rank = player.get("world_rank")
+        if rank and int(player["id"]) in player_payloads:
+            ranks[int(player["id"])] = int(rank)
+    best = sorted(ranks, key=lambda player_id: ranks[player_id])[:ranked_players]
+    top_ranked = []
+    for index_b, worse in enumerate(best):
+        for better in best[:index_b]:
+            opponent = player_payloads[better]["opponents"].get(str(worse)) or player_payloads[
+                better
+            ]["opponents"].get(worse)
+            if opponent and opponent["summary"].get("total_matches"):
+                top_ranked.append(_rivalry_entry(player_payloads[better], opponent))
+    return {"most_played": most_played, "top_ranked": top_ranked[:limit]}
+
+
 def download_cached(url: str, path: Path) -> None:
     parsed_url = urlparse(url)
     if parsed_url.scheme not in {"http", "https"} or not parsed_url.netloc:
@@ -1397,12 +1470,13 @@ def main() -> int:
     write_json(DATA_STAGING_DIR / "players.json", players)
 
     print("Building H2H player files...")
-    build_player_files(
+    player_payloads = build_player_files(
         matches,
         player_names,
         DATA_STAGING_DIR / "h2h",
         DATA_STAGING_DIR / "og",
     )
+    write_json(DATA_STAGING_DIR / "rivalries.json", build_rivalries(player_payloads, players))
 
     write_json(
         DATA_STAGING_DIR / "meta.json",

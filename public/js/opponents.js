@@ -1,6 +1,8 @@
 import { elements, isSeriesMode } from "./state.js";
 import { getAliasGroup, getPlayerById, setInputPlayer } from "./players.js";
-import { formatNumber } from "./utils.js";
+import { formatDate, formatNumber } from "./utils.js";
+import { icon, ICONS } from "./dom.js";
+import { recordEdge } from "./insights.js";
 
 // ── Sortable single-player opponents table ──────────────────────────
 let _opponentsData = [];        // all aggregated opponents
@@ -8,6 +10,8 @@ let _currentSort = { key: "games", dir: "desc" };
 let _onCompare = () => {};
 let _controlsBound = false;
 const _minGamesByMode = { games: 10, series: 1 };
+const COLLAPSED_ROWS = 10;
+let _showAllOpponents = false;
 
 export function initOpponents({ onCompare } = {}) {
   _onCompare = typeof onCompare === "function" ? onCompare : () => {};
@@ -39,14 +43,14 @@ function sortOpponents(list, key, dir) {
   });
 }
 
-function renderOpponentsRows(filtered) {
-  const sorted = sortOpponents(filtered, _currentSort.key, _currentSort.dir);
+function renderOpponentsRows(filtered, limit = Infinity) {
+  const sorted = sortOpponents(filtered, _currentSort.key, _currentSort.dir).slice(0, limit);
   elements.topOpponentsBody.replaceChildren();
 
   if (sorted.length === 0) {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
-    cell.colSpan = 4;
+    cell.colSpan = 6;
     cell.className = "muted text-center";
     cell.style.padding = "12px";
     cell.textContent = "No opponents match the filter.";
@@ -87,11 +91,41 @@ function renderOpponentsRows(filtered) {
     recordCell.textContent = `${opp.wins}-${opp.draws}-${opp.losses}`;
     row.appendChild(recordCell);
 
-    // Win %
+    // Win rate, coloured by wins against losses so draws cannot flip it.
+    const edge = recordEdge(opp.wins, opp.losses);
     const winPctCell = document.createElement("td");
-    winPctCell.className = "opp-cell-numeric";
-    winPctCell.textContent = `${winPct.toFixed(0)}%`;
+    winPctCell.className = "opp-cell-rate";
+    const bar = document.createElement("span");
+    bar.className = "wbar";
+    const track = document.createElement("span");
+    track.className = "t";
+    const fill = document.createElement("span");
+    fill.className = `f ${edge}`;
+    fill.style.width = `${winPct.toFixed(0)}%`;
+    track.appendChild(fill);
+    const pct = document.createElement("span");
+    pct.className = "p";
+    pct.textContent = `${winPct.toFixed(0)}%`;
+    bar.append(track, pct);
+    winPctCell.appendChild(bar);
     row.appendChild(winPctCell);
+
+    const lastCell = document.createElement("td");
+    lastCell.className = "opp-cell-last";
+    lastCell.textContent = opp.last ? formatDate(opp.last) : "–";
+    row.appendChild(lastCell);
+
+    const actionCell = document.createElement("td");
+    actionCell.className = "opp-cell-action";
+    const compare = document.createElement("button");
+    compare.type = "button";
+    compare.className = "opp-compare";
+    compare.disabled = selectButton.disabled;
+    compare.setAttribute("aria-label", `Compare with ${opp.name}`);
+    compare.append("Compare", icon(ICONS.right));
+    compare.addEventListener("click", () => selectOpponent(opp));
+    actionCell.appendChild(compare);
+    row.appendChild(actionCell);
 
     elements.topOpponentsBody.appendChild(row);
   });
@@ -128,7 +162,7 @@ function updateSortUI() {
     if (isActive) {
       th.classList.add("active-sort");
       th.setAttribute("aria-sort", _currentSort.dir === "desc" ? "descending" : "ascending");
-      if (indicator) indicator.textContent = _currentSort.dir === "desc" ? "▼" : "▲";
+      if (indicator) indicator.textContent = _currentSort.dir === "desc" ? "↓" : "↑";
     } else {
       th.classList.remove("active-sort");
       th.setAttribute("aria-sort", "none");
@@ -150,11 +184,28 @@ function applyFilterAndRender() {
   const minGames = elements.minGamesSlider
     ? parseInt(elements.minGamesSlider.value, 10) : 1;
   const filtered = _opponentsData.filter((o) => o.games >= minGames);
-  renderOpponentsRows(filtered);
+  const limit = _showAllOpponents ? Infinity : COLLAPSED_ROWS;
+  renderOpponentsRows(filtered, limit);
 
   if (elements.opponentsCount) {
-    elements.opponentsCount.textContent =
-      `Showing ${filtered.length} of ${_opponentsData.length} opponents`;
+    const shown = Math.min(filtered.length, limit);
+    elements.opponentsCount.replaceChildren();
+    if (filtered.length > COLLAPSED_ROWS) {
+      const toggle = document.createElement("button");
+      toggle.type = "button";
+      toggle.className = "link-btn";
+      toggle.textContent = _showAllOpponents
+        ? "Show fewer"
+        : `Show all ${formatNumber(filtered.length)} opponents`;
+      toggle.addEventListener("click", () => {
+        _showAllOpponents = !_showAllOpponents;
+        applyFilterAndRender();
+      });
+      elements.opponentsCount.append(toggle);
+    } else {
+      elements.opponentsCount.textContent =
+        `Showing ${formatNumber(shown)} of ${formatNumber(_opponentsData.length)} opponents`;
+    }
   }
 }
 
@@ -220,11 +271,17 @@ export function renderSinglePlayerPanels(matches) {
         draws: 0,
         goalsFor: 0,
         goalsAgainst: 0,
+        last: "",
+        lastTs: 0,
       };
       opponentsMap.set(key, entry);
     }
 
     entry.games += 1;
+    if ((match.ts || 0) >= entry.lastTs) {
+      entry.lastTs = match.ts || 0;
+      entry.last = match.end_date || match.date || entry.last;
+    }
     entry.goalsFor += Number(match.goals_a) || 0;
     entry.goalsAgainst += Number(match.goals_b) || 0;
     if (match.result === "A") entry.wins += 1;
@@ -233,6 +290,7 @@ export function renderSinglePlayerPanels(matches) {
   });
 
   _opponentsData = Array.from(opponentsMap.values());
+  _showAllOpponents = false;
 
   // Auto-adjust slider max to the highest game count
   if (elements.minGamesSlider) {

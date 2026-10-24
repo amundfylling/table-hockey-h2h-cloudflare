@@ -11,12 +11,28 @@ let activeRunCleanup = null;
 
 export function updateFormTitle() {
   if (!elements.formTitle) return;
-  const label = isSeriesMode() ? "Last 10 series" : "Last 10 games";
-  if (state.playerA && state.playerA.name) {
-    elements.formTitle.textContent = `${label} · ${state.playerA.name}`;
-  } else {
-    elements.formTitle.textContent = label;
+  elements.formTitle.textContent = isSeriesMode() ? "Last 10 series" : "Last 10 games";
+}
+
+function shortName(name) {
+  const parts = String(name || "").trim().split(/\s+/);
+  return parts[parts.length - 1] || name || "";
+}
+
+// "Fateev 4 · Dudkin 6" under the title, so the chips need no legend.
+function updateFormTally(items) {
+  const head = elements.formTitle?.parentElement;
+  if (!head) return;
+  let tally = head.querySelector(".form-tally");
+  if (!tally) {
+    tally = document.createElement("span");
+    tally.className = "form-tally";
+    head.insertBefore(tally, elements.formTitle.nextSibling);
   }
+  const wins = items.filter((item) => item.result === "A").length;
+  const losses = items.filter((item) => item.result === "B").length;
+  const other = state.comparisonMode === "single" ? "Opponents" : shortName(state.playerB?.name);
+  tally.textContent = `${shortName(state.playerA?.name)} ${wins} · ${other} ${losses}`;
 }
 
 function numberOrZero(value) {
@@ -360,32 +376,36 @@ export function renderForm(matches, canonicalItems = matches) {
     return;
   }
 
-  const ordered = getChronologicalItems(matches).slice(-10);
+  // Newest first, matching how people read recent form; the first chip is ringed.
+  const ordered = getChronologicalItems(matches).slice(-10).reverse();
   const fragment = document.createDocumentFragment();
+  const latest = document.createElement("span");
+  latest.className = "form-latest";
+  latest.setAttribute("aria-hidden", "true");
+  latest.textContent = "Latest";
+  fragment.appendChild(latest);
   ordered.forEach((match, index) => {
     const chip = document.createElement("button");
     chip.type = "button";
     chip.className = "chip";
-    if (index === ordered.length - 1) chip.classList.add("is-latest");
+    if (index === 0) chip.classList.add("is-latest");
     const tournament = match.tournament_name || "Unknown tournament";
     const stage = match.stage ? ` · ${match.stage}` : "";
     const opponentName = match.opponent_name || state.playerB?.name || "Opponent";
+    const score = match.type === "series"
+      ? formatSeriesScore(match).replace("-", "–")
+      : `${match.goals_a}–${match.goals_b}`;
     if (match.type === "series") {
       chip.title = `${formatDateRange(match.date, match.end_date)} · ${state.playerA.name} ${formatSeriesScore(match)} ${opponentName} · ${formatSeriesLength(match)} · ${tournament}${stage}`;
     } else {
       chip.title = `${match.date ? formatDate(match.date) : "Unknown date"} · ${state.playerA.name} ${match.goals_a}–${match.goals_b} ${opponentName} · ${tournament}${stage}`;
     }
-    if (match.result === "A") {
-      chip.textContent = "W";
-      chip.classList.add("win");
-    } else if (match.result === "B") {
-      chip.textContent = "L";
-      chip.classList.add("loss");
-    } else {
-      chip.textContent = "D";
-      chip.classList.add("draw");
-    }
-    chip.setAttribute("aria-label", chip.title);
+    const letter = match.result === "A" ? "W" : match.result === "B" ? "L" : "D";
+    chip.classList.add(match.result === "A" ? "win" : match.result === "B" ? "loss" : "draw");
+    const scoreEl = document.createElement("b");
+    scoreEl.textContent = score;
+    chip.append(scoreEl, letter);
+    chip.setAttribute("aria-label", `${index === 0 ? "Latest: " : ""}${chip.title}`);
     const showDetail = () => {
       if (!elements.formDetail) return;
       elements.formDetail.textContent = chip.title;
@@ -395,6 +415,7 @@ export function renderForm(matches, canonicalItems = matches) {
     chip.addEventListener("click", showDetail);
     fragment.appendChild(chip);
   });
+  updateFormTally(ordered);
 
   const presentation = getStreakPresentation(matches, canonicalItems);
   const streakChip = createCurrentStreakChip(matches, canonicalItems);

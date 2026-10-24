@@ -427,7 +427,7 @@ export async function loadOpponentsForPlayer(playerId, explicitIds = [], signal 
 
     if (currentToken !== opponentsRequestToken) return false;
     state.opponentsOfA = expandedMap;
-    elements.playerB.placeholder = "Search opponent";
+    elements.playerB.placeholder = "Anyone";
     elements.playerB.disabled = false;
     return true;
   } catch (err) {
