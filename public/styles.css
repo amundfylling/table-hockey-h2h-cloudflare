@@ -3556,6 +3556,18 @@ body.finder-open:not([data-home="true"]) .finder {
   color: var(--ink-2);
 }
 
+.view-player-btn {
+  flex: none;
+}
+
+.status:empty {
+  display: none;
+}
+
+.status:empty + .view-player-btn {
+  margin-left: auto;
+}
+
 .status {
   margin-left: auto;
   font-size: 13px;
@@ -3749,6 +3761,14 @@ button.rrow:hover {
   color: var(--ink-3);
   font-weight: 400;
   margin: 0 6px;
+}
+
+.rrow .wr {
+  font-family: var(--num);
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--ink-3);
+  margin-right: 5px;
 }
 
 .rrow .rec {

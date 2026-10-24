@@ -1,18 +1,32 @@
 // Home page: the most-played rivalry card and the biggest-rivalries list,
 // both from data/rivalries.json (written by the build).
 import { state } from "./state.js";
+import { getWorldRank } from "./players.js";
 import { fetchJson } from "./data.js";
 import { formatDate, formatNumber, decodeHtmlEntities } from "./utils.js";
 import { el, icon, ICONS, requestView } from "./dom.js";
 import { findPeak, lastName, leadSeries } from "./insights.js";
 
 const LIST_ROWS = 6;
+let mostPlayed = [];
 let rivalries = [];
+let ranked = false;
 let showAll = false;
 
 function playerName(player) {
   const known = state.playersById.get(Number(player?.id));
   return decodeHtmlEntities(known?.name || player?.name || `Player ${player?.id}`);
+}
+
+function rankOf(player) {
+  return getWorldRank(state.playersById.get(Number(player?.id)));
+}
+
+function namedPlayer(player) {
+  const rank = ranked ? rankOf(player) : null;
+  return el("span", { class: "who" },
+    rank ? el("span", { class: "wr" }, `#${rank}`) : null,
+    playerName(player));
 }
 
 function openRivalry(rivalry) {
@@ -32,6 +46,10 @@ function renderList() {
   const section = document.getElementById("rivalries");
   if (!list || !section) return;
   section.hidden = rivalries.length === 0;
+  const title = document.getElementById("rivalries-title");
+  const sub = section.querySelector(".sec-sub");
+  if (title) title.textContent = ranked ? "Top-ranked rivalries" : "Biggest rivalries";
+  if (sub) sub.textContent = ranked ? "The world's best players against each other, in ranking order" : "Most games between two players";
   const head = el("div", { class: "rrow head", "aria-hidden": "true" },
     el("span", {}, "#"),
     el("span", {}, "Rivalry"),
@@ -49,7 +67,7 @@ function renderList() {
       onclick: () => openRivalry(rivalry),
     },
     el("span", { class: "rank" }, String(index + 1)),
-    el("span", { class: "pair" }, nameA, el("i", {}, "vs"), nameB),
+    el("span", { class: "pair" }, namedPlayer(rivalry.p1), el("i", {}, "vs"), namedPlayer(rivalry.p2)),
     el("span", { class: "rec" },
       el("span", {}, formatNumber(rivalry.wins_p1)),
       recordBar(rivalry),
@@ -67,7 +85,7 @@ function renderList() {
         showAll = !showAll;
         renderList();
       },
-    }, showAll ? "Show fewer" : "See all rivalries"));
+    }, showAll ? "Show fewer" : ranked ? "See more ranked rivalries" : "See all rivalries"));
   }
   list.replaceChildren(...children);
   list.classList.add("panel");
@@ -144,7 +162,7 @@ function monthAt(rivalry, index) {
 
 function renderFeature() {
   const card = document.getElementById("feature");
-  const rivalry = rivalries[0];
+  const rivalry = mostPlayed[0];
   if (!card || !rivalry?.results) {
     if (card) card.hidden = true;
     return;
@@ -181,12 +199,24 @@ function renderFeature() {
 export async function renderHome() {
   try {
     const payload = await fetchJson("data/rivalries.json");
-    rivalries = Array.isArray(payload)
-      ? payload.filter((r) => state.playersById.has(Number(r?.p1?.id)) && state.playersById.has(Number(r?.p2?.id)))
-      : [];
+    const known = (list) => (Array.isArray(list) ? list : [])
+      .filter((r) => state.playersById.has(Number(r?.p1?.id)) && state.playersById.has(Number(r?.p2?.id)));
+    // Older builds wrote a plain list of the most-played pairs.
+    mostPlayed = known(Array.isArray(payload) ? payload : payload?.most_played);
+    const topRanked = known(payload?.top_ranked)
+      .filter((r) => rankOf(r.p1) && rankOf(r.p2))
+      .sort((x, y) => {
+        const [xa, xb] = [rankOf(x.p1), rankOf(x.p2)].sort((a, b) => a - b);
+        const [ya, yb] = [rankOf(y.p1), rankOf(y.p2)].sort((a, b) => a - b);
+        return xb - yb || xa - ya;
+      });
+    ranked = topRanked.length > 0;
+    rivalries = ranked ? topRanked : mostPlayed;
   } catch (err) {
     console.warn("Could not load rivalries:", err);
+    mostPlayed = [];
     rivalries = [];
+    ranked = false;
   }
   renderFeature();
   renderList();

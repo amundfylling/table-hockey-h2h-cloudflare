@@ -87,6 +87,23 @@ function setHomeVisible(visible) {
   document.body.dataset.home = visible ? "true" : "false";
   if (visible) setFinderOpen(false, null);
   updateNav();
+  updateFinderPrompt();
+}
+
+// With a player picked but no opponent yet, the finder offers that player's
+// career page and waits for an opponent instead of opening the career page.
+function updateFinderPrompt() {
+  const button = document.getElementById("view-player-btn");
+  const hint = document.getElementById("finder-hint");
+  const idA = resolvePlayerId(elements.playerA);
+  const waiting = Boolean(idA) && !resolvePlayerId(elements.playerB) && !state.baseMatches.length;
+  if (button) button.hidden = !waiting;
+  if (hint) {
+    const name = waiting ? getSelectionPlayer(elements.playerA, idA)?.name : "";
+    hint.textContent = waiting
+      ? `Now pick an opponent, or view ${name}'s whole career.`
+      : "Pick a player, then an opponent for the head-to-head.";
+  }
 }
 
 export function setLoading(isLoading) {
@@ -268,7 +285,8 @@ export function renderIdleState() {
   if (elements.filterEmptyState) elements.filterEmptyState.hidden = true;
   const selectedId = resolvePlayerId(elements.playerA);
   const selectedPlayer = selectedId ? getSelectionPlayer(elements.playerA, selectedId) : null;
-  setHomeVisible(!selectedPlayer);
+  // A picked player keeps the finder up so the opponent is one step away.
+  setHomeVisible(true);
 
   if (elements.emptyState) elements.emptyState.hidden = true;
   if (elements.errorState) elements.errorState.hidden = true;
@@ -752,7 +770,22 @@ export async function loadPlayers() {
   setStatus("Ready.");
 }
 
+// Picking the first player readies the opponent box rather than opening the
+// career page, so a head-to-head takes two picks. The career page is one
+// click on "View player", or Enter in the empty opponent box.
 async function onPlayerASelected(player) {
+  if (!player || !player.id) return;
+  clearInputPlayer(elements.playerB, elements.listB);
+  resetCurrentResults({ keepPlayerA: true, cancelOpponents: true, message: "" });
+  updateFinderPrompt();
+  await loadOpponentsForPlayer(player.id, player.ids || [player.id], null);
+  // The opponent box is disabled while the opponent list loads.
+  if (resolvePlayerId(elements.playerA) === player.id && !elements.playerB.disabled) {
+    elements.playerB.focus();
+  }
+}
+
+async function onPlayerAViewed(player) {
   if (!player || !player.id) return;
   clearInputPlayer(elements.playerB, elements.listB);
   resetCurrentResults({ keepPlayerA: true, cancelOpponents: true, message: "" });
@@ -774,7 +807,7 @@ async function onPlayerASubmitted() {
   }
   const selection = { ...player, ids: getSelectionIds(elements.playerA) };
   setInputPlayer(elements.playerA, selection);
-  await onPlayerASelected(selection);
+  await onPlayerAViewed(selection);
 }
 
 function goHome() {
@@ -833,7 +866,7 @@ async function openView(detail) {
     ]);
     return;
   }
-  await onPlayerASelected({ ...getPlayerById(p1), ids: idsA });
+  await onPlayerAViewed({ ...getPlayerById(p1), ids: idsA });
 }
 
 export async function init() {
@@ -904,6 +937,11 @@ export async function init() {
     });
   });
 
+  document.getElementById("view-player-btn")?.addEventListener("click", () => {
+    const playerId = resolvePlayerId(elements.playerA);
+    const player = getPlayerById(playerId);
+    if (player) onPlayerAViewed({ ...player, ids: getSelectionIds(elements.playerA) });
+  });
   if (elements.swapBtn) elements.swapBtn.addEventListener("click", handleSwap);
   if (elements.copyLinkBtn) elements.copyLinkBtn.addEventListener("click", handleCopyLink);
   if (elements.shareImageBtn) elements.shareImageBtn.addEventListener("click", handleShareImage);

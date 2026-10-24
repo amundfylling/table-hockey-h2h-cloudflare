@@ -21,7 +21,7 @@
     href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Golos+Text:wght@400;500;600;700&family=Schibsted+Grotesk:wght@400;500;600;700;800&display=swap"
     rel="stylesheet" />
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-  <link rel="stylesheet" href="styles.css?v=20261023-redesign-1" />
+  <link rel="stylesheet" href="styles.css?v=20261024-redesign-2" />
 </head>
 
 <body data-home="pending">
@@ -172,8 +172,9 @@
         </section>
 
         <div class="finder-foot">
-          <p class="finder-hint">Leave the opponent empty to see a player's whole career.</p>
+          <p id="finder-hint" class="finder-hint">Pick a player, then an opponent for the head-to-head.</p>
           <p id="status" class="status" role="status" aria-live="polite"></p>
+          <button id="view-player-btn" class="btn view-player-btn" type="button" hidden>View player</button>
         </div>
 
         <div class="recent">
@@ -608,7 +609,7 @@
     </div>
   </footer>
 
-  <script type="module" src="js/main.js?v=20261023-redesign-1"></script>
+  <script type="module" src="js/main.js?v=20261024-redesign-2"></script>
 </body>
 
 </html>
