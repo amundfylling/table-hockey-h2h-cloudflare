@@ -10,8 +10,8 @@ def res(x):
     a, b = x['goals_for_player'], x['goals_for_opponent']
     return 'W' if a > b else 'L' if b > a else 'D'
 
-def matchup():
-    d = load(A); o = d['opponents'][str(B)]; m = o['matches']
+def matchup(a=A, b=B):
+    d = load(a); o = d['opponents'][str(b)]; m = o['matches']
     m.sort(key=lambda x: (x['date'], x['stage_sequence'] or 0, x['round_number'] or 0, x['playoff_game_number'] or 0))
     s = o['summary']
     lead, c = [], 0

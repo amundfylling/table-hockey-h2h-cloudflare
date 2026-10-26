@@ -283,7 +283,7 @@ a { color: inherit; text-decoration: none; }
 .strip-label span { display: flex; align-items: center; gap: 6px; } .strip-label span:first-child { margin-right: auto; color: var(--ink-3); }
 .flat { border-top: 1px solid var(--line-2); }
 .tape { padding: 0; }
-.tape-top .v { font-family: var(--num); font-size: 22px; line-height: 24px; font-weight: 500; color: var(--ink-2); }
+.tape-top .v { font-family: var(--num); font-size: 22px; line-height: 24px; font-weight: 600; color: var(--ink-2); }
 .tape-top .v.win { font-weight: 600; } .tape-top .v.win.a { color: var(--a); } .tape-top .v.win.b { color: var(--b); }
 .tape-bar { position: relative; display: flex; gap: 2px; height: 8px; margin-top: 8px; border-radius: 2px; overflow: hidden; }
 .tape-bar i { position: absolute; left: 50%; top: 0; width: 2px; margin-left: -1px; height: 8px; background: var(--bg); }
