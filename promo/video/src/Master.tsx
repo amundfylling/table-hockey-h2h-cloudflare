@@ -6,6 +6,7 @@
 
 import { Audio } from "@remotion/media";
 import { AbsoluteFill, Sequence, interpolate, staticFile, useCurrentFrame } from "remotion";
+import { Captions, type CaptionLine } from "./components/Caption";
 import { SOUNDS, Sfx } from "./components/Sfx";
 import { Hook } from "./scenes/Hook";
 import { EndCard } from "./scenes/EndCard";
@@ -14,7 +15,21 @@ import { Search } from "./scenes/Search";
 import { Stats } from "./scenes/Stats";
 import { type Fx, FxContext, slams } from "./fx";
 import { colors } from "./theme";
-import { MUSIC_VOLUME, AUDIO_TRIM, SCENES, SOUNDTRACK, TOTAL_FRAMES } from "./timing";
+import { BASS_HITS, MUSIC_VOLUME, AUDIO_TRIM, SCENES, SOUNDTRACK, TOTAL_FRAMES } from "./timing";
+
+/** The first bass hit at or after a frame (so each caption lands with the music). */
+const hitFrom = (frame: number): number => BASS_HITS.find((h) => h >= frame - 1) ?? frame;
+
+// What the demo is showing, one short line per step. Each starts on a cut or on the tap it
+// describes, both of which sit on bass hits.
+const CAPTIONS: CaptionLine[] = [
+  { at: SCENES.search.start, text: "Search any two players" },
+  { at: hitFrom(SCENES.search.start + 90), text: "Get their full head-to-head" },
+  { at: SCENES.stats.start, text: "Follow how the lead moved" },
+  { at: hitFrom(SCENES.stats.start + 70), text: "Compare them stat by stat" },
+  { at: SCENES.player.start, text: "Tap a name for their career" },
+  { at: hitFrom(SCENES.player.start + 90), text: "Light or dark, your call" },
+];
 
 const FADE_OUT_FRAMES = 18; // 0.6 s at 30 fps: reads as an outro without wasting the last beat
 
@@ -92,6 +107,7 @@ export const Master: React.FC<{ sfx?: boolean; fx?: Fx }> = ({ sfx = true, fx = 
       <Sequence from={SCENES.end.start} durationInFrames={SCENES.end.duration}>
         <EndCard />
       </Sequence>
+      <Captions lines={CAPTIONS} until={SCENES.end.start} />
       {slams(fx) && (
         <Flash
           at={[

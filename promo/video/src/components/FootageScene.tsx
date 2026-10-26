@@ -16,12 +16,13 @@ export const FootageScene: React.FC<{
   take: Take;
   /** Seconds into the take on the scene's first frame. */
   skip?: number;
+  rate?: number;
   camera?: CameraKey[];
   origin?: string;
   /** Scene-local frame from which the site is in light mode (the status bar follows it). */
   lightFrom?: number;
   children?: React.ReactNode;
-}> = ({ scene, src, take, skip = 0, camera, origin = "50% 50%", lightFrom = Infinity, children }) => {
+}> = ({ scene, src, take, skip = 0, rate = 1, camera, origin = "50% 50%", lightFrom = Infinity, children }) => {
   const fx = useFx();
   const frame = useCurrentFrame();
   const { enter, exit, wrap } = cutStyle(fx, frame, bassHitsIn(scene));
@@ -29,7 +30,7 @@ export const FootageScene: React.FC<{
     <Stage duration={scene.duration} background={colors.background} enter={enter} exit={exit} camera={camera} origin={origin}>
       <AbsoluteFill style={{ transform: wrap || undefined, transformOrigin: origin }}>
         <Phone light={frame >= lightFrom}>
-          <Footage src={src} take={take} skip={skip} width={SCREEN_PX} />
+          <Footage src={src} take={take} skip={skip} rate={rate} width={SCREEN_PX} />
         </Phone>
       </AbsoluteFill>
       {children}

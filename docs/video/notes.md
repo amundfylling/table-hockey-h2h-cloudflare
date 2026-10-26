@@ -47,3 +47,14 @@
   edit and follows the site's theme). Camera pushes can now go to 1.3–1.45 since they crop the phone,
   not the page.
 - Capture: Chromium's window must be 430 pt wide and the display 1300×3000 for a 1206 px web view.
+
+## Wave 5: no bounce, captions (Amund's notes)
+
+- "The bounce makes it hard to see the video": the slam/mix styles no longer shake or kick the
+  phone between cuts. The bass is carried by the cuts, the taps and the captions instead.
+- Player take: placed by both taps now. The tap on Amund's name is the cut (808 at frame 442) and
+  the take plays at ~0.93x so the light-mode tap still lands on the 808 at frame 544.
+- "A short description along the demo": src/components/Caption.tsx, one line per step, each
+  entering on a bass hit (CAPTIONS in Master.tsx). The phone shrank to PT 1.72 and moved down
+  to leave a 330 px caption band; a scrim keeps the line readable under camera pushes.
+- Rendered as full-draft-v3-captions.mp4.

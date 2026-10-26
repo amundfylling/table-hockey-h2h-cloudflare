@@ -12,16 +12,18 @@ import { AbsoluteFill } from "remotion";
 import { canvas, colors, fonts } from "../theme";
 
 /** Canvas px per point. */
-export const PT = 1.9;
+export const PT = 1.72;
 export const SCREEN = { w: 402, h: 874, statusBar: 54, radius: 55 };
 const BORDER = 5; // pt, black glass border
 const EDGE = 3; // pt, titanium band
 const OUTER = { w: SCREEN.w + 2 * (BORDER + EDGE), h: SCREEN.h + 2 * (BORDER + EDGE) };
 
-/** Top-left of the phone body on the canvas, centred. */
+/** Space above the phone for the captions (Caption.tsx), and below it. */
+export const CAPTION_BAND = 330;
+/** Top-left of the phone body on the canvas: centred across, below the caption band. */
 export const PHONE_ORIGIN = {
   x: (canvas.width - OUTER.w * PT) / 2,
-  y: (canvas.height - OUTER.h * PT) / 2,
+  y: CAPTION_BAND,
 };
 
 /** Canvas position of a CSS point in the web view (below the status bar). */

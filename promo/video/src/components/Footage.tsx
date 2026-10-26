@@ -69,20 +69,23 @@ export const Footage: React.FC<{
   width?: number;
   /** Seconds into the take on the scene's first frame. */
   skip?: number;
-}> = ({ src, take, width: w, skip = 0 }) => {
+  /** Playback speed of the take, to stretch it a little so two of its events both land on hits. */
+  rate?: number;
+}> = ({ src, take, width: w, skip = 0, rate = 1 }) => {
   const { width: frameWidth, fps } = useVideoConfig();
   const width = w ?? frameWidth;
   const cssWidth = take.size[0] / take.scale;
   const k = width / cssWidth; // px per CSS px of the site
   const height = Math.round((width * take.size[1]) / take.size[0]);
-  const shift = -Math.round(skip * fps);
+  const trim = Math.round(skip * fps);
+  const at = (t: number) => Math.round(((t / 1000) * fps - trim) / rate);
   return (
     <div style={{ position: "absolute", left: 0, top: 0, width, height }}>
-      <Video src={staticFile(src)} trimBefore={Math.round(skip * fps)} muted style={{ width, height }} />
+      <Video src={staticFile(src)} trimBefore={trim} playbackRate={rate} muted style={{ width, height }} />
       {take.events
         .filter((e) => e.type === "tap" && e.x !== undefined && e.y !== undefined)
         .map((e, i) => (
-          <TapMark key={i} x={e.x! * k} y={e.y! * k} size={44 * k} at={shift + Math.round((e.t / 1000) * fps)} />
+          <TapMark key={i} x={e.x! * k} y={e.y! * k} size={44 * k} at={at(e.t)} />
         ))}
     </div>
   );

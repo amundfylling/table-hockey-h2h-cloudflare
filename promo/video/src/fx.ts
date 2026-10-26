@@ -2,10 +2,10 @@
 //
 // Every candidate look is a value of Fx, passed to the master as a prop, so a veto is one
 // token and the earlier look stays reachable. "v2" is the cut the owner saw at checkpoint 2.
-//   slam   impact: the drop slams the site in with blur and a flash, 808s kick the camera
+//   slam   impact: the drop slams the site in with blur and a flash, and each cut lands on an 808
 //   mask   the site is seen through the hook's letters, and the camera dives through the "?"
 //   phone  the site arrives as a phone screen swinging flat in 3D, 808s nudge it
-//   mix    mask's dive on the drop, then slam's cuts, flashes and kicks for the rest
+//   mix    mask's dive on the drop, then slam's cuts and flashes for the rest
 
 import { createContext, useContext } from "react";
 import { random } from "remotion";
@@ -48,11 +48,12 @@ export const cutStyle = (
   hits: number[],
 ): { enter: Move; exit: Move; wrap: string } => {
   if (slams(fx)) {
-    const sh = shake(frame, hits, 16);
+    // No shake or kick between cuts: it made the footage hard to watch. The bass is carried
+    // by the cuts and by the taps, which are timed onto the hits.
     return {
       enter: { kind: "pull-back", from: 1.45, blur: 16, frames: 10 },
       exit: { kind: "push", from: 2.2, frames: 7 },
-      wrap: `translate(${sh.x}px, ${sh.y}px) scale(${1 + 0.06 * kick(frame, hits, 4)})`,
+      wrap: "",
     };
   }
   if (fx === "mask") {
