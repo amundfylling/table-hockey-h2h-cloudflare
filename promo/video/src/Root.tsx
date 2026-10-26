@@ -27,7 +27,7 @@ export const RemotionRoot: React.FC = () => (
     <Composition
       id="Master"
       component={Master}
-      defaultProps={{ sfx: true }}
+      defaultProps={{ sfx: true, fx: "mix" }}
       durationInFrames={TOTAL_FRAMES}
       fps={FPS}
       width={canvas.width}
