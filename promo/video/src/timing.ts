@@ -67,6 +67,10 @@ export const halfBeatFrame = (n: number): number => Math.round((beatFrame(n) + b
 export const BASS_HITS = onTimeline(
   bassHits.filter((h) => h.strength >= 18 && h.level >= 40).map((h) => Math.round(h.t * FPS)),
 );
+/** Bass hits inside a scene, as scene-local frames. */
+export const bassHitsIn = (scene: Scene): number[] =>
+  BASS_HITS.filter((h) => h >= scene.start && h < scene.start + scene.duration).map((h) => h - scene.start);
+
 export const isBassHit = (frame: number, tolerance = 1): boolean =>
   BASS_HITS.some((b) => Math.abs(b - frame) <= tolerance);
 

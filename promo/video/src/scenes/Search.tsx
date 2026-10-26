@@ -1,18 +1,73 @@
 // Search - the real site: tap the player field, type "Amund", pick him, then the
 // opponent, and the head-to-head opens with its own count-up to 413-342.
-// The take's t=0 is the scene's first frame (beat 9), and the take taps on whole beats,
-// so the last tap lands on beat 15, the drop.
+// The take's t=0 is the scene's first frame (the drop), and the take taps on the beat grid,
+// so the last tap lands on the 808 at half beat 14 and the scoreboard counts up on it.
+// The entrance, the bass kicks and the exit follow the transition style (fx.ts).
 
-import { useVideoConfig } from "remotion";
+import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { Footage, eventFrame, type Take } from "../components/Footage";
-import { Stage } from "../components/Stage";
+import { Stage, type Move } from "../components/Stage";
+import { easings } from "../easings";
+import { kick, shake, useFx } from "../fx";
 import { colors } from "../theme";
-import { SCENES } from "../timing";
+import { SCENES, bassHitsIn } from "../timing";
 import take from "../../public/takes/search.json";
+import { HookCard, MASK_CAMERA } from "./Hook";
 
 const scene = SCENES.search;
+const HITS = bassHitsIn(scene);
+
+// The centre of the "?" dot on the hook's last frame (measured from Debug-HookStencil at
+// camera scale 1, then moved by the hook's final camera: 1.04 about 30% 55%).
+const DOT = { x: 814, y: 1319 };
+const DIVE_FRAMES = 12;
+const PHONE_FRAMES = 18;
+
+const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
+
+/**
+ * The hook's words as a window onto the site: on the drop the site shows only through the
+ * letters, the camera leans toward the "?", and an iris opens from its dot to the full frame.
+ * The stencil never scales past STENCIL_MAX: a layer blown up 20x and more drew wrong in the
+ * render browser (glyphs came out black), so the iris does the rest of the reveal.
+ */
+const STENCIL_MAX = 2.6;
+const IRIS_START = 3;
+
+const DiveThroughType: React.FC<{ footage: React.ReactNode }> = ({ footage }) => {
+  const frame = useCurrentFrame();
+  if (frame >= DIVE_FRAMES) return null;
+  const p = interpolate(frame, [0, DIVE_FRAMES], [0, 1], clamp);
+  const s = Math.exp(Math.log(STENCIL_MAX) * easings.rampIn(p));
+  const q = easings.rampIn(interpolate(frame, [IRIS_START, DIVE_FRAMES], [0, 1], clamp));
+  // The dot's radius is 24 px on the hook; the iris starts there and runs past the far corner.
+  const r = 24 * s + q * 2300;
+  return (
+    <>
+      <AbsoluteFill style={{ mixBlendMode: "multiply" }}>
+        <AbsoluteFill
+          style={{ background: "#000000", transform: `scale(${s})`, transformOrigin: `${DOT.x}px ${DOT.y}px` }}
+        >
+          <AbsoluteFill style={{ transform: `scale(${MASK_CAMERA.scale})`, transformOrigin: MASK_CAMERA.origin }}>
+            <HookCard frozen="stencil" />
+          </AbsoluteFill>
+        </AbsoluteFill>
+      </AbsoluteFill>
+      <AbsoluteFill style={{ transform: `scale(${s})`, transformOrigin: `${DOT.x}px ${DOT.y}px` }}>
+        <AbsoluteFill style={{ transform: `scale(${MASK_CAMERA.scale})`, transformOrigin: MASK_CAMERA.origin }}>
+          <HookCard frozen="outline" />
+        </AbsoluteFill>
+      </AbsoluteFill>
+      {frame >= IRIS_START && (
+        <AbsoluteFill style={{ clipPath: `circle(${r.toFixed(1)}px at ${DOT.x}px ${DOT.y}px)` }}>{footage}</AbsoluteFill>
+      )}
+    </>
+  );
+};
 
 export const Search: React.FC = () => {
+  const fx = useFx();
+  const frame = useCurrentFrame();
   const { fps, width } = useVideoConfig();
   const k = width / 390; // px per CSS px of the site
   const t = take as Take;
@@ -20,12 +75,39 @@ export const Search: React.FC = () => {
   const pickB = eventFrame(t, "pick Andreas", 0, fps);
   // The scoreboard sits about 150 CSS px down the page once the matchup opens.
   const scoreY = 150 * k;
+
+  let enter: Move = { kind: "push", from: 0.9 };
+  let exit: Move = { kind: "push", from: 1.5, frames: 9 };
+  // Extra motion on top of the camera: bass kicks, shake, the phone's 3D swing.
+  let wrap = "";
+  let radius = 0;
+  if (fx === "slam") {
+    enter = { kind: "pull-back", from: 1.45, blur: 16, frames: 10 };
+    exit = { kind: "push", from: 2.2, frames: 7 };
+    const sh = shake(frame, HITS, 16);
+    wrap = `translate(${sh.x}px, ${sh.y}px) scale(${1 + 0.06 * kick(frame, HITS, 4)})`;
+  } else if (fx === "mask") {
+    enter = { kind: "cut" };
+    exit = { kind: "whip-left", frames: 8 };
+    wrap = `scale(${1 + 0.035 * kick(frame, HITS.filter((h) => h > DIVE_FRAMES), 5)})`;
+  } else if (fx === "phone") {
+    enter = { kind: "cut" };
+    exit = { kind: "whip-right", frames: 8 };
+    const p = easings.slowInLand(interpolate(frame, [0, PHONE_FRAMES], [0, 1], clamp));
+    const kk = kick(frame, HITS.filter((h) => h > PHONE_FRAMES), 5);
+    const tilt = HITS.filter((h) => h <= frame).length % 2 === 0 ? 1 : -1;
+    wrap =
+      `perspective(2400px) rotateY(${(1 - p) * 34}deg) rotateX(${(1 - p) * 16}deg) ` +
+      `rotateZ(${(1 - p) * -6 + tilt * kk * 1.2}deg) scale(${0.58 + 0.42 * p + 0.03 * kk})`;
+    radius = (1 - p) * 70;
+  }
+
   return (
     <Stage
       duration={scene.duration}
       background={colors.background}
-      enter={{ kind: "push", from: 0.9 }}
-      exit={{ kind: "push", from: 1.5, frames: 9 }}
+      enter={enter}
+      exit={exit}
       origin={`50% ${scoreY}px`}
       // The footage fills the width, so any zoom crops the page's sides: past about 1.06
       // the player names on the scoreboard lose their first letters.
@@ -37,7 +119,20 @@ export const Search: React.FC = () => {
         { frame: scene.duration, scale: 1.065 },
       ]}
     >
-      <Footage src="takes/search.mp4" take={t} />
+      <AbsoluteFill style={{ transform: wrap || undefined, transformOrigin: `50% ${scoreY}px` }}>
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            overflow: "hidden",
+            borderRadius: radius,
+            boxShadow: radius > 1 ? "0 40px 120px rgba(0, 0, 0, 0.6)" : undefined,
+          }}
+        >
+          <Footage src="takes/search.mp4" take={t} />
+        </div>
+      </AbsoluteFill>
+      {fx === "mask" && <DiveThroughType footage={<Footage src="takes/search.mp4" take={t} />} />}
     </Stage>
   );
 };

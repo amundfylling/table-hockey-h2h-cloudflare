@@ -21,3 +21,14 @@
 - decision: transitions sync to the bass (owner). Cuts are bass hits; the take's last tap is on a
   half beat because the 808 lands there. The search take was re-recorded at 124 BPM.
 - Measured: drop at local frame 115 is a bass hit; final tap at 209, hit at 210; cut at 312, hit 311.
+
+## Wave 2 (transitions)
+
+- Owner: "much better transitions, it is quite boring now". Three directions behind the `fx` switch
+  (fx.ts, Master-slam / Master-mask / Master-phone; default Master is still v2):
+  slam (pull-back slam with blur, white flash, 808 camera kicks and shake), mask (site seen through
+  the hook's letters, iris from the "?" dot), phone (site swings in as a 3D phone screen).
+- Gotcha: a DOM layer scaled past ~20x rendered its glyphs black in the render browser, so the mask
+  dive caps the stencil at 2.6x and an iris clip-path finishes the reveal.
+- Gotcha: interpolate with extrapolateLeft clamp held a flash at its first key value for the whole
+  film; overlays that live in a window return 0 outside it.

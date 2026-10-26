@@ -9,6 +9,7 @@ import { AbsoluteFill, Sequence, interpolate, staticFile, useCurrentFrame } from
 import { SOUNDS, Sfx } from "./components/Sfx";
 import { Hook } from "./scenes/Hook";
 import { Search } from "./scenes/Search";
+import { type Fx, FxContext } from "./fx";
 import { colors } from "./theme";
 import { MUSIC_VOLUME, AUDIO_TRIM, SCENES, SOUNDTRACK, TOTAL_FRAMES } from "./timing";
 
@@ -42,7 +43,21 @@ export const SoundLayer: React.FC<{ sfx?: boolean }> = ({ sfx = true }) =>
     </>
   );
 
-export const Master: React.FC<{ sfx?: boolean }> = ({ sfx = true }) => {
+/** A white flash that fades over a few frames, for the slam style's cuts. */
+const Flash: React.FC<{ at: number[] }> = ({ at }) => {
+  const frame = useCurrentFrame();
+  const o = Math.max(
+    0,
+    ...at.map((a) =>
+      frame < a - 1 || frame > a + 5
+        ? 0
+        : interpolate(frame, [a - 1, a, a + 5], [0.35, 0.9, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
+    ),
+  );
+  return o > 0.01 ? <AbsoluteFill style={{ background: "#FFFFFF", opacity: o }} /> : null;
+};
+
+export const Master: React.FC<{ sfx?: boolean; fx?: Fx }> = ({ sfx = true, fx = "v2" }) => {
   const frame = useCurrentFrame();
   const volume = interpolate(
     frame,
@@ -52,6 +67,7 @@ export const Master: React.FC<{ sfx?: boolean }> = ({ sfx = true }) => {
   );
 
   return (
+    <FxContext.Provider value={fx}>
     <AbsoluteFill style={{ background: colors.background }}>
       {SOUNDTRACK && (
         <Audio src={staticFile(SOUNDTRACK)} trimBefore={AUDIO_TRIM} volume={volume} />
@@ -64,6 +80,8 @@ export const Master: React.FC<{ sfx?: boolean }> = ({ sfx = true }) => {
       <Sequence from={SCENES.search.start} durationInFrames={SCENES.search.duration}>
         <Search />
       </Sequence>
+      {fx === "slam" && <Flash at={[SCENES.search.start, TOTAL_FRAMES - 1]} />}
     </AbsoluteFill>
+    </FxContext.Provider>
   );
 };

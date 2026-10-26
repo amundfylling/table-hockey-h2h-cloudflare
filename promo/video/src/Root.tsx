@@ -1,9 +1,11 @@
 // Root - registers the master composition and one debug composition per scene.
 
 import { Composition } from "remotion";
+import { FX } from "./fx";
 import { loadSiteFonts } from "./load-fonts";
 import { Master } from "./Master";
 import { Hook } from "./scenes/Hook";
+import { HookStencil } from "./scenes/HookStencil";
 import { Search } from "./scenes/Search";
 import { canvas } from "./theme";
 import { FPS, SCENES, TOTAL_FRAMES } from "./timing";
@@ -22,6 +24,19 @@ export const RemotionRoot: React.FC = () => (
       width={canvas.width}
       height={canvas.height}
     />
+    {/* The transition styles under review (fx.ts); the default Master is the shipped look. */}
+    {FX.filter((f) => f !== "v2").map((f) => (
+      <Composition
+        key={f}
+        id={`Master-${f}`}
+        component={Master}
+        defaultProps={{ sfx: true, fx: f }}
+        durationInFrames={TOTAL_FRAMES}
+        fps={FPS}
+        width={canvas.width}
+        height={canvas.height}
+      />
+    ))}
     {/* The same film with the music only: render both and the sound effects
         can be judged by ear (references/sound-effects.md). */}
     <Composition
@@ -48,6 +63,14 @@ export const RemotionRoot: React.FC = () => (
       id="Scene-Search"
       component={Search}
       durationInFrames={SCENES.search.duration}
+      fps={FPS}
+      width={canvas.width}
+      height={canvas.height}
+    />
+    <Composition
+      id="Debug-HookStencil"
+      component={HookStencil}
+      durationInFrames={1}
       fps={FPS}
       width={canvas.width}
       height={canvas.height}
