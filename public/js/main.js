@@ -1033,7 +1033,10 @@ export async function init() {
   await showSelection(selection, Boolean(urlSelection));
   if (linkedSection) {
     homeReady.then(() => {
-      if (document.body.dataset.home === "true") showHomeSection(linkedSection);
+      // Skip if the visitor has already moved to another view or section.
+      if (document.body.dataset.home === "true" && homeSectionFromHash() === linkedSection) {
+        showHomeSection(linkedSection);
+      }
     });
   }
   setHistoryPushEnabled(true);
