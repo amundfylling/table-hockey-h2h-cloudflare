@@ -19,6 +19,8 @@ export function setHistoryPushEnabled(enabled) {
 }
 
 function writeUrl(url) {
+  // Home section anchors (#players, #rivalries) only belong on the home screen.
+  url.hash = "";
   const current = new URLSearchParams(window.location.search);
   const changesView = ["p1", "p1g", "p2", "p2g"]
     .some((key) => (current.get(key) || "") !== (url.searchParams.get(key) || ""));

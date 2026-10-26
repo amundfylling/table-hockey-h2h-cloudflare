@@ -40,7 +40,7 @@
       </a>
       <nav class="nav" aria-label="Main">
         <a href="./" data-nav="home">Head-to-head</a>
-        <a href="./" data-nav="players">Players</a>
+        <a href="./#players" data-nav="players">Players</a>
         <a href="./#rivalries" data-nav="rivalries">Rivalries</a>
       </nav>
       <button id="header-search" class="header-search" type="button" aria-controls="finder"
@@ -84,7 +84,7 @@
     <nav id="mobile-menu" class="mobile-menu" aria-label="Main" hidden>
       <div class="wrap">
         <a href="./" data-nav="home">Head-to-head</a>
-        <a href="./" data-nav="players">Players</a>
+        <a href="./#players" data-nav="players">Players</a>
         <a href="./#rivalries" data-nav="rivalries">Rivalries</a>
       </div>
     </nav>
@@ -193,6 +193,16 @@
           <span class="sec-sub">Most games between two players</span>
         </div>
         <div id="rivalries-list" class="rlist"></div>
+      </div>
+    </section>
+
+    <section id="players" class="section home-only" aria-labelledby="players-title" hidden>
+      <div class="wrap">
+        <div class="sec-head">
+          <h2 id="players-title" class="sec-title">Top-ranked players</h2>
+          <span class="sec-sub">Open a player for their whole career</span>
+        </div>
+        <div id="players-list" class="rlist"></div>
       </div>
     </section>
 

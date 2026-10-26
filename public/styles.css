@@ -3829,6 +3829,14 @@ button.rrow:hover {
   color: var(--ink-3);
 }
 
+.prow {
+  grid-template-columns: 32px minmax(0, 1fr) 200px 80px 24px;
+}
+
+.prow .mut {
+  text-align: left;
+}
+
 /* ── Sections and panels ──────────────────────────────────────────── */
 .section {
   padding-top: 40px;
@@ -5392,7 +5400,8 @@ body[data-comparison-mode="matchup"] .player-only {
     line-height: 40px;
   }
 
-  #rivalries {
+  #rivalries,
+  #players {
     padding-top: 40px;
   }
 
@@ -5412,6 +5421,15 @@ body[data-comparison-mode="matchup"] .player-only {
   .rrow .rec {
     grid-column: 1 / 3;
     grid-row: 2;
+  }
+
+  .prow {
+    grid-template-columns: 28px minmax(0, 1fr) 64px;
+  }
+
+  .prow .rank {
+    display: block;
+    font-size: 16px;
   }
 
   .view-hero {
