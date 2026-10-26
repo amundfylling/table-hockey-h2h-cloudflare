@@ -34,11 +34,12 @@ player 6344) and drawn on the "Redesign" page of the Penpot file.
 | 5 Mobile / Matchup | s5 | 550, 2900 | yes |
 | 6 Mobile / Player | s6 | 1100, 2900 | yes |
 
-All seven boards are built and checked. Hand fixes made in Penpot after the
-build: Cyrillic tournament names use Golos Text (Schibsted Grotesk has no
-Cyrillic), the mobile tournament names were rejoined into one wrapping text
-each, and the desktop player KPI row got its vertical dividers (the extractor
-only keeps bottom borders when borders differ per side).
+All seven boards were rebuilt on 26 Oct 2026 with the audit fixes (lead chart
+from the May 2024 peak, tournament strip, split tape bars, diverging seasons,
+form strip, Golos Text for Cyrillic, darker ink-3, mobile header and filters).
+Those fixes now live in the generator, so no hand fixes are needed after a
+rebuild, except the desktop player KPI dividers (the extractor only keeps
+bottom borders when borders differ per side).
 
 If the Penpot plugin reloads, `storage.h2h` is lost: re-run the builder
 helpers plus `rdUnpack`/`rdStart` before building again.
