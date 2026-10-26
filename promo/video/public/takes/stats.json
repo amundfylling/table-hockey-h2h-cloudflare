@@ -1,38 +1,38 @@
 {
   "name": "stats",
   "site": "https://table-hockey-h2h.pages.dev",
-  "recorded_at": "2026-10-26T11:57:45.186Z",
+  "recorded_at": "2026-10-26T12:07:33.372Z",
   "data": {
     "sha256": "baa535bcdc387412b160b22b7c093c932582a814ca5489131095cc758e28d868",
     "generated_at": "2026-10-25T09:05:09+00:00"
   },
   "fps": 60,
   "size": [
-    1170,
-    2532
+    1206,
+    2460
   ],
   "scale": 3,
   "bpm": 124,
-  "sync_frame": 42,
+  "sync_frame": 40,
   "events": [
     {
-      "t": 775,
+      "t": 776,
       "type": "scroll",
       "label": "to lead chart",
       "from": 0,
-      "dy": 849.6666870117188,
+      "dy": 829.6666870117188,
       "ms": 650
     },
     {
-      "t": 2676,
+      "t": 2678,
       "type": "scroll",
       "label": "to tale of the tape",
-      "from": 849.6666870117188,
-      "dy": 471,
+      "from": 829.6666870117188,
+      "dy": 445,
       "ms": 650
     },
     {
-      "t": 5323,
+      "t": 5324,
       "type": "end"
     }
   ]

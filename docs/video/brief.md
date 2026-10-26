@@ -4,7 +4,8 @@
 
 - **Format:** 9:16, 1080×1920, 30 fps, about 26 s. Vertical only.
 - **Footage:** the production site, https://table-hockey-h2h.pages.dev, recorded with
-  `promo/capture/` (Playwright, iPhone viewport 390×844 at 3x, ffmpeg 60 fps). Each take saves
+  `promo/capture/` (Playwright, iPhone 18 Pro web view 402×820 pt at 3x, ffmpeg 60 fps), shown
+  on an iPhone 18 Pro drawn in code (`Phone.tsx`: 402×874 pt screen, status bar, Dynamic Island). Each take saves
   the production `meta.json` hash and time in `take.json`. Nothing on the site is rebuilt.
 - **Brand:** the site's dark tokens (`--bg #0F1113`, `--a #4DBFA3`, `--b #F07A52`), Schibsted
   Grotesk, Golos Text, Barlow Condensed (self-hosted in `promo/video/public/fonts`), the favicon mark.

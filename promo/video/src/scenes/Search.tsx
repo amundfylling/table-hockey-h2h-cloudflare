@@ -6,6 +6,7 @@
 
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { Footage, eventFrame, type Take } from "../components/Footage";
+import { Phone, SCREEN_PX, siteToCanvas } from "../components/Phone";
 import { Stage } from "../components/Stage";
 import { easings } from "../easings";
 import { cutStyle, kick, useFx } from "../fx";
@@ -68,19 +69,17 @@ const DiveThroughType: React.FC<{ footage: React.ReactNode }> = ({ footage }) =>
 export const Search: React.FC = () => {
   const fx = useFx();
   const frame = useCurrentFrame();
-  const { fps, width } = useVideoConfig();
-  const k = width / 390; // px per CSS px of the site
+  const { fps } = useVideoConfig();
   const t = take as Take;
   const pickA = eventFrame(t, "pick Amund", 0, fps);
   const pickB = eventFrame(t, "pick Andreas", 0, fps);
-  // The scoreboard sits about 150 CSS px down the page once the matchup opens.
-  const scoreY = 150 * k;
+  // The scoreboard sits about 200 CSS px down the page once the matchup opens.
+  const scoreY = siteToCanvas(201, 200).y;
 
   // Later cuts follow the style; the entrance on the drop is this scene's own.
   const style = cutStyle(fx, frame, HITS);
   let { enter, wrap } = style;
   const { exit } = style;
-  let radius = 0;
   if (fx === "mask" || fx === "mix") {
     enter = { kind: "cut" };
     const late = HITS.filter((h) => h > DIVE_FRAMES);
@@ -93,7 +92,6 @@ export const Search: React.FC = () => {
     wrap =
       `perspective(2400px) rotateY(${(1 - p) * 34}deg) rotateX(${(1 - p) * 16}deg) ` +
       `rotateZ(${(1 - p) * -6 + tilt * kk * 1.2}deg) scale(${0.58 + 0.42 * p + 0.03 * kk})`;
-    radius = (1 - p) * 70;
   }
 
   return (
@@ -103,30 +101,30 @@ export const Search: React.FC = () => {
       enter={enter}
       exit={exit}
       origin={`50% ${scoreY}px`}
-      // The footage fills the width, so any zoom crops the page's sides: past about 1.06
-      // the player names on the scoreboard lose their first letters.
+      // The whole phone while the names are typed, then a push onto the screen as the
+      // scoreboard counts up on the 808.
       camera={[
         { frame: 0, scale: 1.0 },
-        { frame: pickA, scale: 1.025, ease: "soft" },
-        { frame: pickB, scale: 1.0, ease: "rampIn" },
-        { frame: pickB + 14, scale: 1.05, ease: "slowInLand" },
-        { frame: scene.duration, scale: 1.065 },
+        { frame: pickA, scale: 1.06, ease: "soft" },
+        { frame: pickB, scale: 1.04, ease: "rampIn" },
+        { frame: pickB + 14, scale: 1.32, ease: "slowInLand" },
+        { frame: scene.duration, scale: 1.4 },
       ]}
     >
       <AbsoluteFill style={{ transform: wrap || undefined, transformOrigin: `50% ${scoreY}px` }}>
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            overflow: "hidden",
-            borderRadius: radius,
-            boxShadow: radius > 1 ? "0 40px 120px rgba(0, 0, 0, 0.6)" : undefined,
-          }}
-        >
-          <Footage src="takes/search.mp4" take={t} />
-        </div>
+        <Phone>
+          <Footage src="takes/search.mp4" take={t} width={SCREEN_PX} />
+        </Phone>
       </AbsoluteFill>
-      {(fx === "mask" || fx === "mix") && <DiveThroughType footage={<Footage src="takes/search.mp4" take={t} />} />}
+      {(fx === "mask" || fx === "mix") && <DiveThroughType
+          footage={
+            <AbsoluteFill style={{ background: colors.background }}>
+              <Phone>
+                <Footage src="takes/search.mp4" take={t} width={SCREEN_PX} />
+              </Phone>
+            </AbsoluteFill>
+          }
+        />}
     </Stage>
   );
 };

@@ -4,6 +4,7 @@
 
 import { useVideoConfig } from "remotion";
 import { FootageScene } from "../components/FootageScene";
+import { siteToCanvas } from "../components/Phone";
 import { eventFrame, type Take } from "../components/Footage";
 import { BASS_HITS, FPS, SCENES } from "../timing";
 import take from "../../public/takes/player.json";
@@ -17,8 +18,8 @@ const t = take as Take;
 const LIGHT_MS = t.events.find((e) => e.label === "light mode")!.t;
 const LIGHT_HIT = BASS_HITS.find((h) => h - scene.start >= 90 && h - scene.start <= 120)!;
 const SKIP = Math.max(0, LIGHT_MS / 1000 - (LIGHT_HIT - scene.start) / FPS);
-// The "7,480 games" figure on the career page, in canvas px (CSS 60, 272 at 1080 / 390).
-const GAMES = { x: 166, y: 753 };
+// The "7,480 games" figure on the career page.
+const GAMES = siteToCanvas(60, 272);
 
 export const Player: React.FC = () => {
   const { fps } = useVideoConfig();
@@ -32,9 +33,10 @@ export const Player: React.FC = () => {
       // The camera leans in on "7,480 games" while the page settles, then snaps back on the
       // 808 that flips the site to light mode.
       origin={`${GAMES.x}px ${GAMES.y}px`}
+      lightFrom={light + 1}
       camera={[
         { frame: 0, scale: 1.0 },
-        { frame: light - 2, scale: 1.32, ease: "even" },
+        { frame: light - 2, scale: 1.45, ease: "even" },
         { frame: light + 8, scale: 1.0, ease: "slowInLand" },
         { frame: scene.duration, scale: 1.05 },
       ]}

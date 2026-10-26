@@ -8,7 +8,9 @@ const path = require("path");
 
 const SITE = process.env.PROMO_SITE || "https://table-hockey-h2h.pages.dev";
 const DISPLAY = process.env.PROMO_DISPLAY || ":99";
-const VIEW = { width: 390, height: 844 };
+// iPhone 18 Pro: a 402x874 pt screen at 3x (1206x2622 px). The status bar (54 pt) is drawn by
+// the edit, so the web view below it is 402x820.
+const VIEW = { width: 402, height: 820 };
 const SCALE = 3;
 // The page sits below Chromium's tab strip and address bar; measured with a solid-colour page.
 const PAGE_TOP = Number(process.env.PROMO_PAGE_TOP || 261);
@@ -20,7 +22,7 @@ function ensureDisplay() {
   try {
     execSync(`xdpyinfo -display ${DISPLAY} >/dev/null 2>&1`);
   } catch {
-    const xvfb = spawn("Xvfb", [DISPLAY, "-screen", "0", `1200x${PAGE_TOP + VIEW.height * SCALE + 40}x24`,
+    const xvfb = spawn("Xvfb", [DISPLAY, "-screen", "0", "1300x3000x24",
       "-nolisten", "tcp"], { detached: true, stdio: "ignore" });
     xvfb.unref();
     execSync("sleep 1");
@@ -34,12 +36,12 @@ async function startTake(name, { theme = "dark", url = "/" } = {}) {
   const browser = await chromium.launch({
     headless: false,
     env: { ...process.env, DISPLAY },
-    args: [`--force-device-scale-factor=${SCALE}`, "--window-position=0,0", "--window-size=400,1000",
+    args: [`--force-device-scale-factor=${SCALE}`, "--window-position=0,0", "--window-size=430,960",
       "--hide-scrollbars", "--disable-infobars"],
   });
   const context = await browser.newContext({
     viewport: VIEW, deviceScaleFactor: SCALE, isMobile: true, hasTouch: true,
-    userAgent: devices["iPhone 13"].userAgent, colorScheme: theme, locale: "en-GB",
+    userAgent: devices["iPhone 15 Pro"].userAgent, colorScheme: theme, locale: "en-GB",
   });
   const page = await context.newPage();
   await page.goto(SITE + url, { waitUntil: "networkidle" });

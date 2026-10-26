@@ -15,8 +15,8 @@ export const Stats: React.FC = () => (
     src="takes/stats.mp4"
     take={take as Take}
     camera={[
-      { frame: 0, scale: 1.0 },
-      { frame: scene.duration, scale: 1.05 },
+      { frame: 0, scale: 1.12 },
+      { frame: scene.duration, scale: 1.22 },
     ]}
   />
 );

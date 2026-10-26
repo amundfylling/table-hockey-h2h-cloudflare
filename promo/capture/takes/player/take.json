@@ -1,15 +1,15 @@
 {
   "name": "player",
   "site": "https://table-hockey-h2h.pages.dev",
-  "recorded_at": "2026-10-26T11:58:05.869Z",
+  "recorded_at": "2026-10-26T12:07:54.307Z",
   "data": {
     "sha256": "baa535bcdc387412b160b22b7c093c932582a814ca5489131095cc758e28d868",
     "generated_at": "2026-10-25T09:05:09+00:00"
   },
   "fps": 60,
   "size": [
-    1170,
-    2532
+    1206,
+    2460
   ],
   "scale": 3,
   "bpm": 124,
@@ -19,12 +19,12 @@
       "t": 243,
       "type": "tap",
       "label": "open Amund",
-      "x": 102.5,
+      "x": 105.5,
       "y": 159,
       "box": {
         "x": 16,
         "y": 131,
-        "width": 173,
+        "width": 179,
         "height": 56
       }
     },
@@ -32,17 +32,17 @@
       "t": 3388,
       "type": "tap",
       "label": "light mode",
-      "x": 306,
+      "x": 318,
       "y": 28,
       "box": {
-        "x": 286,
+        "x": 298,
         "y": 8,
         "width": 40,
         "height": 40
       }
     },
     {
-      "t": 6294,
+      "t": 6296,
       "type": "scroll",
       "label": "to career stats",
       "from": 0,
@@ -50,7 +50,7 @@
       "ms": 700
     },
     {
-      "t": 9197,
+      "t": 9195,
       "type": "end"
     }
   ]

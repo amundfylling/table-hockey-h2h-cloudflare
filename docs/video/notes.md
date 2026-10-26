@@ -39,3 +39,11 @@
 - Player take: the track's grid drifts between beats 86 and 93, so the take is placed by its
   theme-toggle tap on the measured 808 (frame 544) instead of by beat count.
 - End card shortened to two bars; "Find out." answers the hook. Film is 26.1 s.
+
+## Wave 4 (iPhone)
+
+- decision: owner wants the demo shown on the latest iPhone. iPhone 18 Pro (1206×2622 px, 402×874 pt
+  at 3x, per AppleInsider/MacRumors 2026-09). Takes re-recorded at 402×820 (status bar drawn in the
+  edit and follows the site's theme). Camera pushes can now go to 1.3–1.45 since they crop the phone,
+  not the page.
+- Capture: Chromium's window must be 430 pt wide and the display 1300×3000 for a 1206 px web view.
