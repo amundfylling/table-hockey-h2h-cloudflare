@@ -7,7 +7,13 @@ import { Master } from "./Master";
 import { Hook } from "./scenes/Hook";
 import { HookStencil } from "./scenes/HookStencil";
 import { EndCard } from "./scenes/EndCard";
-import { Player } from "./scenes/Player";
+import { Career } from "./scenes/Career";
+import { Filters } from "./scenes/Filters";
+import { Games } from "./scenes/Games";
+import { Home } from "./scenes/Home";
+import { Light } from "./scenes/Light";
+import { Share } from "./scenes/Share";
+import { Tape } from "./scenes/Tape";
 import { Search } from "./scenes/Search";
 import { Stats } from "./scenes/Stats";
 import { canvas } from "./theme";
@@ -79,9 +85,57 @@ export const RemotionRoot: React.FC = () => (
       height={canvas.height}
     />
     <Composition
-      id="Scene-Player"
-      component={Player}
-      durationInFrames={SCENES.player.duration}
+      id="Scene-Filters"
+      component={Filters}
+      durationInFrames={SCENES.filters.duration}
+      fps={FPS}
+      width={canvas.width}
+      height={canvas.height}
+    />
+    <Composition
+      id="Scene-Tape"
+      component={Tape}
+      durationInFrames={SCENES.tape.duration}
+      fps={FPS}
+      width={canvas.width}
+      height={canvas.height}
+    />
+    <Composition
+      id="Scene-Games"
+      component={Games}
+      durationInFrames={SCENES.games.duration}
+      fps={FPS}
+      width={canvas.width}
+      height={canvas.height}
+    />
+    <Composition
+      id="Scene-Share"
+      component={Share}
+      durationInFrames={SCENES.share.duration}
+      fps={FPS}
+      width={canvas.width}
+      height={canvas.height}
+    />
+    <Composition
+      id="Scene-Career"
+      component={Career}
+      durationInFrames={SCENES.career.duration}
+      fps={FPS}
+      width={canvas.width}
+      height={canvas.height}
+    />
+    <Composition
+      id="Scene-Light"
+      component={Light}
+      durationInFrames={SCENES.light.duration}
+      fps={FPS}
+      width={canvas.width}
+      height={canvas.height}
+    />
+    <Composition
+      id="Scene-Home"
+      component={Home}
+      durationInFrames={SCENES.home.duration}
       fps={FPS}
       width={canvas.width}
       height={canvas.height}

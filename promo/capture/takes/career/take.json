@@ -1,0 +1,68 @@
+{
+  "name": "career",
+  "site": "https://table-hockey-h2h.pages.dev",
+  "recorded_at": "2026-10-26T13:01:26.712Z",
+  "data": {
+    "sha256": "baa535bcdc387412b160b22b7c093c932582a814ca5489131095cc758e28d868",
+    "generated_at": "2026-10-25T09:05:09+00:00"
+  },
+  "fps": 60,
+  "size": [
+    1206,
+    2460
+  ],
+  "scale": 3,
+  "bpm": 124,
+  "sync_frame": 41,
+  "events": [
+    {
+      "t": 242,
+      "type": "tap",
+      "label": "open Amund",
+      "x": 105.5,
+      "y": 159,
+      "box": {
+        "x": 16,
+        "y": 131,
+        "width": 179,
+        "height": 56
+      }
+    },
+    {
+      "t": 2205,
+      "type": "scroll",
+      "label": "to win rate",
+      "from": 0,
+      "dy": 909,
+      "ms": 650
+    },
+    {
+      "t": 4855,
+      "type": "scroll",
+      "label": "to rival map",
+      "from": 909,
+      "dy": 807,
+      "ms": 650
+    },
+    {
+      "t": 6302,
+      "type": "scroll",
+      "label": "to opponents",
+      "from": 1716,
+      "dy": 444,
+      "ms": 650
+    },
+    {
+      "t": 6969,
+      "type": "drag",
+      "label": "min games",
+      "x": 213,
+      "y": 178,
+      "x1": 303
+    },
+    {
+      "t": 10406,
+      "type": "end"
+    }
+  ]
+}

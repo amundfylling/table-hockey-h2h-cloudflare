@@ -10,25 +10,42 @@ import { Captions, type CaptionLine } from "./components/Caption";
 import { SOUNDS, Sfx } from "./components/Sfx";
 import { Hook } from "./scenes/Hook";
 import { EndCard } from "./scenes/EndCard";
-import { Player } from "./scenes/Player";
+import { Career } from "./scenes/Career";
+import { Filters } from "./scenes/Filters";
+import { Games } from "./scenes/Games";
+import { Home } from "./scenes/Home";
+import { Light } from "./scenes/Light";
+import { Share } from "./scenes/Share";
+import { Tape } from "./scenes/Tape";
 import { Search } from "./scenes/Search";
 import { Stats } from "./scenes/Stats";
 import { type Fx, FxContext, slams } from "./fx";
 import { colors } from "./theme";
-import { BASS_HITS, MUSIC_VOLUME, AUDIO_TRIM, SCENES, SOUNDTRACK, TOTAL_FRAMES } from "./timing";
+import { MUSIC_VOLUME, beatFrame, halfBeatFrame, hitNear, AUDIO_TRIM, SCENES, SOUNDTRACK, TOTAL_FRAMES } from "./timing";
 
-/** The first bass hit at or after a frame (so each caption lands with the music). */
-const hitFrom = (frame: number): number => BASS_HITS.find((h) => h >= frame - 1) ?? frame;
-
-// What the demo is showing, one short line per step. Each starts on a cut or on the tap it
-// describes, both of which sit on bass hits.
+// What the demo is showing, one short line per step. Each starts on a cut or on the tap or
+// swipe it describes, all of which sit on bass hits (hitNear snaps a beat to its hit).
+const at = (frame: number) => hitNear(frame);
 const CAPTIONS: CaptionLine[] = [
   { at: SCENES.search.start, text: "Search any two players" },
-  { at: hitFrom(SCENES.search.start + 90), text: "Get their full head-to-head" },
+  { at: at(halfBeatFrame(14)), text: "Get their full head-to-head" },
   { at: SCENES.stats.start, text: "Follow how the lead moved" },
-  { at: hitFrom(SCENES.stats.start + 70), text: "Compare them stat by stat" },
-  { at: SCENES.player.start, text: "Tap a name for their career" },
-  { at: hitFrom(SCENES.player.start + 90), text: "Light or dark, your call" },
+  { at: at(halfBeatFrame(26)), text: "Compare them stat by stat" },
+  { at: SCENES.filters.start, text: "Zoom in on playoff series" },
+  { at: at(beatFrame(37)), text: "Filter by year, level or format" },
+  { at: SCENES.tape.start, text: "See every scoreline" },
+  { at: at(beatFrame(51)), text: "Season by season" },
+  { at: at(beatFrame(58)), text: "Tournament by tournament" },
+  { at: SCENES.games.start, text: "Every game they've played" },
+  { at: at(beatFrame(64)), text: "Open one for the details" },
+  { at: SCENES.share.start, text: "Share a matchup as an image" },
+  { at: SCENES.career.start, text: "Tap a name for their career" },
+  { at: at(halfBeatFrame(90)), text: "Win rate, season by season" },
+  { at: at(beatFrame(96)), text: "Map every rival" },
+  { at: at(beatFrame(99)), text: "Rank all their opponents" },
+  { at: SCENES.light.start, text: "Light or dark, your call" },
+  { at: SCENES.home.start, text: "Browse the biggest rivalries" },
+  { at: at(beatFrame(118)), text: "Ranked by the world's best" },
 ];
 
 const FADE_OUT_FRAMES = 18; // 0.6 s at 30 fps: reads as an outro without wasting the last beat
@@ -101,9 +118,21 @@ export const Master: React.FC<{ sfx?: boolean; fx?: Fx }> = ({ sfx = true, fx = 
       <Sequence from={SCENES.stats.start} durationInFrames={SCENES.stats.duration}>
         <Stats />
       </Sequence>
-      <Sequence from={SCENES.player.start} durationInFrames={SCENES.player.duration}>
-        <Player />
-      </Sequence>
+      {(
+        [
+          ["filters", Filters],
+          ["tape", Tape],
+          ["games", Games],
+          ["share", Share],
+          ["career", Career],
+          ["light", Light],
+          ["home", Home],
+        ] as const
+      ).map(([name, Scene]) => (
+        <Sequence key={name} from={SCENES[name].start} durationInFrames={SCENES[name].duration}>
+          <Scene />
+        </Sequence>
+      ))}
       <Sequence from={SCENES.end.start} durationInFrames={SCENES.end.duration}>
         <EndCard />
       </Sequence>
@@ -113,7 +142,13 @@ export const Master: React.FC<{ sfx?: boolean; fx?: Fx }> = ({ sfx = true, fx = 
           at={[
             ...(fx === "slam" ? [SCENES.search.start] : []),
             SCENES.stats.start,
-            SCENES.player.start,
+            SCENES.filters.start,
+            SCENES.tape.start,
+            SCENES.games.start,
+            SCENES.share.start,
+            SCENES.career.start,
+            SCENES.light.start,
+            SCENES.home.start,
             SCENES.end.start,
           ]}
         />

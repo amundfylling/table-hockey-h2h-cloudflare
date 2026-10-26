@@ -29,7 +29,7 @@ function ensureDisplay() {
   }
 }
 
-async function startTake(name, { theme = "dark", url = "/" } = {}) {
+async function startTake(name, { theme = "dark", url = "/", prep } = {}) {
   ensureDisplay();
   const outDir = path.join(__dirname, "takes", name);
   fs.mkdirSync(outDir, { recursive: true });
@@ -54,6 +54,12 @@ async function startTake(name, { theme = "dark", url = "/" } = {}) {
     return { sha256: [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join(""),
       generated_at: meta.generated_at };
   });
+
+  // Set up the opening view (a scroll position, say) before the take starts.
+  if (prep) {
+    await prep(page);
+    await page.waitForTimeout(600);
+  }
 
   // Cover the page with a flat colour; lifting it marks t=0 in both the log and the footage.
   await page.evaluate((c) => {
@@ -165,4 +171,11 @@ function findSyncFrame(file) {
   throw new Error("sync flash not found in " + file);
 }
 
-module.exports = { startTake, SITE };
+/** Prep helper: scroll so an element's top sits `offset` CSS px below the top of the view. */
+const scrollTo = (selector, offset = 80) => (page) =>
+  page.evaluate(([sel, off]) => {
+    const el = document.querySelector(sel);
+    window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - off);
+  }, [selector, offset]);
+
+module.exports = { startTake, scrollTo, SITE };

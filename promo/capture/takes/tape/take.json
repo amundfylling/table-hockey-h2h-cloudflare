@@ -1,0 +1,39 @@
+{
+  "name": "tape",
+  "site": "https://table-hockey-h2h.pages.dev",
+  "recorded_at": "2026-10-26T12:55:43.924Z",
+  "data": {
+    "sha256": "baa535bcdc387412b160b22b7c093c932582a814ca5489131095cc758e28d868",
+    "generated_at": "2026-10-25T09:05:09+00:00"
+  },
+  "fps": 60,
+  "size": [
+    1206,
+    2460
+  ],
+  "scale": 3,
+  "bpm": 124,
+  "sync_frame": 42,
+  "events": [
+    {
+      "t": 2243,
+      "type": "scroll",
+      "label": "to seasons",
+      "from": 1804.6666259765625,
+      "dy": 544,
+      "ms": 650
+    },
+    {
+      "t": 5576,
+      "type": "scroll",
+      "label": "to tournaments",
+      "from": 2348.666748046875,
+      "dy": 751,
+      "ms": 650
+    },
+    {
+      "t": 7503,
+      "type": "end"
+    }
+  ]
+}

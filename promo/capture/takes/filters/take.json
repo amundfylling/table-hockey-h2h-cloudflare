@@ -1,0 +1,83 @@
+{
+  "name": "filters",
+  "site": "https://table-hockey-h2h.pages.dev",
+  "recorded_at": "2026-10-26T12:55:23.650Z",
+  "data": {
+    "sha256": "baa535bcdc387412b160b22b7c093c932582a814ca5489131095cc758e28d868",
+    "generated_at": "2026-10-25T09:05:09+00:00"
+  },
+  "fps": 60,
+  "size": [
+    1206,
+    2460
+  ],
+  "scale": 3,
+  "bpm": 124,
+  "sync_frame": 42,
+  "events": [
+    {
+      "t": 242,
+      "type": "tap",
+      "label": "playoff",
+      "x": 322.3333435058594,
+      "y": 140,
+      "box": {
+        "x": 261.66668701171875,
+        "y": 123,
+        "width": 121.33331298828125,
+        "height": 34
+      }
+    },
+    {
+      "t": 1453,
+      "type": "tap",
+      "label": "series",
+      "x": 251.75,
+      "y": 140,
+      "box": {
+        "x": 208,
+        "y": 123,
+        "width": 87.5,
+        "height": 34
+      }
+    },
+    {
+      "t": 3389,
+      "type": "tap",
+      "label": "filters",
+      "x": 63.356773376464844,
+      "y": 242,
+      "box": {
+        "x": 16,
+        "y": 220,
+        "width": 94.71354675292969,
+        "height": 44
+      }
+    },
+    {
+      "t": 4113,
+      "type": "tap",
+      "label": "overtime",
+      "x": 125.47135925292969,
+      "y": 677,
+      "box": {
+        "x": 16,
+        "y": 655,
+        "width": 218.94271850585938,
+        "height": 44
+      }
+    },
+    {
+      "t": 5338,
+      "type": "scroll",
+      "label": "to lead chart",
+      "from": 573.6666870117188,
+      "dy": 736,
+      "ms": 650
+    },
+    {
+      "t": 7987,
+      "type": "end"
+    }
+  ]
+}

@@ -6,11 +6,11 @@ import { Stage } from "../components/Stage";
 import { Title } from "../components/Title";
 import { useFx } from "../fx";
 import { colors, fonts } from "../theme";
-import { SCENES, beatFrame } from "../timing";
+import { SCENES, beatFrame, hitNear } from "../timing";
 
 const scene = SCENES.end;
-// Track beat 104 (timeline beat 48) is the 808 after the cut.
-const URL_IN = beatFrame(48) - scene.start;
+// The 808 on the beat after the cut (timeline beat 124).
+const URL_IN = hitNear(beatFrame(124)) - scene.start;
 
 export const EndCard: React.FC = () => {
   const fx = useFx();

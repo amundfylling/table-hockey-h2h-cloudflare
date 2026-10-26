@@ -1,0 +1,39 @@
+{
+  "name": "home",
+  "site": "https://table-hockey-h2h.pages.dev",
+  "recorded_at": "2026-10-26T13:02:33.942Z",
+  "data": {
+    "sha256": "baa535bcdc387412b160b22b7c093c932582a814ca5489131095cc758e28d868",
+    "generated_at": "2026-10-25T09:05:09+00:00"
+  },
+  "fps": 60,
+  "size": [
+    1206,
+    2460
+  ],
+  "scale": 3,
+  "bpm": 124,
+  "sync_frame": 42,
+  "events": [
+    {
+      "t": 526,
+      "type": "scroll",
+      "label": "to most played",
+      "from": 0,
+      "dy": 429,
+      "ms": 650
+    },
+    {
+      "t": 3400,
+      "type": "scroll",
+      "label": "to rivalries",
+      "from": 429,
+      "dy": 338.85418701171875,
+      "ms": 650
+    },
+    {
+      "t": 6775,
+      "type": "end"
+    }
+  ]
+}

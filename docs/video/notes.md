@@ -58,3 +58,21 @@
   entering on a bass hit (CAPTIONS in Master.tsx). The phone shrank to PT 1.72 and moved down
   to leave a 330 px caption band; a scrim keeps the line readable under camera pushes.
 - Rendered as full-draft-v3-captions.mp4.
+
+## Wave 6: every feature (Amund: "make it cover all features of the site")
+
+- The film runs 63 s now: the build, the first drop, the lighter middle section and the second
+  drop. Scenes: hook, search, stats, filters (playoff series + filters), tape (scorelines,
+  seasons, tournaments), games (every game + details + sort), share (share image), career
+  (career, win rate by season, rival map, opponents + min-games slider), light (theme), home
+  (most-played and top-ranked rivalries), end.
+- New takes: take-filters/tape/games/share/career/home.js. lib.js gained a `prep` hook (opening
+  scroll) and a `scrollTo` helper. The share take stands in for the phone's share sheet so the
+  real PNG the site draws is saved (public/takes/share.png); Chromium's download popup is not
+  in the picture. The home take no longer taps into a rivalry, which was still loading on the cut.
+- Takes are placed by their events (placeTake in Footage.tsx: one anchor sets the skip, two
+  also set the rate). Rates stay within 0.94-1.06. ALL_HITS / hitNear in timing.ts include the
+  softer hits of the middle section, where the strong list has none.
+- 19 captions, each on a cut or on the tap/swipe it describes. Caption size 62 px so every line
+  fits on one row.
+- Rendered as full-draft-v4-all-features.mp4.

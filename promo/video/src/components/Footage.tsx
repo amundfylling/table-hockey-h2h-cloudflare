@@ -17,6 +17,9 @@ export type TakeEvent = {
   label?: string;
   x?: number;
   y?: number;
+  /** A drag's end x (CSS px); the finger moves from x to x1 over `ms`. */
+  x1?: number;
+  ms?: number;
 };
 export type Take = { name: string; size: number[]; scale: number; bpm: number; events: TakeEvent[] };
 
@@ -62,6 +65,60 @@ const TapMark: React.FC<{ x: number; y: number; at: number; size: number }> = ({
   );
 };
 
+/**
+ * Where a take sits in a scene. One anchor puts that event on the given scene frame; two also
+ * set the playback rate so both land on their frames (a take tapped on an even grid against a
+ * track that drifts a little). Returns the skip (seconds into the take on frame 0) and the rate.
+ */
+export const placeTake = (
+  take: Take,
+  anchors: { label: string; frame: number }[],
+  fps: number,
+): { skip: number; rate: number } => {
+  const t = (label: string) => {
+    const e = take.events.find((ev) => ev.label === label);
+    if (!e) throw new Error(`[footage] no event "${label}" in take ${take.name}`);
+    return (e.t / 1000) * fps;
+  };
+  const [a, b] = anchors;
+  const rate = b ? (t(b.label) - t(a.label)) / (b.frame - a.frame) : 1;
+  const trim = t(a.label) - a.frame * rate;
+  if (trim < -0.5) throw new Error(`[footage] take ${take.name} starts too late for anchor "${a.label}"`);
+  return { skip: Math.max(0, trim) / fps, rate };
+};
+
+/** A finger held on the screen while it slides from x to x1. */
+const DragMark: React.FC<{ x: number; x1: number; y: number; at: number; frames: number; size: number }> = ({
+  x,
+  x1,
+  y,
+  at,
+  frames,
+  size,
+}) => {
+  const frame = useCurrentFrame();
+  if (frame < at - 3 || frame > at + frames + 6) return null;
+  const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
+  const p = easings.standard(interpolate(frame, [at, at + frames], [0, 1], clamp));
+  const o = interpolate(frame, [at - 3, at, at + frames, at + frames + 6], [0, 1, 1, 0], clamp);
+  const r = size / 2;
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left: x + (x1 - x) * p - r,
+        top: y - r,
+        width: size,
+        height: size,
+        borderRadius: r,
+        background: "rgba(255, 255, 255, 0.3)",
+        boxShadow: "0 0 0 1px rgba(0, 0, 0, 0.15)",
+        opacity: o,
+      }}
+    />
+  );
+};
+
 export const Footage: React.FC<{
   src: string;
   take: Take;
@@ -86,6 +143,19 @@ export const Footage: React.FC<{
         .filter((e) => e.type === "tap" && e.x !== undefined && e.y !== undefined)
         .map((e, i) => (
           <TapMark key={i} x={e.x! * k} y={e.y! * k} size={44 * k} at={at(e.t)} />
+        ))}
+      {take.events
+        .filter((e) => e.type === "drag" && e.x !== undefined && e.x1 !== undefined)
+        .map((e, i) => (
+          <DragMark
+            key={`d${i}`}
+            x={e.x! * k}
+            x1={e.x1! * k}
+            y={e.y! * k}
+            size={44 * k}
+            at={at(e.t)}
+            frames={Math.round(((e.ms ?? 650) / 1000) * fps / rate)}
+          />
         ))}
     </div>
   );

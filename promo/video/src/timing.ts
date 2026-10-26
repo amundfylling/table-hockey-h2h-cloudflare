@@ -71,6 +71,23 @@ export const BASS_HITS = onTimeline(
 export const bassHitsIn = (scene: Scene): number[] =>
   BASS_HITS.filter((h) => h >= scene.start && h < scene.start + scene.duration).map((h) => h - scene.start);
 
+/**
+ * Every clear bass attack, including the softer ones of the middle section, where the strong
+ * list above has none. For placing taps and captions there, and for snapping a cut that the beat
+ * grid puts a frame or two off its hit.
+ */
+export const ALL_HITS = onTimeline(
+  bassHits.filter((h) => h.strength >= 13 && h.level >= 30).map((h) => Math.round(h.t * FPS)),
+);
+
+/** The bass hit nearest a master frame (within `within` frames), or the frame itself. */
+export function hitNear(frame: number, within = 10): number {
+  let best = frame;
+  for (const h of ALL_HITS) if (Math.abs(h - frame) <= within && (best === frame || Math.abs(h - frame) < Math.abs(best - frame))) best = h;
+  return best;
+}
+const onHit = (frame: number) => hitNear(frame);
+
 export const isBassHit = (frame: number, tolerance = 1): boolean =>
   BASS_HITS.some((b) => Math.abs(b - frame) <= tolerance);
 
@@ -88,21 +105,33 @@ export const isBackbeat = (frame: number, tolerance = 1): boolean =>
 // A scene starts where the previous one ended; the first starts at frame 0.
 // To retime the film, change an index here and nothing else.
 // ---------------------------------------------------------------------------
-// This track's snare half is unclear (backbeat confidence 0.43), so cuts sit on its bass hits:
-// the drop on beat 8 after the trim, then the 808s, which often fall on half beats.
+// This track's snare half is unclear (backbeat confidence 0.43), so cuts sit on its bass hits.
+// The film runs over the build, the first drop, the lighter middle section (from timeline
+// beat 64) and the second drop (from beat 105.5). Track beat = timeline beat + 56.
 const SCENE_ENDS = {
   // The hook plays over the end of the build and the near-silent break; the drop is the cut.
   hook: beatFrame(8),
-  // The search take starts on the drop and its final tap is on half beat 14, the next big 808,
-  // so the real scoreboard counts up on that hit. The cut is the 808 on half beat 21.
+  // The search take starts on the drop; its final tap is on the 808 at half beat 14, so the real
+  // scoreboard counts up on that hit. The cut is the 808 on half beat 21.
   search: halfBeatFrame(21),
-  // Track beats below are absolute (timeline beat = track beat - 56).
-  // Down the head-to-head; cut on the 808 at track beat 86.5, the strongest in the section.
+  // Down the head-to-head: the lead chart and the tale of the tape.
   stats: halfBeatFrame(30),
-  // Amund's career and the switch to light mode; cut on the 808 at track beat 102.5.
-  player: halfBeatFrame(46),
-  // The end card holds two bars, to track beat 110.
-  end: beatFrame(54),
+  // Playoff series and the filters.
+  filters: onHit(halfBeatFrame(46)),
+  // Scorelines, season by season, tournaments.
+  tape: onHit(halfBeatFrame(61)),
+  // Every game, and one game's details. The cut is on the first hit of the middle section.
+  games: onHit(halfBeatFrame(74)),
+  // Share as an image.
+  share: onHit(halfBeatFrame(86)),
+  // Amund's career, down to his opponents; the cut is the second drop.
+  career: onHit(halfBeatFrame(105)),
+  // Light mode on the drop.
+  light: onHit(halfBeatFrame(110)),
+  // The home page and its rivalries.
+  home: onHit(beatFrame(123)),
+  // The end card holds two bars.
+  end: beatFrame(131),
 };
 
 export type SceneName = keyof typeof SCENE_ENDS;

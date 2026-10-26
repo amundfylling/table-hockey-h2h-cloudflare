@@ -1,0 +1,62 @@
+{
+  "name": "games",
+  "site": "https://table-hockey-h2h.pages.dev",
+  "recorded_at": "2026-10-26T12:56:03.537Z",
+  "data": {
+    "sha256": "baa535bcdc387412b160b22b7c093c932582a814ca5489131095cc758e28d868",
+    "generated_at": "2026-10-25T09:05:09+00:00"
+  },
+  "fps": 60,
+  "size": [
+    1206,
+    2460
+  ],
+  "scale": 3,
+  "bpm": 124,
+  "sync_frame": 42,
+  "events": [
+    {
+      "t": 1211,
+      "type": "tap",
+      "label": "details",
+      "x": 367,
+      "y": 243.44792938232422,
+      "box": {
+        "x": 354,
+        "y": 230.4479217529297,
+        "width": 26,
+        "height": 26.000015258789062
+      }
+    },
+    {
+      "t": 2663,
+      "type": "tap",
+      "label": "close details",
+      "x": 367,
+      "y": 655.34375,
+      "box": {
+        "x": 354,
+        "y": 642.34375,
+        "width": 26,
+        "height": 26
+      }
+    },
+    {
+      "t": 3387,
+      "type": "tap",
+      "label": "sort",
+      "x": 288.3333435058594,
+      "y": 188,
+      "box": {
+        "x": 266.3333435058594,
+        "y": 168,
+        "width": 44,
+        "height": 40
+      }
+    },
+    {
+      "t": 6533,
+      "type": "end"
+    }
+  ]
+}

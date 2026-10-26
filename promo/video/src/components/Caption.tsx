@@ -52,7 +52,7 @@ export const Captions: React.FC<{ lines: CaptionLine[]; until: number }> = ({ li
               textAlign: "center",
               fontFamily: fonts.display,
               fontWeight: 800,
-              fontSize: 70,
+              fontSize: 62,
               lineHeight: 1.05,
               letterSpacing: "-0.02em",
               color: colors.ink,
