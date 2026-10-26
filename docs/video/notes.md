@@ -13,3 +13,11 @@
   fonts.gstatic.com in this environment.
 - Zoom on full-bleed footage crops the page's sides; above ~1.06 the scoreboard names clip.
 - decision: tagline "Who's really better?" (owner picked it over "842 games. One answer.").
+
+## Wave 1 (soundtrack)
+
+- decision: owner liked the look, not the song ("more energetic"). Ten energetic options, then ten
+  bass-heavy hip hop options like "Purple J's"; owner picked "Future Heartbreak City" (Arulo).
+- decision: transitions sync to the bass (owner). Cuts are bass hits; the take's last tap is on a
+  half beat because the 808 lands there. The search take was re-recorded at 124 BPM.
+- Measured: drop at local frame 115 is a bass hit; final tap at 209, hit at 210; cut at 312, hit 311.

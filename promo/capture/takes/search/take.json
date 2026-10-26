@@ -1,7 +1,7 @@
 {
   "name": "search",
   "site": "https://table-hockey-h2h.pages.dev",
-  "recorded_at": "2026-10-26T11:07:39.985Z",
+  "recorded_at": "2026-10-26T11:45:40.798Z",
   "data": {
     "sha256": "baa535bcdc387412b160b22b7c093c932582a814ca5489131095cc758e28d868",
     "generated_at": "2026-10-25T09:05:09+00:00"
@@ -12,11 +12,11 @@
     2532
   ],
   "scale": 3,
-  "bpm": 135,
-  "sync_frame": 42,
+  "bpm": 124,
+  "sync_frame": 39,
   "events": [
     {
-      "t": 446,
+      "t": 484,
       "type": "tap",
       "label": "player field",
       "x": 212,
@@ -29,13 +29,13 @@
       }
     },
     {
-      "t": 667,
+      "t": 726,
       "type": "type",
       "text": "Amund",
       "perCharMs": 80
     },
     {
-      "t": 1334,
+      "t": 1452,
       "type": "tap",
       "label": "pick Amund",
       "x": 195,
@@ -48,7 +48,7 @@
       }
     },
     {
-      "t": 1778,
+      "t": 1936,
       "type": "tap",
       "label": "opponent field",
       "x": 199,
@@ -61,13 +61,13 @@
       }
     },
     {
-      "t": 2000,
+      "t": 2178,
       "type": "type",
       "text": "Fjerm",
       "perCharMs": 80
     },
     {
-      "t": 2667,
+      "t": 3148,
       "type": "tap",
       "label": "pick Andreas",
       "x": 195,
@@ -80,7 +80,7 @@
       }
     },
     {
-      "t": 7112,
+      "t": 7743,
       "type": "end"
     }
   ]

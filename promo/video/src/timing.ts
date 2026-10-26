@@ -4,6 +4,7 @@
 // changing one index re-flows everything after it.
 
 import { getRemotionEnvironment } from "remotion";
+import bassHits from "../bass-hits.json";
 import beats from "../beats.json";
 import { nearestBeat, type Scene } from "./scene-frames";
 
@@ -17,7 +18,7 @@ export const SOUNDTRACK: string | null = beats.audio_file;
  * Master passes this to <Audio trimBefore>, and the beat grid below shifts by
  * the same amount, so the picture and the music cannot drift apart.
  */
-export const AUDIO_TRIM = 0;
+export const AUDIO_TRIM = beats.beat_frames[56]; // 26.1 s: the last bars of the build before the break and the drop
 
 /** The soundtrack's level in the master (and in test beds, so they sound the same). */
 export const MUSIC_VOLUME = 0.6;
@@ -55,6 +56,20 @@ export const beatFrame = (n: number): number => pick(BEATS, n, "beat");
 /** Master frame of backbeat n, counting from 0 at the first backbeat on the timeline. */
 export const backbeatFrame = (n: number): number => pick(BACKBEATS, n, "backbeat");
 
+/** Master frame halfway between beat n and beat n + 1. The track's 808s often hit there. */
+export const halfBeatFrame = (n: number): number => Math.round((beatFrame(n) + beatFrame(n + 1)) / 2);
+
+/**
+ * Bass hits: attacks in the low band (< 120 Hz) measured by tools/bass-hits.py, as master frames.
+ * The film's cuts sit on the strongest of them; scene ends still name a beat or half beat, and
+ * this list is what that choice was read from (Studio warns when a cut misses one).
+ */
+export const BASS_HITS = onTimeline(
+  bassHits.filter((h) => h.strength >= 18 && h.level >= 40).map((h) => Math.round(h.t * FPS)),
+);
+export const isBassHit = (frame: number, tolerance = 1): boolean =>
+  BASS_HITS.some((b) => Math.abs(b - frame) <= tolerance);
+
 /** The backbeat closest to a master frame. */
 export const nearestBackbeat = (frame: number): number => nearestBeat(frame, BACKBEATS) ?? frame;
 
@@ -69,11 +84,14 @@ export const isBackbeat = (frame: number, tolerance = 1): boolean =>
 // A scene starts where the previous one ended; the first starts at frame 0.
 // To retime the film, change an index here and nothing else.
 // ---------------------------------------------------------------------------
+// This track's snare half is unclear (backbeat confidence 0.43), so cuts sit on its bass hits:
+// the drop on beat 8 after the trim, then the 808s, which often fall on half beats.
 const SCENE_ENDS = {
-  hook: backbeatFrame(4),
-  // The search take starts on beat 9, so its final tap (take beat 6) lands on beat 15,
-  // the track's biggest lift, and the real scoreboard counts up on the drop.
-  search: backbeatFrame(10),
+  // The hook plays over the end of the build and the near-silent break; the drop is the cut.
+  hook: beatFrame(8),
+  // The search take starts on the drop and its final tap is on half beat 14, the next big 808,
+  // so the real scoreboard counts up on that hit. The cut is the 808 on half beat 21.
+  search: halfBeatFrame(21),
 };
 
 export type SceneName = keyof typeof SCENE_ENDS;
@@ -107,8 +125,8 @@ if (getRemotionEnvironment().isStudio) {
   for (const note of beats.warnings) console.warn(`[beats] ${note}`);
   if (!BEAT_SYNCED) console.warn("[timing] this film is not beat-synced: scene ends are placed by time.");
   for (const [name, scene] of Object.entries(SCENES)) {
-    if (BEAT_SYNCED && scene.start > 0 && !isBackbeat(scene.start)) {
-      console.warn(`[timing] scene "${name}" starts at frame ${scene.start}, which is not a backbeat.`);
+    if (BEAT_SYNCED && scene.start > 0 && !isBassHit(scene.start, 2)) {
+      console.warn(`[timing] scene "${name}" starts at frame ${scene.start}, which is not a bass hit.`);
     }
   }
 }

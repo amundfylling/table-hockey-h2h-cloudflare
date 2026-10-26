@@ -1,16 +1,17 @@
 // Hook - the question the rest of the film answers with the real site.
-// One word per backbeat: "Who's" on the cut, "really" and "better?" on the next two,
-// then a hold before the push into the search.
+// It plays over the last bars of the build: "Who's" on the first frame, "really" and "better?"
+// on the two bass hits before the break, then the near-silent break gathers into a push that
+// cuts on the drop.
 
 import { AbsoluteFill, Img, staticFile } from "remotion";
 import { Stage } from "../components/Stage";
 import { Title } from "../components/Title";
 import { colors, fonts } from "../theme";
-import { SCENES, backbeatFrame } from "../timing";
+import { SCENES, beatFrame } from "../timing";
 
 const scene = SCENES.hook;
-const REALLY = backbeatFrame(0) - scene.start;
-const BETTER = backbeatFrame(1) - scene.start;
+const REALLY = beatFrame(3) - scene.start;
+const BETTER = beatFrame(4) - scene.start;
 
 const word: React.CSSProperties = {
   fontFamily: fonts.display,
@@ -27,7 +28,8 @@ export const Hook: React.FC = () => (
     background={colors.background}
     camera={[
       { frame: 0, scale: 1 },
-      { frame: scene.duration, scale: 1.07 },
+      { frame: BETTER, scale: 1.02 },
+      { frame: scene.duration, scale: 1.12, ease: "rampIn" },
     ]}
     origin="30% 55%"
     exit={{ kind: "push", from: 1.6, frames: 9 }}

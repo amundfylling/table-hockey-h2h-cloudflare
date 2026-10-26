@@ -13,7 +13,7 @@ const SCALE = 3;
 // The page sits below Chromium's tab strip and address bar; measured with a solid-colour page.
 const PAGE_TOP = Number(process.env.PROMO_PAGE_TOP || 261);
 const SYNC_COLOR = "#ff00ff";
-const BPM = Number(process.env.PROMO_BPM || 135);
+const BPM = Number(process.env.PROMO_BPM || 124);
 const BEAT_MS = 60000 / BPM;
 
 function ensureDisplay() {
