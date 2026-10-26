@@ -8,8 +8,11 @@ import { Audio } from "@remotion/media";
 import { AbsoluteFill, Sequence, interpolate, staticFile, useCurrentFrame } from "remotion";
 import { SOUNDS, Sfx } from "./components/Sfx";
 import { Hook } from "./scenes/Hook";
+import { EndCard } from "./scenes/EndCard";
+import { Player } from "./scenes/Player";
 import { Search } from "./scenes/Search";
-import { type Fx, FxContext } from "./fx";
+import { Stats } from "./scenes/Stats";
+import { type Fx, FxContext, slams } from "./fx";
 import { colors } from "./theme";
 import { MUSIC_VOLUME, AUDIO_TRIM, SCENES, SOUNDTRACK, TOTAL_FRAMES } from "./timing";
 
@@ -80,7 +83,25 @@ export const Master: React.FC<{ sfx?: boolean; fx?: Fx }> = ({ sfx = true, fx = 
       <Sequence from={SCENES.search.start} durationInFrames={SCENES.search.duration}>
         <Search />
       </Sequence>
-      {fx === "slam" && <Flash at={[SCENES.search.start, TOTAL_FRAMES - 1]} />}
+      <Sequence from={SCENES.stats.start} durationInFrames={SCENES.stats.duration}>
+        <Stats />
+      </Sequence>
+      <Sequence from={SCENES.player.start} durationInFrames={SCENES.player.duration}>
+        <Player />
+      </Sequence>
+      <Sequence from={SCENES.end.start} durationInFrames={SCENES.end.duration}>
+        <EndCard />
+      </Sequence>
+      {slams(fx) && (
+        <Flash
+          at={[
+            ...(fx === "slam" ? [SCENES.search.start] : []),
+            SCENES.stats.start,
+            SCENES.player.start,
+            SCENES.end.start,
+          ]}
+        />
+      )}
     </AbsoluteFill>
     </FxContext.Provider>
   );

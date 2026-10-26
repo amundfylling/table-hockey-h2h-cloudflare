@@ -6,9 +6,9 @@
 
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { Footage, eventFrame, type Take } from "../components/Footage";
-import { Stage, type Move } from "../components/Stage";
+import { Stage } from "../components/Stage";
 import { easings } from "../easings";
-import { kick, shake, useFx } from "../fx";
+import { cutStyle, kick, useFx } from "../fx";
 import { colors } from "../theme";
 import { SCENES, bassHitsIn } from "../timing";
 import take from "../../public/takes/search.json";
@@ -76,23 +76,17 @@ export const Search: React.FC = () => {
   // The scoreboard sits about 150 CSS px down the page once the matchup opens.
   const scoreY = 150 * k;
 
-  let enter: Move = { kind: "push", from: 0.9 };
-  let exit: Move = { kind: "push", from: 1.5, frames: 9 };
-  // Extra motion on top of the camera: bass kicks, shake, the phone's 3D swing.
-  let wrap = "";
+  // Later cuts follow the style; the entrance on the drop is this scene's own.
+  const style = cutStyle(fx, frame, HITS);
+  let { enter, wrap } = style;
+  const { exit } = style;
   let radius = 0;
-  if (fx === "slam") {
-    enter = { kind: "pull-back", from: 1.45, blur: 16, frames: 10 };
-    exit = { kind: "push", from: 2.2, frames: 7 };
-    const sh = shake(frame, HITS, 16);
-    wrap = `translate(${sh.x}px, ${sh.y}px) scale(${1 + 0.06 * kick(frame, HITS, 4)})`;
-  } else if (fx === "mask") {
+  if (fx === "mask" || fx === "mix") {
     enter = { kind: "cut" };
-    exit = { kind: "whip-left", frames: 8 };
-    wrap = `scale(${1 + 0.035 * kick(frame, HITS.filter((h) => h > DIVE_FRAMES), 5)})`;
+    const late = HITS.filter((h) => h > DIVE_FRAMES);
+    wrap = cutStyle(fx, frame, late).wrap;
   } else if (fx === "phone") {
     enter = { kind: "cut" };
-    exit = { kind: "whip-right", frames: 8 };
     const p = easings.slowInLand(interpolate(frame, [0, PHONE_FRAMES], [0, 1], clamp));
     const kk = kick(frame, HITS.filter((h) => h > PHONE_FRAMES), 5);
     const tilt = HITS.filter((h) => h <= frame).length % 2 === 0 ? 1 : -1;
@@ -132,7 +126,7 @@ export const Search: React.FC = () => {
           <Footage src="takes/search.mp4" take={t} />
         </div>
       </AbsoluteFill>
-      {fx === "mask" && <DiveThroughType footage={<Footage src="takes/search.mp4" take={t} />} />}
+      {(fx === "mask" || fx === "mix") && <DiveThroughType footage={<Footage src="takes/search.mp4" take={t} />} />}
     </Stage>
   );
 };

@@ -85,7 +85,7 @@ export const Hook: React.FC = () => {
   if (fx === "slam") {
     // The break pulls the camera in hard, and the exit punches through the words.
     exit = { kind: "push", from: 2.6, frames: 7 };
-  } else if (fx === "mask") {
+  } else if (fx === "mask" || fx === "mix") {
     camera = [
       { frame: 0, scale: 1 },
       { frame: scene.duration, scale: MASK_CAMERA.scale },

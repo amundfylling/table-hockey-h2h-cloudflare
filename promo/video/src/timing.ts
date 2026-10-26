@@ -96,6 +96,13 @@ const SCENE_ENDS = {
   // The search take starts on the drop and its final tap is on half beat 14, the next big 808,
   // so the real scoreboard counts up on that hit. The cut is the 808 on half beat 21.
   search: halfBeatFrame(21),
+  // Track beats below are absolute (timeline beat = track beat - 56).
+  // Down the head-to-head; cut on the 808 at track beat 86.5, the strongest in the section.
+  stats: halfBeatFrame(30),
+  // Amund's career and the switch to light mode; cut on the 808 at track beat 102.5.
+  player: halfBeatFrame(46),
+  // The end card holds two bars, to track beat 110.
+  end: beatFrame(54),
 };
 
 export type SceneName = keyof typeof SCENE_ENDS;

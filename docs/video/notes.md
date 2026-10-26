@@ -32,3 +32,10 @@
   dive caps the stencil at 2.6x and an iris clip-path finishes the reveal.
 - Gotcha: interpolate with extrapolateLeft clamp held a flash at its first key value for the whole
   film; overlays that live in a window return 0 outside it.
+
+## Wave 3 (full draft)
+
+- Built stats, player and end card. Draft rendered in the "mix" style (owner's pick pending).
+- Player take: the track's grid drifts between beats 86 and 93, so the take is placed by its
+  theme-toggle tap on the measured 808 (frame 544) instead of by beat count.
+- End card shortened to two bars; "Find out." answers the hook. Film is 26.1 s.

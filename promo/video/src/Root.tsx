@@ -6,7 +6,10 @@ import { loadSiteFonts } from "./load-fonts";
 import { Master } from "./Master";
 import { Hook } from "./scenes/Hook";
 import { HookStencil } from "./scenes/HookStencil";
+import { EndCard } from "./scenes/EndCard";
+import { Player } from "./scenes/Player";
 import { Search } from "./scenes/Search";
+import { Stats } from "./scenes/Stats";
 import { canvas } from "./theme";
 import { FPS, SCENES, TOTAL_FRAMES } from "./timing";
 
@@ -63,6 +66,30 @@ export const RemotionRoot: React.FC = () => (
       id="Scene-Search"
       component={Search}
       durationInFrames={SCENES.search.duration}
+      fps={FPS}
+      width={canvas.width}
+      height={canvas.height}
+    />
+    <Composition
+      id="Scene-Stats"
+      component={Stats}
+      durationInFrames={SCENES.stats.duration}
+      fps={FPS}
+      width={canvas.width}
+      height={canvas.height}
+    />
+    <Composition
+      id="Scene-Player"
+      component={Player}
+      durationInFrames={SCENES.player.duration}
+      fps={FPS}
+      width={canvas.width}
+      height={canvas.height}
+    />
+    <Composition
+      id="Scene-End"
+      component={EndCard}
+      durationInFrames={SCENES.end.duration}
       fps={FPS}
       width={canvas.width}
       height={canvas.height}

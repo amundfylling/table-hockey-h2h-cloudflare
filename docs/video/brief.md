@@ -2,7 +2,7 @@
 
 ## Inputs
 
-- **Format:** 9:16, 1080×1920, 30 fps, about 30–35 s. Vertical only.
+- **Format:** 9:16, 1080×1920, 30 fps, about 26 s. Vertical only.
 - **Footage:** the production site, https://table-hockey-h2h.pages.dev, recorded with
   `promo/capture/` (Playwright, iPhone viewport 390×844 at 3x, ffmpeg 60 fps). Each take saves
   the production `meta.json` hash and time in `take.json`. Nothing on the site is rebuilt.
@@ -35,11 +35,9 @@ drop.
 |---|---|---|---|
 | 1 | Hook (type) | "Who's" / "really" / "better?" on the last hits of the build; push into the drop | 3 |
 | 2 | Search (real site) | Tap Player, type "Amund", pick; tap Opponent, type "Fjerm", pick; the site opens on the drop; scoreboard counts to 413–342 on the next 808 | 0 added |
-| 3 | Scoreboard detail | Push into the score and "Fylling leads by 71 wins" line | planned |
-| 4 | Stats scroll | Lead chart, tale of the tape, scorelines | planned |
-| 5 | Player page | Amund's career: 7,480 games | planned |
-| 6 | Light mode | Tap the theme toggle | planned |
-| 7 | End card | "Every rivalry, settled." + table-hockey-h2h.pages.dev | planned |
+| 3 | Stats (real site) | Swipes on 808s: lead chart, then the tale of the tape | 0 added |
+| 4 | Player (real site) | Tap Amund's name; career (7,480 games); light mode on the 808 at track beat 93 | 0 added |
+| 5 | End card | "Find out." + table-hockey-h2h.pages.dev | 3 |
 
 ## Assumptions (veto any)
 

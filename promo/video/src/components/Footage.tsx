@@ -20,7 +20,7 @@ export type TakeEvent = {
   x?: number;
   y?: number;
 };
-export type Take = { name: string; size: number[]; scale: number; events: TakeEvent[] };
+export type Take = { name: string; size: number[]; scale: number; bpm: number; events: TakeEvent[] };
 
 const CSS_WIDTH = 390;
 
