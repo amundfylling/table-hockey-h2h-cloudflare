@@ -6,7 +6,7 @@
 
 import { Audio } from "@remotion/media";
 import { AbsoluteFill, Sequence, interpolate, staticFile, useCurrentFrame } from "remotion";
-import { Captions, type CaptionLine } from "./components/Caption";
+import { Captions, type CaptionLine, type CaptionStyle } from "./components/Caption";
 import { SOUNDS, Sfx } from "./components/Sfx";
 import { Hook } from "./scenes/Hook";
 import { EndCard } from "./scenes/EndCard";
@@ -92,7 +92,11 @@ const Flash: React.FC<{ at: number[] }> = ({ at }) => {
   return o > 0.01 ? <AbsoluteFill style={{ background: "#FFFFFF", opacity: o }} /> : null;
 };
 
-export const Master: React.FC<{ sfx?: boolean; fx?: Fx }> = ({ sfx = true, fx = "v2" }) => {
+export const Master: React.FC<{ sfx?: boolean; fx?: Fx; captions?: CaptionStyle }> = ({
+  sfx = true,
+  fx = "v2",
+  captions = "plain",
+}) => {
   const frame = useCurrentFrame();
   const volume = interpolate(
     frame,
@@ -136,7 +140,7 @@ export const Master: React.FC<{ sfx?: boolean; fx?: Fx }> = ({ sfx = true, fx = 
       <Sequence from={SCENES.end.start} durationInFrames={SCENES.end.duration}>
         <EndCard />
       </Sequence>
-      <Captions lines={CAPTIONS} until={SCENES.end.start} />
+      <Captions lines={CAPTIONS} until={SCENES.end.start} look={captions} />
       {slams(fx) && (
         <Flash
           at={[

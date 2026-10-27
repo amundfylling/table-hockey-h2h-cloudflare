@@ -3,6 +3,7 @@
 import { Composition } from "remotion";
 import { FX } from "./fx";
 import { loadSiteFonts } from "./load-fonts";
+import { CAPTION_STYLES } from "./components/Caption";
 import { Master } from "./Master";
 import { Hook } from "./scenes/Hook";
 import { HookStencil } from "./scenes/HookStencil";
@@ -27,7 +28,7 @@ export const RemotionRoot: React.FC = () => (
     <Composition
       id="Master"
       component={Master}
-      defaultProps={{ sfx: true, fx: "mix" }}
+      defaultProps={{ sfx: true, fx: "mix", captions: "teal" as const }}
       durationInFrames={TOTAL_FRAMES}
       fps={FPS}
       width={canvas.width}
@@ -40,6 +41,19 @@ export const RemotionRoot: React.FC = () => (
         id={`Master-${f}`}
         component={Master}
         defaultProps={{ sfx: true, fx: f }}
+        durationInFrames={TOTAL_FRAMES}
+        fps={FPS}
+        width={canvas.width}
+        height={canvas.height}
+      />
+    ))}
+    {/* Caption looks under review (Caption.tsx), on the shipped transition style. */}
+    {CAPTION_STYLES.map((c) => (
+      <Composition
+        key={c}
+        id={`Captions-${c}`}
+        component={Master}
+        defaultProps={{ sfx: true, fx: "mix" as const, captions: c }}
         durationInFrames={TOTAL_FRAMES}
         fps={FPS}
         width={canvas.width}

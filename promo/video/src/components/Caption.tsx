@@ -10,11 +10,27 @@ import { CAPTION_BAND } from "./Phone";
 
 export type CaptionLine = { at: number; text: string };
 
+/** How the line is set: bare type, or in a solid box (teal, the brand orange, or white). */
+export const CAPTION_STYLES = ["plain", "teal", "orange", "white"] as const;
+export type CaptionStyle = (typeof CAPTION_STYLES)[number];
+
+const BOX: Record<CaptionStyle, { bg: string; ink: string } | null> = {
+  plain: null,
+  teal: { bg: colors.teal, ink: colors.background },
+  orange: { bg: colors.accent, ink: colors.onAccent },
+  white: { bg: colors.ink, ink: colors.background },
+};
+
 const IN = 8;
 const OUT = 5;
 const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
 
-export const Captions: React.FC<{ lines: CaptionLine[]; until: number }> = ({ lines, until }) => {
+export const Captions: React.FC<{ lines: CaptionLine[]; until: number; look?: CaptionStyle }> = ({
+  lines,
+  until,
+  look = "plain",
+}) => {
+  const box = BOX[look];
   const frame = useCurrentFrame();
   const first = lines[0]?.at ?? Infinity;
   if (frame < first || frame >= until) return null;
@@ -55,13 +71,28 @@ export const Captions: React.FC<{ lines: CaptionLine[]; until: number }> = ({ li
               fontSize: 62,
               lineHeight: 1.05,
               letterSpacing: "-0.02em",
-              color: colors.ink,
+              color: box ? box.ink : colors.ink,
               transform: `translateY(${(1 - p) * 40 - q * 24}px)`,
               opacity: p * (1 - q),
               filter: `blur(${(1 - p) * 8}px)`,
             }}
           >
-            {line.text}
+            {box ? (
+              <span
+                style={{
+                  display: "inline-block",
+                  background: box.bg,
+                  padding: "20px 36px 24px",
+                  borderRadius: 24,
+                  boxShadow: "0 12px 40px rgba(0, 0, 0, 0.45)",
+                  transform: `scale(${0.88 + 0.12 * p})`,
+                }}
+              >
+                {line.text}
+              </span>
+            ) : (
+              line.text
+            )}
           </div>
         );
       })}
