@@ -53,6 +53,7 @@ class RecordsTest(unittest.TestCase):
         self.assertEqual(records["win_streak"]["start_date"], _day(0))
         self.assertEqual(records["win_streak"]["end_date"], _day(3))
         self.assertEqual(records["unbeaten_streak"]["games"], 6)
+        self.assertEqual(records["unbeaten_streak"]["results"], "WWWWDW")
 
     def test_unbeaten_run_is_left_out_when_no_longer_than_the_winning_streak(self):
         rows = [(1, 2, 3, 1, _day(i)) for i in range(4)]

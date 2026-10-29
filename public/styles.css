@@ -3801,7 +3801,7 @@ body.finder-open:not([data-home="true"]) .finder {
 
 .records {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
 }
 
@@ -3815,12 +3815,23 @@ body.finder-open:not([data-home="true"]) .finder {
   color: inherit;
   font: inherit;
   text-align: left;
+}
+
+button.record {
   cursor: pointer;
 }
 
-.record:hover {
-  border-color: var(--line-2);
+button.record:hover,
+.streak-row:hover {
   background: var(--sunk);
+}
+
+.record-num {
+  font-family: var(--num);
+  font-size: 44px;
+  line-height: 44px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .record-value {
@@ -3828,16 +3839,7 @@ body.finder-open:not([data-home="true"]) .finder {
   align-items: baseline;
   flex-wrap: wrap;
   gap: 0 8px;
-  margin-top: 8px;
-}
-
-.record-num {
-  font-family: var(--num);
-  font-size: 48px;
-  line-height: 48px;
-  font-weight: 600;
-  color: var(--accent);
-  font-variant-numeric: tabular-nums;
+  margin-top: 12px;
 }
 
 .record-unit {
@@ -3846,7 +3848,7 @@ body.finder-open:not([data-home="true"]) .finder {
 }
 
 .record-who {
-  margin-top: 8px;
+  margin-top: 4px;
   font-size: 15px;
   line-height: 20px;
   font-weight: 600;
@@ -3856,6 +3858,223 @@ body.finder-open:not([data-home="true"]) .finder {
   font-size: 13px;
   line-height: 18px;
   color: var(--ink-2);
+}
+
+.record-visual {
+  display: block;
+  width: 100%;
+  height: 64px;
+  margin-top: 16px;
+}
+
+/* Streaks: one square per game */
+.record--streaks {
+  grid-column: 1 / -1;
+  gap: 0;
+  padding-bottom: 8px;
+}
+
+.streak-row {
+  width: calc(100% + 48px);
+  margin: 0 -24px;
+  padding: 16px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.streak-row:last-child {
+  border-bottom: 0;
+}
+
+.streak-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+}
+
+.streak-head .record-num {
+  min-width: 72px;
+  color: var(--a);
+}
+
+.streak-text {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 12px;
+  min-width: 0;
+}
+
+.streak-text .record-unit {
+  flex-basis: 100%;
+}
+
+.streak-text .record-who {
+  margin-top: 0;
+}
+
+.pips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.pips i,
+.pip-legend i {
+  display: block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--a);
+}
+
+.pips i.d,
+.pip-legend i.d {
+  background: var(--draw);
+}
+
+.pip-legend {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.pip-legend i.d {
+  margin-left: 6px;
+}
+
+/* Perfect record: a full bar and a zero */
+.shutout {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  height: 100%;
+}
+
+.shutout-bar {
+  display: flex;
+  height: 14px;
+  border-radius: 3px;
+  background: var(--sunk);
+  overflow: hidden;
+}
+
+.shutout-bar i {
+  flex: 1;
+  background: var(--a);
+}
+
+.shutout-labels,
+.gap-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.record--perfect .record-num {
+  color: var(--a);
+}
+
+/* Rival streak: the lead climbing game by game */
+.climb {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.climb svg {
+  display: block;
+  width: 100%;
+  height: 40px;
+}
+
+.record--climb .record-num {
+  color: var(--a);
+}
+
+/* Dead even: a bar split down the middle */
+.balance {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  height: 100%;
+}
+
+.balance-bar {
+  display: flex;
+  gap: 2px;
+  height: 14px;
+}
+
+.balance-bar i {
+  display: block;
+  height: 14px;
+}
+
+.balance-bar i:first-child {
+  border-radius: 3px 0 0 3px;
+}
+
+.balance-bar i:last-child {
+  border-radius: 0 3px 3px 0;
+}
+
+.balance-mid {
+  position: absolute;
+  left: 50%;
+  top: 8px;
+  height: 30px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--ink);
+}
+
+/* Rematch: two dots and a long silence */
+.gap {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  height: 100%;
+}
+
+.gap-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gap-line .dot {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--b);
+}
+
+.gap-line .dash {
+  flex: 1;
+  border-top: 2px dashed var(--line-2);
+}
+
+.record--gap .record-num {
+  color: var(--b-text);
 }
 
 @media (max-width: 900px) {
@@ -3870,11 +4089,37 @@ body.finder-open:not([data-home="true"]) .finder {
   }
 
   .records {
+    grid-template-columns: minmax(0, 1fr);
     gap: 8px;
   }
 
   .record {
+    padding: 16px;
+  }
+
+  .streak-row {
+    width: calc(100% + 32px);
+    margin: 0 -16px;
     padding: 14px 16px;
+  }
+
+  .streak-head {
+    flex-wrap: wrap;
+    gap: 8px 12px;
+  }
+
+  .streak-head .record-num {
+    min-width: 0;
+  }
+
+  .pip-legend {
+    margin-left: 0;
+    flex-basis: 100%;
+  }
+
+  .pips i {
+    width: 8px;
+    height: 8px;
   }
 
   .record-num {
@@ -3882,12 +4127,12 @@ body.finder-open:not([data-home="true"]) .finder {
     line-height: 36px;
   }
 
-  .record-unit {
-    font-size: 13px;
+  .record-visual {
+    height: 48px;
   }
 
-  .record-who {
-    font-size: 14px;
+  .climb svg {
+    height: 32px;
   }
 }
 

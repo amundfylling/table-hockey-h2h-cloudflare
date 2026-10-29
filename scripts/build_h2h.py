@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Dict, Iterable, Optional, Tuple
 from urllib.parse import urlparse
 
+import numpy as np
 import pandas as pd
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -1292,8 +1293,11 @@ def _streak_record(long: pd.DataFrame, keys: list, hit: pd.Series) -> Optional[d
         first_row=("row", "first"),
     )
     # Ties go to whoever got there first.
-    best = runs.sort_values(["games", "first_row"], ascending=[False, True]).iloc[0]
+    ranked = runs.sort_values(["games", "first_row"], ascending=[False, True])
+    best = ranked.iloc[0]
+    rows = long[hit & run_id.eq(ranked.index[0])]
     return {
+        "results": "".join(np.where(rows["gf"] > rows["ga"], "W", "D")),
         "games": int(best["games"]),
         "start_date": best["start"],
         "end_date": best["end"],
@@ -1363,6 +1367,7 @@ def build_records(matches: pd.DataFrame, player_names: Dict[int, str]) -> dict:
         records["unbeaten_streak"] = {
             "player": player(unbeaten["pid"]),
             "games": unbeaten["games"],
+            "results": unbeaten["results"],
             "start_date": unbeaten["start_date"],
             "end_date": unbeaten["end_date"],
         }
