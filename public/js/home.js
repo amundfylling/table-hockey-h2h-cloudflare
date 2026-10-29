@@ -1,6 +1,6 @@
 // Home page: the most-played rivalry card and the biggest-rivalries list,
-// both from data/rivalries.json (written by the build), and the top-ranked
-// players list from the loaded players.
+// both from data/rivalries.json (written by the build), the records cards from
+// data/records.json, and the top-ranked players list from the loaded players.
 import { state } from "./state.js";
 import { getCountryFlag, getWorldRank } from "./players.js";
 import { fetchJson } from "./data.js";
@@ -14,6 +14,7 @@ let rivalries = [];
 let ranked = false;
 let showAll = false;
 let topPlayers = [];
+let records = {};
 let showAllPlayers = false;
 
 function playerName(player) {
@@ -242,6 +243,87 @@ function renderFeature() {
   card.hidden = false;
 }
 
+function monthYear(dateStr) {
+  const [year, month] = String(dateStr || "").split("-");
+  const date = new Date(Number(year), Number(month) - 1, 1);
+  return Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString("en-GB", { month: "short", year: "numeric" });
+}
+
+function spanText(start, end) {
+  const first = monthYear(start);
+  const last = monthYear(end);
+  return first === last ? first : `${first} – ${last}`;
+}
+
+function yearOf(dateStr) {
+  return String(dateStr || "").slice(0, 4);
+}
+
+function yearSpan(start, end) {
+  return yearOf(start) === yearOf(end) ? yearOf(start) : `${yearOf(start)} – ${yearOf(end)}`;
+}
+
+// One card per record the build kept. The build drops a record as soon as a
+// game breaks it, so a missing key simply means no card.
+function recordCards() {
+  const cards = [];
+  const known = (...players) => players.every((p) => state.playersById.has(Number(p?.id)));
+  const { win_streak: win, unbeaten_streak: unbeaten, perfect_record: perfect,
+    h2h_streak: h2h, dead_even: even, rematch_gap: gap } = records;
+  if (win && known(win.player)) {
+    cards.push({ label: "Longest winning streak", value: formatNumber(win.games), unit: "wins in a row",
+      who: playerName(win.player), when: spanText(win.start_date, win.end_date), view: { p1: win.player.id } });
+  }
+  if (unbeaten && known(unbeaten.player)) {
+    cards.push({ label: "Longest unbeaten run", value: formatNumber(unbeaten.games), unit: "games without a loss",
+      who: playerName(unbeaten.player), when: spanText(unbeaten.start_date, unbeaten.end_date), view: { p1: unbeaten.player.id } });
+  }
+  if (perfect && known(perfect.player, perfect.opponent)) {
+    cards.push({ label: "Perfect record", value: `${formatNumber(perfect.games)}–0`, unit: "and never a draw",
+      who: `${playerName(perfect.player)} against ${playerName(perfect.opponent)}`,
+      when: yearSpan(perfect.first_date, perfect.last_date), view: { p1: perfect.player.id, p2: perfect.opponent.id } });
+  }
+  if (h2h && known(h2h.player, h2h.opponent)) {
+    cards.push({ label: "Most wins in a row over one rival", value: formatNumber(h2h.games), unit: "straight wins",
+      who: `${playerName(h2h.player)} over ${playerName(h2h.opponent)}`,
+      when: yearSpan(h2h.start_date, h2h.end_date), view: { p1: h2h.player.id, p2: h2h.opponent.id } });
+  }
+  if (even && known(even.player, even.opponent)) {
+    cards.push({ label: "Dead even", value: `${formatNumber(even.wins)}–${formatNumber(even.wins)}`,
+      unit: even.draws ? `with ${formatNumber(even.draws)} draws` : "",
+      who: `${playerName(even.player)} and ${playerName(even.opponent)}`,
+      when: `After ${formatNumber(even.games)} games`, view: { p1: even.player.id, p2: even.opponent.id } });
+  }
+  if (gap && known(gap.player, gap.opponent)) {
+    const years = Math.floor(gap.days / 365.25);
+    cards.push({ label: "Longest wait for a rematch", value: String(years), unit: years === 1 ? "year" : "years",
+      who: `${playerName(gap.player)} and ${playerName(gap.opponent)}`,
+      when: `${yearOf(gap.before_date)}, then again in ${yearOf(gap.after_date)}`,
+      view: { p1: gap.player.id, p2: gap.opponent.id } });
+  }
+  return cards;
+}
+
+function renderRecords() {
+  const list = document.getElementById("records-list");
+  const section = document.getElementById("records");
+  if (!list || !section) return;
+  const cards = recordCards();
+  section.hidden = cards.length === 0;
+  list.replaceChildren(...cards.map((card) => el("button", {
+    class: "panel record",
+    type: "button",
+    "aria-label": `${card.label}: ${card.value} ${card.unit}, ${card.who}, ${card.when}`,
+    onclick: () => requestView({ p1: Number(card.view.p1), ...(card.view.p2 ? { p2: Number(card.view.p2) } : {}) }),
+  },
+  el("span", { class: "eyebrow" }, card.label),
+  el("span", { class: "record-value" },
+    el("span", { class: "record-num" }, card.value),
+    card.unit ? el("span", { class: "record-unit" }, card.unit) : null),
+  el("span", { class: "record-who" }, card.who),
+  el("span", { class: "record-when" }, card.when))));
+}
+
 export async function renderHome() {
   const seenRanks = new Set();
   topPlayers = state.players
@@ -250,6 +332,13 @@ export async function renderHome() {
     .filter((player) => !seenRanks.has(getWorldRank(player)) && seenRanks.add(getWorldRank(player)))
     .slice(0, 50);
   renderPlayers();
+  const recordsReady = fetchJson("data/records.json")
+    .then((payload) => { records = payload && typeof payload === "object" ? payload : {}; })
+    .catch((err) => {
+      console.warn("Could not load records:", err);
+      records = {};
+    })
+    .then(renderRecords);
   try {
     const payload = await fetchJson("data/rivalries.json");
     const known = (list) => (Array.isArray(list) ? list : [])
@@ -273,4 +362,5 @@ export async function renderHome() {
   }
   renderFeature();
   renderList();
+  await recordsReady;
 }

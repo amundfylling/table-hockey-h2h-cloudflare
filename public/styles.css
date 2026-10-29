@@ -3794,6 +3794,103 @@ body.finder-open:not([data-home="true"]) .finder {
   text-underline-offset: 3px;
 }
 
+/* Records */
+#records {
+  padding-top: 64px;
+}
+
+.records {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.record {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+  padding: 20px 24px;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.record:hover {
+  border-color: var(--line-2);
+  background: var(--sunk);
+}
+
+.record-value {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0 8px;
+  margin-top: 8px;
+}
+
+.record-num {
+  font-family: var(--num);
+  font-size: 48px;
+  line-height: 48px;
+  font-weight: 600;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.record-unit {
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.record-who {
+  margin-top: 8px;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 600;
+}
+
+.record-when {
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-2);
+}
+
+@media (max-width: 900px) {
+  .records {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  #records {
+    padding-top: 40px;
+  }
+
+  .records {
+    gap: 8px;
+  }
+
+  .record {
+    padding: 14px 16px;
+  }
+
+  .record-num {
+    font-size: 36px;
+    line-height: 36px;
+  }
+
+  .record-unit {
+    font-size: 13px;
+  }
+
+  .record-who {
+    font-size: 14px;
+  }
+}
+
 /* Biggest rivalries */
 #rivalries {
   padding-top: 64px;

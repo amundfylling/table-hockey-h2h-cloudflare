@@ -1271,6 +1271,180 @@ def build_rivalries(
     return {"most_played": most_played, "top_ranked": top_ranked[:limit]}
 
 
+MIN_WIN_STREAK = 20
+MIN_PERFECT_RECORD_GAMES = 30
+MIN_DEAD_EVEN_GAMES = 100
+MIN_REMATCH_GAP_DAYS = 5 * 365
+
+
+def _streak_record(long: pd.DataFrame, keys: list, hit: pd.Series) -> Optional[dict]:
+    """Longest run of rows where `hit` holds, inside groups of `keys` (rows in game order)."""
+    if not hit.any():
+        return None
+    new_group = long[keys].ne(long[keys].shift()).any(axis=1)
+    run_id = (new_group | ~hit).cumsum()
+    runs = long[hit].groupby(run_id[hit]).agg(
+        games=("date", "size"),
+        start=("date", "first"),
+        end=("date", "last"),
+        pid=("pid", "first"),
+        oid=("oid", "first"),
+        first_row=("row", "first"),
+    )
+    # Ties go to whoever got there first.
+    best = runs.sort_values(["games", "first_row"], ascending=[False, True]).iloc[0]
+    return {
+        "games": int(best["games"]),
+        "start_date": best["start"],
+        "end_date": best["end"],
+        "pid": int(best["pid"]),
+        "oid": int(best["oid"]),
+    }
+
+
+def build_records(matches: pd.DataFrame, player_names: Dict[int, str]) -> dict:
+    """Home-page records ("fun facts"), recomputed from every game on each build.
+
+    Each record has a rule, and a record is left out when no game history meets it, so
+    a single new or corrected game can never leave a stale claim on the page. A perfect
+    record disappears the moment that player drops a game, a dead-even rivalry the
+    moment someone pulls ahead, and a streak always names whoever holds it now.
+    """
+    def player(pid: int) -> dict:
+        return {"id": int(pid), "name": player_names.get(int(pid), f"Player {pid}")}
+
+    # Placeholder entries such as "* *" are not real players.
+    real = {
+        pid for pid, name in player_names.items()
+        if any(ch.isalpha() for ch in str(name or ""))
+    }
+    games = matches[
+        matches["date"].notna()
+        & matches["player1_id"].isin(real)
+        & matches["player2_id"].isin(real)
+    ]
+    records: dict = {}
+    if games.empty:
+        return records
+    games = games.sort_values(
+        ["date_dt", "tournament_id", "stage_sequence", "round_number", "playoff_game_number"],
+        kind="mergesort",
+        na_position="last",
+    ).reset_index(drop=True)
+    games = games.assign(row=range(len(games)))
+
+    side1 = pd.DataFrame({
+        "pid": games["player1_id"].to_numpy(),
+        "oid": games["player2_id"].to_numpy(),
+        "gf": games["goals_player1"].to_numpy(),
+        "ga": games["goals_player2"].to_numpy(),
+        "date": games["date"].to_numpy(),
+        "row": games["row"].to_numpy(),
+    })
+    side2 = side1.rename(columns={"pid": "oid", "oid": "pid", "gf": "ga", "ga": "gf"})
+    long = pd.concat([side1, side2], ignore_index=True)
+
+    by_player = long.sort_values(["pid", "row"], kind="mergesort").reset_index(drop=True)
+    wins = by_player["gf"] > by_player["ga"]
+    win_streak = _streak_record(by_player, ["pid"], wins)
+    if win_streak and win_streak["games"] >= MIN_WIN_STREAK:
+        records["win_streak"] = {
+            "player": player(win_streak["pid"]),
+            "games": win_streak["games"],
+            "start_date": win_streak["start_date"],
+            "end_date": win_streak["end_date"],
+        }
+    unbeaten = _streak_record(by_player, ["pid"], by_player["gf"] >= by_player["ga"])
+    # Only worth a card when draws stretched it past the winning streak.
+    if (
+        unbeaten
+        and "win_streak" in records
+        and unbeaten["games"] > records["win_streak"]["games"]
+    ):
+        records["unbeaten_streak"] = {
+            "player": player(unbeaten["pid"]),
+            "games": unbeaten["games"],
+            "start_date": unbeaten["start_date"],
+            "end_date": unbeaten["end_date"],
+        }
+
+    by_pair = long.sort_values(["pid", "oid", "row"], kind="mergesort").reset_index(drop=True)
+    pair_wins = by_pair["gf"] > by_pair["ga"]
+    pairs = by_pair.assign(win=pair_wins, loss=by_pair["gf"] < by_pair["ga"]).groupby(
+        ["pid", "oid"], sort=False
+    ).agg(
+        games=("win", "size"),
+        wins=("win", "sum"),
+        losses=("loss", "sum"),
+        first_date=("date", "first"),
+        last_date=("date", "last"),
+        first_row=("row", "first"),
+    ).reset_index()
+
+    perfect = pairs[
+        (pairs["wins"] == pairs["games"]) & (pairs["games"] >= MIN_PERFECT_RECORD_GAMES)
+    ].sort_values(["games", "first_row"], ascending=[False, True])
+    if not perfect.empty:
+        best = perfect.iloc[0]
+        records["perfect_record"] = {
+            "player": player(best["pid"]),
+            "opponent": player(best["oid"]),
+            "games": int(best["games"]),
+            "first_date": best["first_date"],
+            "last_date": best["last_date"],
+        }
+
+    h2h_streak = _streak_record(by_pair, ["pid", "oid"], pair_wins)
+    perfect_pair = (
+        (records["perfect_record"]["player"]["id"], records["perfect_record"]["opponent"]["id"])
+        if "perfect_record" in records
+        else None
+    )
+    if (
+        h2h_streak
+        and h2h_streak["games"] >= MIN_WIN_STREAK
+        and (h2h_streak["pid"], h2h_streak["oid"]) != perfect_pair
+    ):
+        records["h2h_streak"] = {
+            "player": player(h2h_streak["pid"]),
+            "opponent": player(h2h_streak["oid"]),
+            "games": h2h_streak["games"],
+            "start_date": h2h_streak["start_date"],
+            "end_date": h2h_streak["end_date"],
+        }
+
+    even = pairs[
+        (pairs["pid"] < pairs["oid"])
+        & (pairs["wins"] == pairs["losses"])
+        & (pairs["games"] >= MIN_DEAD_EVEN_GAMES)
+    ].sort_values(["games", "first_row"], ascending=[False, True])
+    if not even.empty:
+        best = even.iloc[0]
+        records["dead_even"] = {
+            "player": player(best["pid"]),
+            "opponent": player(best["oid"]),
+            "games": int(best["games"]),
+            "wins": int(best["wins"]),
+            "draws": int(best["games"] - 2 * best["wins"]),
+        }
+
+    meetings = by_pair[by_pair["pid"] < by_pair["oid"]]
+    meeting_dates = pd.to_datetime(meetings["date"])
+    gaps = meeting_dates.groupby([meetings["pid"], meetings["oid"]]).diff().dt.days
+    if gaps.notna().any() and gaps.max() >= MIN_REMATCH_GAP_DAYS:
+        at = gaps.idxmax()
+        records["rematch_gap"] = {
+            "player": player(meetings.at[at, "pid"]),
+            "opponent": player(meetings.at[at, "oid"]),
+            "days": int(gaps[at]),
+            "before_date": (meeting_dates[at] - pd.Timedelta(days=int(gaps[at]))).strftime(
+                "%Y-%m-%d"
+            ),
+            "after_date": meetings.at[at, "date"],
+        }
+    return records
+
+
 def download_cached(url: str, path: Path) -> None:
     parsed_url = urlparse(url)
     if parsed_url.scheme not in {"http", "https"} or not parsed_url.netloc:
@@ -1465,6 +1639,18 @@ def main() -> int:
     ]
     matches = matches.sort_values(sort_cols, kind="mergesort", na_position="last")
 
+    # Records count every game, including those against players below MIN_MATCHES.
+    print("Building records...")
+    all_names = {
+        int(player_id): clean_optional_string(name)
+        for id_column, name_column in [("player1_id", "player1_name"), ("player2_id", "player2_name")]
+        for player_id, name in matches[[id_column, name_column]]
+        .drop_duplicates(id_column, keep="last")
+        .itertuples(index=False, name=None)
+    }
+    all_names.update(player_names)
+    records = build_records(matches, all_names)
+
     print(f"Filtering players with {min_matches}+ matches...")
     all_ids = pd.concat([matches["player1_id"], matches["player2_id"]])
     match_counts = all_ids.value_counts()
@@ -1486,6 +1672,7 @@ def main() -> int:
         DATA_STAGING_DIR / "og",
     )
     write_json(DATA_STAGING_DIR / "rivalries.json", build_rivalries(player_payloads, players))
+    write_json(DATA_STAGING_DIR / "records.json", records)
 
     write_json(
         DATA_STAGING_DIR / "meta.json",
