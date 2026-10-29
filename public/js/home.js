@@ -1,6 +1,6 @@
 // Home page: the most-played rivalry card and the biggest-rivalries list,
-// both from data/rivalries.json (written by the build), and the top-ranked
-// players list from the loaded players.
+// both from data/rivalries.json (written by the build), the records cards from
+// data/records.json, and the top-ranked players list from the loaded players.
 import { state } from "./state.js";
 import { getCountryFlag, getWorldRank } from "./players.js";
 import { fetchJson } from "./data.js";
@@ -14,6 +14,7 @@ let rivalries = [];
 let ranked = false;
 let showAll = false;
 let topPlayers = [];
+let records = {};
 let showAllPlayers = false;
 
 function playerName(player) {
@@ -242,6 +243,190 @@ function renderFeature() {
   card.hidden = false;
 }
 
+function monthYear(dateStr) {
+  const [year, month] = String(dateStr || "").split("-");
+  const date = new Date(Number(year), Number(month) - 1, 1);
+  return Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString("en-GB", { month: "short", year: "numeric" });
+}
+
+function spanText(start, end) {
+  const first = monthYear(start);
+  const last = monthYear(end);
+  return first === last ? first : `${first} – ${last}`;
+}
+
+function yearOf(dateStr) {
+  return String(dateStr || "").slice(0, 4);
+}
+
+function yearSpan(start, end) {
+  return yearOf(start) === yearOf(end) ? yearOf(start) : `${yearOf(start)} – ${yearOf(end)}`;
+}
+
+function knownPlayers(...players) {
+  return players.every((p) => state.playersById.has(Number(p?.id)));
+}
+
+function openView(p1, p2) {
+  requestView({ p1: Number(p1.id), ...(p2 ? { p2: Number(p2.id) } : {}) });
+}
+
+// One square per game: a streak you can count.
+function pips(results) {
+  return el("span", { class: "pips", "aria-hidden": "true" },
+    [...results].map((r) => el("i", { class: r === "D" ? "d" : "w" })));
+}
+
+function streakRow(record, unit, results, legend) {
+  return el("button", {
+    class: "streak-row",
+    type: "button",
+    "aria-label": `${formatNumber(record.games)} ${unit}: ${playerName(record.player)}, ${spanText(record.start_date, record.end_date)}`,
+    onclick: () => openView(record.player),
+  },
+  el("span", { class: "streak-head" },
+    el("span", { class: "record-num" }, formatNumber(record.games)),
+    el("span", { class: "streak-text" },
+      el("span", { class: "record-unit" }, unit),
+      el("span", { class: "record-who" }, playerName(record.player)),
+      el("span", { class: "record-when" }, spanText(record.start_date, record.end_date))),
+    legend),
+  pips(results));
+}
+
+function streaksCard() {
+  const { win_streak: win, unbeaten_streak: unbeaten } = records;
+  const rows = [];
+  if (win && knownPlayers(win.player)) {
+    rows.push(streakRow(win, "wins in a row", "W".repeat(win.games)));
+  }
+  if (unbeaten && knownPlayers(unbeaten.player)) {
+    const results = unbeaten.results || "W".repeat(unbeaten.games);
+    const draws = [...results].filter((r) => r === "D").length;
+    rows.push(streakRow(unbeaten, "games without a loss", results,
+      draws ? el("span", { class: "pip-legend" }, el("i", { class: "w" }), "Win", el("i", { class: "d" }), "Draw") : null));
+  }
+  if (!rows.length) return null;
+  return el("section", { class: "panel record record--streaks", "aria-label": "Longest streaks" },
+    el("span", { class: "eyebrow" }, "Longest streaks"),
+    ...rows);
+}
+
+function recordCard({ kind, label, visual, value, unit, who, when, onclick }) {
+  return el("button", {
+    class: `panel record record--${kind}`,
+    type: "button",
+    "aria-label": `${label}: ${value} ${unit}, ${who}, ${when}`,
+    onclick,
+  },
+  el("span", { class: "eyebrow" }, label),
+  el("span", { class: "record-visual", "aria-hidden": "true" }, visual),
+  el("span", { class: "record-value" },
+    el("span", { class: "record-num" }, value),
+    unit ? el("span", { class: "record-unit" }, unit) : null),
+  el("span", { class: "record-who" }, who),
+  el("span", { class: "record-when" }, when));
+}
+
+// Scoreboard with an empty right side: the zero is the point.
+function perfectVisual(record) {
+  return el("span", { class: "shutout" },
+    el("span", { class: "shutout-bar" }, el("i")),
+    el("span", { class: "shutout-labels" },
+      el("span", {}, `${lastName(playerName(record.player))} ${formatNumber(record.games)}`),
+      el("span", {}, `0 ${lastName(playerName(record.opponent))}`)));
+}
+
+// The lead in the rivalry climbing one game at a time.
+function climbVisual(record) {
+  const { games } = record;
+  const width = 240;
+  const height = 64;
+  const steps = [`M0 ${height}`];
+  for (let i = 0; i < games; i += 1) {
+    const x = ((i + 1) / games) * width;
+    const y = height - ((i + 1) / games) * (height - 6);
+    steps.push(`H${x.toFixed(1)} V${y.toFixed(1)}`);
+  }
+  const svg = `<svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">`
+    + `<path d="${steps.join(" ")} V${height} Z" fill="var(--a-tint)"/>`
+    + `<path d="${steps.join(" ")}" fill="none" stroke="var(--a)" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`;
+  const chart = el("span", { class: "climb-chart" });
+  chart.innerHTML = svg;
+  return el("span", { class: "climb" }, chart,
+    el("span", { class: "gap-labels" },
+      el("span", {}, yearOf(record.start_date)),
+      el("span", {}, `+${formatNumber(games)} in ${yearOf(record.end_date)}`)));
+}
+
+// A bar split down the middle, draws in between.
+function evenVisual(record) {
+  const total = record.games || 1;
+  const side = `${(record.wins / total) * 100}%`;
+  return el("span", { class: "balance" },
+    el("span", { class: "balance-bar" },
+      el("i", { style: { width: side, background: "var(--a)" } }),
+      record.draws ? el("i", { style: { flex: "1", background: "var(--draw)" } }) : null,
+      el("i", { style: { width: side, background: "var(--b)" } })),
+    el("span", { class: "balance-mid" }),
+    el("span", { class: "shutout-labels" },
+      el("span", {}, `${lastName(playerName(record.player))} ${formatNumber(record.wins)}`),
+      el("span", {}, `${formatNumber(record.wins)} ${lastName(playerName(record.opponent))}`)));
+}
+
+// Two meetings with decades of nothing in between.
+function gapVisual(record) {
+  return el("span", { class: "gap" },
+    el("span", { class: "gap-line" }, el("i", { class: "dot" }), el("i", { class: "dash" }), el("i", { class: "dot" })),
+    el("span", { class: "gap-labels" },
+      el("span", {}, yearOf(record.before_date)),
+      el("span", {}, yearOf(record.after_date))));
+}
+
+function smallCards() {
+  const cards = [];
+  const { perfect_record: perfect, h2h_streak: h2h, dead_even: even, rematch_gap: gap } = records;
+  if (perfect && knownPlayers(perfect.player, perfect.opponent)) {
+    cards.push(recordCard({ kind: "perfect", label: "Perfect record", visual: perfectVisual(perfect),
+      value: `${formatNumber(perfect.games)}–0`, unit: "not even a draw",
+      who: `${playerName(perfect.player)} against ${playerName(perfect.opponent)}`,
+      when: yearSpan(perfect.first_date, perfect.last_date), onclick: () => openView(perfect.player, perfect.opponent) }));
+  }
+  if (h2h && knownPlayers(h2h.player, h2h.opponent)) {
+    cards.push(recordCard({ kind: "climb", label: "Most wins in a row over one rival", visual: climbVisual(h2h),
+      value: formatNumber(h2h.games), unit: "straight wins",
+      who: `${playerName(h2h.player)} over ${playerName(h2h.opponent)}`,
+      when: yearSpan(h2h.start_date, h2h.end_date), onclick: () => openView(h2h.player, h2h.opponent) }));
+  }
+  if (even && knownPlayers(even.player, even.opponent)) {
+    cards.push(recordCard({ kind: "even", label: "Dead even", visual: evenVisual(even),
+      value: `${formatNumber(even.wins)}–${formatNumber(even.wins)}`,
+      unit: even.draws ? `and ${formatNumber(even.draws)} draws` : "",
+      who: `${playerName(even.player)} and ${playerName(even.opponent)}`,
+      when: `After ${formatNumber(even.games)} games`, onclick: () => openView(even.player, even.opponent) }));
+  }
+  if (gap && knownPlayers(gap.player, gap.opponent)) {
+    const years = Math.floor(gap.days / 365.25);
+    cards.push(recordCard({ kind: "gap", label: "Longest wait for a rematch", visual: gapVisual(gap),
+      value: String(years), unit: years === 1 ? "year" : "years",
+      who: `${playerName(gap.player)} and ${playerName(gap.opponent)}`,
+      when: `${yearOf(gap.before_date)}, then again in ${yearOf(gap.after_date)}`,
+      onclick: () => openView(gap.player, gap.opponent) }));
+  }
+  return cards;
+}
+
+// The build drops a record as soon as a game breaks it, so a missing key
+// simply means no card.
+function renderRecords() {
+  const list = document.getElementById("records-list");
+  const section = document.getElementById("records");
+  if (!list || !section) return;
+  const cards = [streaksCard(), ...smallCards()].filter(Boolean);
+  section.hidden = cards.length === 0;
+  list.replaceChildren(...cards);
+}
+
 export async function renderHome() {
   const seenRanks = new Set();
   topPlayers = state.players
@@ -250,6 +435,13 @@ export async function renderHome() {
     .filter((player) => !seenRanks.has(getWorldRank(player)) && seenRanks.add(getWorldRank(player)))
     .slice(0, 50);
   renderPlayers();
+  const recordsReady = fetchJson("data/records.json")
+    .then((payload) => { records = payload && typeof payload === "object" ? payload : {}; })
+    .catch((err) => {
+      console.warn("Could not load records:", err);
+      records = {};
+    })
+    .then(renderRecords);
   try {
     const payload = await fetchJson("data/rivalries.json");
     const known = (list) => (Array.isArray(list) ? list : [])
@@ -273,4 +465,5 @@ export async function renderHome() {
   }
   renderFeature();
   renderList();
+  await recordsReady;
 }
