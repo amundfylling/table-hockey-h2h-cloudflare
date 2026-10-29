@@ -107,6 +107,7 @@ The frontend is vanilla ES modules under `public/js/`, loaded from `index.html` 
 * `opponents.js` - Single-player opponents table (sortable, min-games slider).
 * `charts.js` - SVG charts + the chart tooltip system.
 * `table.js` - Match table (sorting, pagination, expandable rows, series detail panels).
+* `game-context.js` - Pure helpers for the expanded game row (series, H2H record after the game, previous meeting).
 * `form.js` - Recent-form chips strip.
 * `series.js` - Playoff series aggregation.
 * `share.js` - Share-image generation.
