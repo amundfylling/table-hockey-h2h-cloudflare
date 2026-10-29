@@ -1318,11 +1318,9 @@ def build_records(matches: pd.DataFrame, player_names: Dict[int, str]) -> dict:
         pid for pid, name in player_names.items()
         if any(ch.isalpha() for ch in str(name or ""))
     }
-    games = matches[
-        matches["date"].notna()
-        & matches["player1_id"].isin(real)
-        & matches["player2_id"].isin(real)
-    ]
+    # Undated games still count in pair totals, the way the matchup page counts
+    # them; only the records that need game order (streaks, gaps) skip them.
+    games = matches[matches["player1_id"].isin(real) & matches["player2_id"].isin(real)]
     records: dict = {}
     if games.empty:
         return records
@@ -1344,7 +1342,8 @@ def build_records(matches: pd.DataFrame, player_names: Dict[int, str]) -> dict:
     side2 = side1.rename(columns={"pid": "oid", "oid": "pid", "gf": "ga", "ga": "gf"})
     long = pd.concat([side1, side2], ignore_index=True)
 
-    by_player = long.sort_values(["pid", "row"], kind="mergesort").reset_index(drop=True)
+    dated = long[long["date"].notna()]
+    by_player = dated.sort_values(["pid", "row"], kind="mergesort").reset_index(drop=True)
     wins = by_player["gf"] > by_player["ga"]
     win_streak = _streak_record(by_player, ["pid"], wins)
     if win_streak and win_streak["games"] >= MIN_WIN_STREAK:
@@ -1368,17 +1367,15 @@ def build_records(matches: pd.DataFrame, player_names: Dict[int, str]) -> dict:
             "end_date": unbeaten["end_date"],
         }
 
-    by_pair = long.sort_values(["pid", "oid", "row"], kind="mergesort").reset_index(drop=True)
-    pair_wins = by_pair["gf"] > by_pair["ga"]
-    pairs = by_pair.assign(win=pair_wins, loss=by_pair["gf"] < by_pair["ga"]).groupby(
+    pairs = long.assign(win=long["gf"] > long["ga"], loss=long["gf"] < long["ga"]).groupby(
         ["pid", "oid"], sort=False
     ).agg(
         games=("win", "size"),
         wins=("win", "sum"),
         losses=("loss", "sum"),
-        first_date=("date", "first"),
-        last_date=("date", "last"),
-        first_row=("row", "first"),
+        first_date=("date", "min"),
+        last_date=("date", "max"),
+        first_row=("row", "min"),
     ).reset_index()
 
     perfect = pairs[
@@ -1394,7 +1391,8 @@ def build_records(matches: pd.DataFrame, player_names: Dict[int, str]) -> dict:
             "last_date": best["last_date"],
         }
 
-    h2h_streak = _streak_record(by_pair, ["pid", "oid"], pair_wins)
+    by_pair = dated.sort_values(["pid", "oid", "row"], kind="mergesort").reset_index(drop=True)
+    h2h_streak = _streak_record(by_pair, ["pid", "oid"], by_pair["gf"] > by_pair["ga"])
     perfect_pair = (
         (records["perfect_record"]["player"]["id"], records["perfect_record"]["opponent"]["id"])
         if "perfect_record" in records

@@ -78,12 +78,20 @@ class RecordsTest(unittest.TestCase):
         self.assertEqual(records["h2h_streak"]["games"], 5)
         self.assertEqual(records["h2h_streak"]["opponent"]["id"], 2)
 
+    def test_an_undated_loss_still_breaks_a_perfect_record(self):
+        rows = [(1, 2, 3, 1, _day(i)) for i in range(5)] + [(1, 2, 0, 1, None)]
+        records = build_records(_games(rows), NAMES)
+        self.assertNotIn("perfect_record", records)
+        self.assertEqual(records["win_streak"]["games"], 5)
+
     def test_dead_even_disappears_when_someone_pulls_ahead(self):
         rows = [(3, 4, 2, 1, _day(0)), (3, 4, 1, 2, _day(1)), (4, 3, 2, 2, _day(2)),
                 (4, 3, 3, 1, _day(3)), (3, 4, 4, 1, _day(4))]
         even = build_records(_games(rows), NAMES)["dead_even"]
         self.assertEqual((even["games"], even["wins"], even["draws"]), (5, 2, 1))
         rows.append((3, 4, 5, 1, _day(5)))
+        self.assertNotIn("dead_even", build_records(_games(rows), NAMES))
+        rows[-1] = (3, 4, 5, 1, None)
         self.assertNotIn("dead_even", build_records(_games(rows), NAMES))
 
     def test_rematch_gap(self):
