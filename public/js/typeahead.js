@@ -86,12 +86,12 @@ export function buildSuggestions(query) {
   return withGroupedDuplicateSuggestions(results).slice(0, 20);
 }
 
-export function buildOpponentSuggestions(query) {
-  if (!state.opponentsOfA.size) return [];
+export function buildOpponentSuggestions(query, opponents = state.opponentsOfA, limit = 20) {
+  if (!opponents.size) return [];
   const value = normalizeText(query);
   let results = [];
 
-  for (const [oppId, oppData] of state.opponentsOfA) {
+  for (const [oppId, oppData] of opponents) {
     const player = getPlayerById(oppId);
     if (!player || !player.name) continue;
     if (value.length >= 1) {
@@ -101,7 +101,7 @@ export function buildOpponentSuggestions(query) {
   }
 
   results.sort((a, b) => b.totalMatches - a.totalMatches);
-  return withGroupedDuplicateSuggestions(results).slice(0, 20);
+  return withGroupedDuplicateSuggestions(results).slice(0, limit);
 }
 
 export function createSuggestionIdentity(player) {

@@ -862,7 +862,8 @@ async function openView(detail) {
   window.scrollTo({ top: 0 });
   if (Number.isInteger(p2) && state.playersById.has(p2)) {
     elements.playerB.disabled = false;
-    setInputPlayer(elements.playerB, { ...getPlayerById(p2), ids: getAliasGroup(p2) });
+    const idsB = detail.p2Ids?.length ? detail.p2Ids : getAliasGroup(p2);
+    setInputPlayer(elements.playerB, { ...getPlayerById(p2), ids: idsB });
     await Promise.all([
       handleCompare({ scrollToResults: false }),
       loadOpponentsForPlayer(p1, idsA, activeCompareController?.signal),

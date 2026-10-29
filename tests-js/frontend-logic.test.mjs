@@ -21,6 +21,7 @@ const { getSeriesGroupKey } = await import("../public/js/series.js");
 const { sanitizeName } = await import("../public/js/share.js");
 const { decodeHtmlEntities, parseOvertime } = await import("../public/js/utils.js");
 const { fetchJson } = await import("../public/js/data.js");
+const { buildOpponentSuggestions } = await import("../public/js/typeahead.js");
 const {
   allowsGenerationalMotion,
   getCurrentWinStreak,
@@ -174,4 +175,20 @@ test("generational celebration stays static for accessibility and hidden pages",
   assert.equal(allowsGenerationalMotion({ ...visible, forcedColors: true }), false);
   assert.equal(allowsGenerationalMotion({ ...visible, visibilityState: "hidden" }), false);
   assert.equal(allowsGenerationalMotion({ ...visible, supportsObserver: false }), false);
+});
+
+test("opponent suggestions search any player's opponents, most games first", () => {
+  state.aliasMap.clear();
+  state.playersById.clear();
+  [
+    { id: 1, name: "Andreas Ek", search_key: "andreas ek" },
+    { id: 2, name: "Bjorn Li", search_key: "bjorn li" },
+    { id: 3, name: "Anders Bo", search_key: "anders bo" },
+  ].forEach((player) => state.playersById.set(player.id, player));
+  const opponents = new Map([[1, { totalMatches: 4 }], [2, { totalMatches: 9 }], [3, { totalMatches: 12 }]]);
+
+  assert.deepEqual(buildOpponentSuggestions("", opponents).map((item) => item.id), [3, 2, 1]);
+  assert.deepEqual(buildOpponentSuggestions("and", opponents).map((item) => item.id), [3, 1]);
+  assert.deepEqual(buildOpponentSuggestions("", opponents, 1).map((item) => item.totalMatches), [12]);
+  assert.deepEqual(buildOpponentSuggestions("", new Map()), []);
 });

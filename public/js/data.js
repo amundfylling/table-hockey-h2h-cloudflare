@@ -368,6 +368,48 @@ export async function loadMatchup(
   return null;
 }
 
+// Everyone a player (or alias group) has met, keyed by canonical opponent ID, with game counts.
+export async function fetchOpponentCounts(playerId, explicitIds = [], signal = null) {
+  const groupIds = getEffectiveAliasGroup(playerId, explicitIds);
+  const opponentMap = new Map();
+
+  for (const gId of groupIds) {
+    const payload = await fetchPlayerPayload(gId, signal);
+    if (!payload || !payload.opponents) continue;
+    for (const [oppIdStr, oppData] of Object.entries(payload.opponents)) {
+      const oppId = Number(oppIdStr);
+      if (!Number.isFinite(oppId)) continue;
+      const totalMatches = oppData.summary?.total_matches || (Array.isArray(oppData.matches) ? oppData.matches.length : 0);
+      const existing = opponentMap.get(oppId);
+      if (existing) {
+        existing.totalMatches += totalMatches;
+      } else {
+        opponentMap.set(oppId, { totalMatches });
+      }
+    }
+  }
+
+  // Expand alias groups for opponents too
+  const expandedMap = new Map();
+  for (const [oppId, data] of opponentMap) {
+    const aliasGroup = getAliasGroup(oppId);
+    const primaryId = aliasGroup[0];
+    const existing = expandedMap.get(primaryId);
+    if (existing) {
+      existing.totalMatches += data.totalMatches;
+    } else {
+      expandedMap.set(primaryId, { ...data });
+    }
+  }
+
+  // Remove self from opponents
+  const selfGroup = getEffectiveAliasGroup(playerId, explicitIds);
+  for (const selfId of selfGroup) {
+    expandedMap.delete(selfId);
+  }
+  return expandedMap;
+}
+
 let opponentsRequestToken = 0;
 
 export function cancelOpponentLoading() {
@@ -387,44 +429,7 @@ export async function loadOpponentsForPlayer(playerId, explicitIds = [], signal 
   elements.playerB.placeholder = "Loading opponents...";
 
   try {
-    const groupIds = getEffectiveAliasGroup(playerId, explicitIds);
-    const opponentMap = new Map();
-
-    for (const gId of groupIds) {
-      const payload = await fetchPlayerPayload(gId, signal);
-      if (!payload || !payload.opponents) continue;
-      for (const [oppIdStr, oppData] of Object.entries(payload.opponents)) {
-        const oppId = Number(oppIdStr);
-        if (!Number.isFinite(oppId)) continue;
-        const totalMatches = oppData.summary?.total_matches || (Array.isArray(oppData.matches) ? oppData.matches.length : 0);
-        const existing = opponentMap.get(oppId);
-        if (existing) {
-          existing.totalMatches += totalMatches;
-        } else {
-          opponentMap.set(oppId, { totalMatches });
-        }
-      }
-    }
-
-    // Expand alias groups for opponents too
-    const expandedMap = new Map();
-    for (const [oppId, data] of opponentMap) {
-      const aliasGroup = getAliasGroup(oppId);
-      const primaryId = aliasGroup[0];
-      const existing = expandedMap.get(primaryId);
-      if (existing) {
-        existing.totalMatches += data.totalMatches;
-      } else {
-        expandedMap.set(primaryId, { ...data });
-      }
-    }
-
-    // Remove self from opponents
-    const selfGroup = getEffectiveAliasGroup(playerId, explicitIds);
-    for (const selfId of selfGroup) {
-      expandedMap.delete(selfId);
-    }
-
+    const expandedMap = await fetchOpponentCounts(playerId, explicitIds, signal);
     if (currentToken !== opponentsRequestToken) return false;
     state.opponentsOfA = expandedMap;
     elements.playerB.placeholder = "Anyone";
