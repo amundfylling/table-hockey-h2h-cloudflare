@@ -427,7 +427,12 @@ export function createGameDetailPanel(match) {
 
     const { recordAfter, previous } = context;
     const draws = recordAfter.draws ? plural(recordAfter.draws, "draw") : "";
-    let previousStat = createGameStat("Previous meeting", DASH, "First meeting");
+    // Earlier games may all be in the tiles above; only meeting 1 is a first meeting.
+    let previousStat = createGameStat(
+      "Previous meeting",
+      DASH,
+      context.meetingNumber === 1 ? "First meeting" : "None before this event"
+    );
     if (previous) {
       const score = `${previous.match.goals_a}–${previous.match.goals_b}${previous.match.overtime ? " OT" : ""}`;
       previousStat = previous.sameDay

@@ -1,14 +1,18 @@
 import { normalizeText } from "./utils.js";
 import { buildScopedMatchKey } from "./data.js";
 
-export function getSeriesGroupKey(match) {
-  const tournamentScope = match.tournament_id != null
+// One tournament edition; name-only tournaments are split by year.
+export function getTournamentScopeKey(match) {
+  return match.tournament_id != null
     ? `id:${match.tournament_id}`
     : match.source_tournament_id
       ? `source:${match.source || ""}:${match.source_tournament_id}`
       : `${match.tournament_key || "unknown"}:year:${match.year || match.date?.slice(0, 4) || ""}`;
+}
+
+export function getSeriesGroupKey(match) {
   return [
-    tournamentScope,
+    getTournamentScopeKey(match),
     match.stage_id ?? "",
     match.source_stage_id ?? "",
     match.stage_sequence ?? "",

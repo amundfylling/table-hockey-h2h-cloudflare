@@ -1,5 +1,5 @@
 import { buildScopedMatchKey } from "./data.js";
-import { getSeriesGroupKey, createSeriesFromMatches } from "./series.js";
+import { getSeriesGroupKey, getTournamentScopeKey, createSeriesFromMatches } from "./series.js";
 import { toNumber } from "./utils.js";
 
 // Playing order: date, then stage, round and playoff game within the day.
@@ -63,7 +63,8 @@ export function buildGameContext(match, allMatches) {
   }
 
   if (!series) {
-    const tournamentGames = ordered.filter((game) => game.tournament_key === match.tournament_key);
+    const tournamentScope = getTournamentScopeKey(match);
+    const tournamentGames = ordered.filter((game) => getTournamentScopeKey(game) === tournamentScope);
     if (tournamentGames.length > 1) {
       group = tournamentGames;
       tournament = { tiles: tournamentGames.map((game) => toTile(game, currentKey)) };

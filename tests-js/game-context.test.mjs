@@ -86,3 +86,13 @@ test("first ever meeting has no previous game", () => {
   assert.equal(context.tournament, null);
   assert.deepEqual(context.recordAfter, { winsA: 1, winsB: 0, draws: 0 });
 });
+
+test("name-only tournaments are grouped per edition", () => {
+  const named = { tournament_id: null, tournament_key: "name:Annual Cup" };
+  const lastYear = game("2025-03-01", 2, 1, { ...named, year: "2025" });
+  const thisYear = game("2026-03-01", 1, 3, { ...named, year: "2026" });
+  const context = buildGameContext(thisYear, [lastYear, thisYear]);
+
+  assert.equal(context.tournament, null);
+  assert.equal(context.previous.match, lastYear);
+});
