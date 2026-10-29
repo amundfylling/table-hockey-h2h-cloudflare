@@ -15,10 +15,16 @@ import {
   normalizeText,
 } from "./utils.js";
 import { formatSeriesLength, formatSeriesScore } from "./series.js";
+import { buildGameContext } from "./game-context.js";
+import { lastName } from "./insights.js";
+import { el } from "./dom.js";
+import { getAliasGroup } from "./players.js";
 
 const DASH = "—";
 const CHEVRON_SVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
 let updateViewCallback = () => {};
+// Game detail panels are built on first expand, so a page render stays cheap.
+const pendingDetails = new WeakMap();
 const mobileTableMedia = window.matchMedia("(max-width: 600px)");
 
 export function initTable(updateView) {
@@ -307,64 +313,7 @@ export function renderGameTable(matches) {
     detailRow.hidden = true;
     const detailCell = document.createElement("td");
     detailCell.colSpan = colSpan;
-    const detailGrid = document.createElement("div");
-    detailGrid.className = "detail-grid";
-    const sourceUrl = getItemSourceUrl(match);
-    const detailItems = [
-      ...(isSingle ? [{ label: "Opponent", value: match.opponent_name || match.opponent_id }] : []),
-      { label: "Stage ID", value: match.stage_id },
-      { label: "Tournament ID", value: match.tournament_id },
-      { label: "Tournament level", value: getTournamentLevelLabel(getTournamentLevelKey(match)), pill: true },
-      { label: "Stage sequence", value: match.stage_sequence },
-      { label: "Round number", value: match.round_number },
-      { label: "Playoff game", value: match.playoff_game_number },
-      { label: "Source", value: match.source || "sportscorpion" },
-    ];
-    detailItems.forEach((item) => {
-      if (item.value == null || item.value === "") return;
-      const block = document.createElement("div");
-      block.className = "detail-item";
-      const label = document.createElement("span");
-      label.className = "detail-label";
-      label.textContent = item.label;
-      const value = document.createElement("span");
-      value.className = "detail-value";
-      if (item.pill) {
-        const pill = document.createElement("span");
-        pill.className = "badge";
-        pill.textContent = String(item.value);
-        value.appendChild(pill);
-      } else {
-        value.textContent = String(item.value);
-      }
-      block.appendChild(label);
-      block.appendChild(value);
-      detailGrid.appendChild(block);
-    });
-    if (sourceUrl) {
-      const block = document.createElement("div");
-      block.className = "detail-item detail-item--link";
-      const label = document.createElement("span");
-      label.className = "detail-label";
-      label.textContent = "Source URL";
-      const link = document.createElement("a");
-      link.href = sourceUrl;
-      link.target = "_blank";
-      link.rel = "noopener noreferrer external";
-      link.className = "table-link detail-source-link";
-      let linkText = sourceUrl;
-      try {
-        linkText = new URL(sourceUrl).hostname;
-      } catch (err) {
-        // keep the raw URL as link text
-      }
-      link.appendChild(document.createTextNode(linkText));
-      link.appendChild(createExternalIcon());
-      block.appendChild(label);
-      block.appendChild(link);
-      detailGrid.appendChild(block);
-    }
-    detailCell.appendChild(detailGrid);
+    pendingDetails.set(detailRow, () => createGameDetailPanel(match));
     detailRow.appendChild(detailCell);
 
     fragment.appendChild(row);
@@ -382,6 +331,143 @@ function gameRoundFormat(match) {
   if (match.round_number != null) parts.push(`R${match.round_number}`);
   if (match.playoff_game_number != null) parts.push(`G${match.playoff_game_number}`);
   return parts.length ? parts.join(" / ") : "-";
+}
+
+function plural(count, word) {
+  return `${count} ${word}${count === 1 ? "" : "s"}`;
+}
+
+function sourceLinkLabel(url) {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, "");
+    return host.includes("sportscorpion") ? "Sportscorpion" : host;
+  } catch (err) {
+    return "Source";
+  }
+}
+
+function createGameTiles(tiles) {
+  return el(
+    "div",
+    { class: "game-ctx-tiles", role: "list" },
+    tiles.map((tile) => {
+      const side = tile.result === "A" ? "a" : tile.result === "B" ? "b" : "d";
+      return el(
+        "div",
+        {
+          class: `game-ctx-tile game-ctx-tile--${side}${tile.isCurrent ? " is-current" : ""}`,
+          role: "listitem",
+          "aria-current": tile.isCurrent ? "true" : null,
+        },
+        el("span", { class: "game-ctx-tile-label", text: tile.overtime ? `${tile.label} · OT` : tile.label }),
+        el("span", { class: "game-ctx-tile-score", text: `${tile.goalsA}–${tile.goalsB}` })
+      );
+    })
+  );
+}
+
+function createGameStat(label, value, note) {
+  return el(
+    "div",
+    { class: "game-ctx-stat" },
+    el("span", { class: "game-ctx-stat-label", text: label }),
+    el("span", { class: "game-ctx-stat-value" }, value, note ? el("small", { text: note }) : null)
+  );
+}
+
+function getGameHeadline(match, context, nameA, nameB) {
+  const winner = (result) => (result === "A" ? nameA : nameB);
+  const { series } = context;
+  if (series) {
+    const title = series.result === "D"
+      ? `Series tied ${series.winsA}–${series.winsB}`
+      : `${winner(series.result)} won the series ${Math.max(series.winsA, series.winsB)}–${Math.min(series.winsA, series.winsB)}`;
+    const note = series.clinched ? "this game clinched it" : `game ${series.gameNumber} of ${series.totalGames}`;
+    return { title, note: `${match.stage || "Playoff"} · ${note}` };
+  }
+  let title = "A draw";
+  if (match.result === "A" || match.result === "B") {
+    title = match.overtime
+      ? `${winner(match.result)} won in overtime`
+      : `${winner(match.result)} won by ${plural(match.goal_abs, "goal")}`;
+  }
+  return { title, note: `Meeting ${formatNumber(context.meetingNumber)} of ${formatNumber(context.totalMeetings)}` };
+}
+
+export function createGameDetailPanel(match) {
+  const isSingle = isSinglePlayerMode();
+  // Alias ids of one opponent count as the same rivalry, as in the opponents table.
+  const opponentIds = new Set(getAliasGroup(Number(match.opponent_id)).map(String));
+  const pool = isSingle
+    ? state.baseMatches.filter((game) => opponentIds.has(String(game.opponent_id)))
+    : state.baseMatches;
+  const context = buildGameContext(match, pool);
+  const nameA = lastName(displayName(state.playerA?.name)) || "Player A";
+  const nameB = lastName(displayName(isSingle ? match.opponent_name : state.playerB?.name)) || "Player B";
+  const panel = el("div", { class: "game-ctx" });
+
+  if (context) {
+    const headline = getGameHeadline(match, context, nameA, nameB);
+    panel.append(
+      el(
+        "div",
+        { class: "game-ctx-head" },
+        el("strong", { class: "game-ctx-title", text: headline.title }),
+        el("span", { class: "game-ctx-note", text: headline.note })
+      )
+    );
+    if (context.series) {
+      panel.append(createGameTiles(context.series.tiles));
+    } else if (context.tournament) {
+      panel.append(
+        el("span", { class: "game-ctx-label", text: "Meetings in this tournament" }),
+        createGameTiles(context.tournament.tiles)
+      );
+    }
+
+    const { recordAfter, previous } = context;
+    const draws = recordAfter.draws ? plural(recordAfter.draws, "draw") : "";
+    // Earlier games may all be in the tiles above; only meeting 1 is a first meeting.
+    let previousStat = createGameStat(
+      "Previous meeting",
+      DASH,
+      context.meetingNumber === 1 ? "First meeting" : "None before this event"
+    );
+    if (previous) {
+      const score = `${previous.match.goals_a}–${previous.match.goals_b}${previous.match.overtime ? " OT" : ""}`;
+      previousStat = previous.sameDay
+        ? createGameStat("Earlier that day", score, previous.match.stage || "")
+        : createGameStat("Previous meeting", score, formatDate(previous.match.date));
+    }
+    panel.append(
+      el(
+        "div",
+        { class: "game-ctx-stats" },
+        createGameStat("H2H after", `${formatNumber(recordAfter.winsA)}–${formatNumber(recordAfter.winsB)}`, draws),
+        previousStat
+      )
+    );
+  }
+
+  const levelKey = getTournamentLevelKey(match);
+  const levelLabel = getTournamentLevelLabel(levelKey);
+  const sourceUrl = getItemSourceUrl(match);
+  const footer = el(
+    "div",
+    { class: "game-ctx-foot" },
+    el("span", { class: "game-ctx-meta", text: levelLabel === "N/A" ? "" : `${levelLabel} tournament` })
+  );
+  if (sourceUrl) {
+    const link = el(
+      "a",
+      { class: "table-link game-ctx-source", href: sourceUrl, target: "_blank", rel: "noopener noreferrer external" },
+      sourceLinkLabel(sourceUrl)
+    );
+    link.appendChild(createExternalIcon());
+    footer.append(link);
+  }
+  if (footer.textContent) panel.append(footer);
+  return panel;
 }
 
 export function renderSeriesTable(seriesItems) {
@@ -737,6 +823,11 @@ export function initTableDetails() {
     const detailRow = document.getElementById(`detail-${rowId}`);
     if (!detailRow) return;
     const isOpen = !detailRow.hidden;
+    const buildDetail = pendingDetails.get(detailRow);
+    if (!isOpen && buildDetail) {
+      pendingDetails.delete(detailRow);
+      detailRow.querySelector("td")?.appendChild(buildDetail());
+    }
     detailRow.hidden = isOpen;
     button.closest("tr")?.classList.toggle("is-expanded", !isOpen);
     button.setAttribute("aria-expanded", isOpen ? "false" : "true");
