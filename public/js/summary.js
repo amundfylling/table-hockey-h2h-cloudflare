@@ -14,6 +14,7 @@ import { updateFormTitle, getChronologicalItems } from "./form.js?v=20260801-gen
 import { getItemSourceUrl } from "./table.js";
 import { getActiveFilterCount } from "./filters.js";
 import { el, icon, ICONS, requestView } from "./dom.js";
+import { createPlayerSwitcher, closePlayerSwitcher } from "./switcher.js";
 import {
   buildVerdict,
   groupTournaments,
@@ -240,16 +241,12 @@ function itemSummary(items) {
 
 // ── Matchup hero ────────────────────────────────────────────────────
 function createWho(player, side) {
-  const name = el("button", {
-    class: "name link-btn",
-    type: "button",
-    title: `Open ${player.name}'s career`,
-    onclick: () => requestView({ p1: Number(player.id), p1Ids: selectionIds(player) }),
-  }, player.name);
+  const { trigger, popover } = createPlayerSwitcher(player, side, selectionIds(player));
   return el("div", { class: `who ${side}` },
     el("span", { class: "tick", "aria-hidden": "true" }),
-    name,
-    el("div", { class: "meta" }, playerMeta(player) || " "));
+    trigger,
+    el("div", { class: "meta" }, playerMeta(player) || " "),
+    popover);
 }
 
 function createMatchupHero(items, summary) {
@@ -549,6 +546,7 @@ export function renderSummary(items) {
     ? getScopeLabel()
     : "No matches for this filter.";
 
+  closePlayerSwitcher();
   if (single) {
     elements.summaryHero.replaceChildren(createPlayerHero(items, summary));
     elements.summaryGrid.replaceChildren();
