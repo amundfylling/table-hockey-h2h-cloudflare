@@ -666,8 +666,14 @@ def deduplicate_overlapping_source_matches(matches: pd.DataFrame) -> pd.DataFram
     # Each row sits in at most one accepted group (the crosswalk is one-to-one),
     # so the level backfill can be applied in one assignment.
     levels = matches["tournament_level"]
-    dropped_levels = levels.loc[drop_indices].map(normalize_tournament_level).tolist()
-    kept_levels = levels.loc[kept_indices].map(normalize_tournament_level).tolist()
+    # Plain lists, not Series.map: map would infer a string dtype and turn the
+    # None returned for missing levels into NaN.
+    dropped_levels = [
+        normalize_tournament_level(value) for value in levels.loc[drop_indices].tolist()
+    ]
+    kept_levels = [
+        normalize_tournament_level(value) for value in levels.loc[kept_indices].tolist()
+    ]
     backfill = [
         (kept_index, dropped_level)
         for kept_index, kept_level, dropped_level in zip(

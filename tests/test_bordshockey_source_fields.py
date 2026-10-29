@@ -133,6 +133,39 @@ class TestBordshockeySourceFields(unittest.TestCase):
         self.assertEqual(row.tournament_id, 684751752)
         self.assertEqual(row.tournament_level, "3")
 
+    def test_level_backfill_with_mixed_known_and_missing_levels(self):
+        shared = {
+            "id1": 1,
+            "id2": 2,
+            "date": "2016-02-13",
+            "stage_sequence": 3,
+            "playoff_game_number": None,
+            "goals_id1": 2,
+            "goals_id2": 2,
+            "overtime": False,
+            "tournament_name": "Swedish Masters",
+        }
+        primary = {**shared, "tournament_id": 1248, "tournament_level": "3", "source": ""}
+        bordshockey = {
+            **shared,
+            "tournament_id": 684751752,
+            "source": "bordshockey.net",
+        }
+        matches = pd.DataFrame(
+            [
+                {**primary, "round_number": 1},
+                {**primary, "round_number": 2},
+                {**bordshockey, "round_number": 1, "tournament_level": "5"},
+                {**bordshockey, "round_number": 2, "tournament_level": None},
+            ]
+        )
+
+        deduped = deduplicate_overlapping_source_matches(matches)
+
+        self.assertEqual(deduped["source"].tolist(), ["bordshockey.net"] * 2)
+        levels = dict(zip(deduped["round_number"], deduped["tournament_level"]))
+        self.assertEqual(levels, {1: "5", 2: "3"})
+
     def test_same_match_signature_in_different_tournaments_is_preserved(self):
         shared = {
             "id1": 1,
