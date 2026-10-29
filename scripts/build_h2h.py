@@ -57,10 +57,11 @@ def to_int(series: pd.Series) -> pd.Series:
 def write_json(path: Path, payload: object) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary_path = path.with_suffix(f"{path.suffix}.tmp")
-    with temporary_path.open("w", encoding="utf-8") as f:
-        json.dump(payload, f, ensure_ascii=False, separators=(",", ":"))
-        f.flush()
-        os.fsync(f.fileno())
+    # json.dumps uses the C encoder; json.dump streams through the pure-Python
+    # one and is several times slower on the per-player files. No fsync: the
+    # whole dataset is published by swapping the staging directory.
+    text = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    temporary_path.write_text(text, encoding="utf-8")
     temporary_path.replace(path)
 
 
@@ -651,30 +652,32 @@ def deduplicate_overlapping_source_matches(matches: pd.DataFrame) -> pd.DataFram
     )
 
     drop_indices = []
+    kept_indices = []
     for pair, non_bordshockey_indices, bordshockey_indices in overlap_groups:
         if pair not in tournament_crosswalk:
             continue
         pair_count = min(len(bordshockey_indices), len(non_bordshockey_indices))
-
-        for bordshockey_index, non_bordshockey_index in zip(
-            bordshockey_indices[:pair_count],
-            non_bordshockey_indices[:pair_count],
-        ):
-            level = normalize_tournament_level(
-                matches.at[non_bordshockey_index, "tournament_level"]
-            )
-            if (
-                level is not None
-                and normalize_tournament_level(
-                    matches.at[bordshockey_index, "tournament_level"]
-                )
-                is None
-            ):
-                matches.at[bordshockey_index, "tournament_level"] = level
-            drop_indices.append(non_bordshockey_index)
+        kept_indices.extend(bordshockey_indices[:pair_count])
+        drop_indices.extend(non_bordshockey_indices[:pair_count])
 
     if not drop_indices:
         return matches
+
+    # Each row sits in at most one accepted group (the crosswalk is one-to-one),
+    # so the level backfill can be applied in one assignment.
+    levels = matches["tournament_level"]
+    dropped_levels = levels.loc[drop_indices].map(normalize_tournament_level).tolist()
+    kept_levels = levels.loc[kept_indices].map(normalize_tournament_level).tolist()
+    backfill = [
+        (kept_index, dropped_level)
+        for kept_index, kept_level, dropped_level in zip(
+            kept_indices, kept_levels, dropped_levels
+        )
+        if dropped_level is not None and kept_level is None
+    ]
+    if backfill:
+        backfill_indices, backfill_levels = zip(*backfill)
+        matches.loc[list(backfill_indices), "tournament_level"] = list(backfill_levels)
 
     return matches.drop(index=drop_indices).reset_index(drop=True)
 
