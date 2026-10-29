@@ -104,6 +104,7 @@ The frontend is vanilla ES modules under `public/js/`, loaded from `index.html` 
 * `recent.js` - Recent-matchup chips + first-visit suggestions (`initRecent({ onCompare })`).
 * `filters.js` - Filter bar, advanced panel, active-filter chips.
 * `summary.js` - H2H scoreboard + highlight cards.
+* `switcher.js` - Matchup hero name popover: swap one player for another opponent, or open their career.
 * `opponents.js` - Single-player opponents table (sortable, min-games slider).
 * `charts.js` - SVG charts + the chart tooltip system.
 * `table.js` - Match table (sorting, pagination, expandable rows, series detail panels).

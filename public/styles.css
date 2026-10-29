@@ -4097,6 +4097,156 @@ button.rrow:hover {
   text-align: right;
 }
 
+/* Matchup player switcher: the name opens a search of the other player's opponents. */
+.who {
+  position: relative;
+}
+
+.who .switch-trigger {
+  display: inline-block;
+  max-width: 100%;
+  border: 0;
+  background: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  font-size: 32px;
+  line-height: 38px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-align: inherit;
+  cursor: pointer;
+}
+
+.switch-name {
+  overflow-wrap: anywhere;
+  text-decoration: underline;
+  text-decoration-color: var(--line-2);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 6px;
+}
+
+.switch-chevron {
+  display: inline-block;
+  vertical-align: -3px;
+  margin-left: 6px;
+  width: 28px;
+  height: 28px;
+  padding: 4px;
+  border-radius: 6px;
+  color: var(--ink-2);
+  background: var(--ui-soft);
+  transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.switch-trigger:hover .switch-name,
+.switch-trigger[aria-expanded="true"] .switch-name {
+  text-decoration-color: currentColor;
+}
+
+.switch-trigger:hover .switch-chevron {
+  color: var(--ink);
+  background: var(--line);
+}
+
+.switch-trigger[aria-expanded="true"] .switch-chevron {
+  transform: rotate(180deg);
+  color: var(--surface);
+  background: var(--ink);
+}
+
+.switcher {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 30;
+  width: min(340px, calc(100vw - 32px));
+  margin-top: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  text-align: left;
+}
+
+.switcher[hidden] {
+  display: none;
+}
+
+.switcher--b {
+  left: auto;
+  right: 0;
+}
+
+.switcher-head {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.switcher-kept {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.switcher-search {
+  height: 44px;
+}
+
+.switcher .switcher-list {
+  position: static;
+  display: block;
+  max-height: min(300px, 45vh);
+  margin: 8px -4px 0;
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+  background: none;
+}
+
+.switcher-career {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: calc(100% + 24px);
+  margin: 8px -12px -12px;
+  padding: 0 14px;
+  min-height: 48px;
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0 0 12px 12px;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.switcher-career span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.switcher-career svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--ink-3);
+}
+
+.switcher-career:hover {
+  background: var(--sunk);
+}
+
 .tick {
   display: block;
   width: 32px;
@@ -5548,6 +5698,23 @@ body[data-comparison-mode="matchup"] .player-only {
   .who .name {
     font-size: 22px;
     line-height: 28px;
+  }
+
+  .who .switch-trigger {
+    font-size: 22px;
+    line-height: 28px;
+  }
+
+  .switch-name {
+    text-underline-offset: 4px;
+  }
+
+  .switch-chevron {
+    width: 22px;
+    height: 22px;
+    padding: 2px;
+    margin-left: 4px;
+    vertical-align: -4px;
   }
 
   .who .meta {
