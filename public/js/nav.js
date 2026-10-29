@@ -9,8 +9,39 @@ const searchButtons = () => [
   document.getElementById("mobile-search"),
 ].filter(Boolean);
 
+// Home sections the main links can jump to, in page order.
+const HOME_SECTIONS = ["rivalries", "players"];
+
 function isHome() {
   return document.body.dataset.home === "true";
+}
+
+export function isHomeSection(name) {
+  return HOME_SECTIONS.includes(name);
+}
+
+// The home section named in the URL hash, if any.
+export function homeSectionFromHash() {
+  const name = window.location.hash.slice(1);
+  return isHomeSection(name) ? name : null;
+}
+
+// Scrolls the home screen to a section, or to the top when name is empty, and
+// keeps the URL hash in step so the link can be shared and the nav marks it.
+export function showHomeSection(name) {
+  const target = isHomeSection(name) ? document.getElementById(name) : null;
+  const shown = target && !target.hidden ? target : null;
+  const url = new URL(window.location.href);
+  url.hash = shown ? name : "";
+  window.history.replaceState(window.history.state, "", url);
+  updateNav();
+  if (shown) {
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    shown.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "start" });
+    return true;
+  }
+  window.scrollTo({ top: 0 });
+  return false;
 }
 
 export function setFinderOpen(open, focusTarget = elements.playerA) {
@@ -37,7 +68,9 @@ function setMenuOpen(open) {
 
 // Marks the link for the current view.
 export function updateNav() {
-  const current = isHome() ? "home" : isSinglePlayerMode() ? "players" : "home";
+  const current = isHome()
+    ? homeSectionFromHash() || "home"
+    : isSinglePlayerMode() ? "players" : "home";
   document.querySelectorAll(".nav a, .mobile-menu a").forEach((link) => {
     if (link.dataset.nav === current) link.setAttribute("aria-current", "page");
     else link.removeAttribute("aria-current");

@@ -55,7 +55,14 @@ import {
   initRecent,
 } from "./recent.js";
 import { renderHome } from "./home.js";
-import { initNav, setFinderOpen, updateNav } from "./nav.js";
+import {
+  homeSectionFromHash,
+  initNav,
+  isHomeSection,
+  setFinderOpen,
+  showHomeSection,
+  updateNav,
+} from "./nav.js";
 import { renderTournaments } from "./tournaments.js";
 import {
   renderForm,
@@ -824,16 +831,11 @@ function goHome() {
 
 // Opens a view asked for by a link, breadcrumb, chart or list elsewhere.
 async function openView(detail) {
-  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (detail.action === "home" || detail.action === "rivalries") {
+  if (detail.action === "home" || isHomeSection(detail.action)) {
     goHome();
-    const target = detail.action === "rivalries" ? document.getElementById("rivalries") : null;
-    if (target) target.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "start" });
-    else window.scrollTo({ top: 0 });
-    return;
-  }
-  if (detail.action === "players") {
-    setFinderOpen(true, elements.playerA);
+    const shown = showHomeSection(detail.action === "home" ? null : detail.action);
+    // Without a ranked list to show, Players falls back to the player search.
+    if (!shown && detail.action === "players") setFinderOpen(true, elements.playerA);
     return;
   }
   if (detail.action === "compare-with") {
@@ -991,17 +993,19 @@ export async function init() {
   }
 
   // Decide early whether the home screen shows, so a restored matchup never flashes it.
+  // A "#players" or "#rivalries" link opens on that home section, not the last matchup.
+  const linkedSection = homeSectionFromHash();
   const hasInitialSelection = new URLSearchParams(window.location.search).has("p1")
-    || Boolean(safeStorageGet(STORAGE_KEYS.last, null)?.p1);
+    || (!linkedSection && Boolean(safeStorageGet(STORAGE_KEYS.last, null)?.p1));
   setHomeVisible(!hasInitialSelection);
 
   await loadPlayers();
   renderRecent();
-  renderHome();
+  const homeReady = renderHome();
   renderDataFreshness().catch((err) => console.warn("Could not load data freshness:", err));
 
   const urlSelection = getUrlSelection();
-  const storedSelection = safeStorageGet(STORAGE_KEYS.last, null);
+  const storedSelection = linkedSection ? null : safeStorageGet(STORAGE_KEYS.last, null);
   const storedP1 = Number(storedSelection?.p1);
   const storedP2 = storedSelection?.p2 == null ? null : Number(storedSelection.p2);
   let lastSelection = Number.isInteger(storedP1)
@@ -1027,6 +1031,14 @@ export async function init() {
   const selection = hasUrlPlayer ? urlSelection : lastSelection;
   if (hasUrlPlayer && !urlSelection) clearUrlSelection();
   await showSelection(selection, Boolean(urlSelection));
+  if (linkedSection) {
+    homeReady.then(() => {
+      // Skip if the visitor has already moved to another view or section.
+      if (document.body.dataset.home === "true" && homeSectionFromHash() === linkedSection) {
+        showHomeSection(linkedSection);
+      }
+    });
+  }
   setHistoryPushEnabled(true);
   window.addEventListener("popstate", () => {
     restoreFromHistory().catch((err) => console.error(err));
@@ -1042,8 +1054,9 @@ async function restoreFromHistory() {
   try {
     const selection = getUrlSelection();
     if (!selection) {
+      const section = homeSectionFromHash();
       goHome();
-      window.scrollTo({ top: 0 });
+      showHomeSection(section);
       return;
     }
     clearInputPlayer(elements.playerB, elements.listB);

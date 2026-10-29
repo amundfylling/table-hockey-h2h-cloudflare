@@ -1,7 +1,8 @@
 // Home page: the most-played rivalry card and the biggest-rivalries list,
-// both from data/rivalries.json (written by the build).
+// both from data/rivalries.json (written by the build), and the top-ranked
+// players list from the loaded players.
 import { state } from "./state.js";
-import { getWorldRank } from "./players.js";
+import { getCountryFlag, getWorldRank } from "./players.js";
 import { fetchJson } from "./data.js";
 import { formatDate, formatNumber, decodeHtmlEntities } from "./utils.js";
 import { el, icon, ICONS, requestView } from "./dom.js";
@@ -12,6 +13,8 @@ let mostPlayed = [];
 let rivalries = [];
 let ranked = false;
 let showAll = false;
+let topPlayers = [];
+let showAllPlayers = false;
 
 function playerName(player) {
   const known = state.playersById.get(Number(player?.id));
@@ -86,6 +89,49 @@ function renderList() {
         renderList();
       },
     }, showAll ? "Show fewer" : ranked ? "See more ranked rivalries" : "See all rivalries"));
+  }
+  list.replaceChildren(...children);
+  list.classList.add("panel");
+}
+
+function renderPlayers() {
+  const list = document.getElementById("players-list");
+  const section = document.getElementById("players");
+  if (!list || !section) return;
+  section.hidden = topPlayers.length === 0;
+  if (!topPlayers.length) return;
+  const head = el("div", { class: "rrow prow head", "aria-hidden": "true" },
+    el("span", {}, "WR"),
+    el("span", {}, "Player"),
+    el("span", { class: "mut" }, "Country"),
+    el("span", { class: "gn" }, "Points"),
+    el("span"));
+  const rows = (showAllPlayers ? topPlayers : topPlayers.slice(0, LIST_ROWS)).map((player) => {
+    const name = decodeHtmlEntities(player.name);
+    const rank = getWorldRank(player);
+    const flag = getCountryFlag(player.country);
+    return el("button", {
+      class: "rrow prow",
+      type: "button",
+      "aria-label": `${name}, world rank ${rank}${player.country ? `, ${player.country}` : ""}: open career`,
+      onclick: () => requestView({ p1: Number(player.id) }),
+    },
+    el("span", { class: "rank" }, String(rank)),
+    el("span", { class: "pair" }, name),
+    el("span", { class: "mut" }, [flag, player.country].filter(Boolean).join(" ")),
+    el("span", { class: "gn" }, player.ranking_points == null ? "" : formatNumber(player.ranking_points)),
+    el("span", { class: "chev" }, icon(ICONS.right)));
+  });
+  const children = [head, ...rows];
+  if (topPlayers.length > LIST_ROWS) {
+    children.push(el("button", {
+      class: "tfoot",
+      type: "button",
+      onclick: () => {
+        showAllPlayers = !showAllPlayers;
+        renderPlayers();
+      },
+    }, showAllPlayers ? "Show fewer" : "See more ranked players"));
   }
   list.replaceChildren(...children);
   list.classList.add("panel");
@@ -197,6 +243,13 @@ function renderFeature() {
 }
 
 export async function renderHome() {
+  const seenRanks = new Set();
+  topPlayers = state.players
+    .filter((player) => getWorldRank(player))
+    .sort((a, b) => getWorldRank(a) - getWorldRank(b))
+    .filter((player) => !seenRanks.has(getWorldRank(player)) && seenRanks.add(getWorldRank(player)))
+    .slice(0, 50);
+  renderPlayers();
   try {
     const payload = await fetchJson("data/rivalries.json");
     const known = (list) => (Array.isArray(list) ? list : [])

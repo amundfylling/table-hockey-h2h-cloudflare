@@ -221,7 +221,7 @@ The filter drawer is a practical control surface opened from the stage controls,
 
 ### Home Screen
 
-With no matchup selected the page leads with a display headline and a quiet stat strip (players, matches, last update). Below the picker, "Top-ranked rivalries" offers up to four one-tap matchups built from the current world ranking. Home-only blocks use `.home-only` and are driven by `body[data-home]`, which is set before data loads so shared links never flash the home screen.
+With no matchup selected the page leads with a display headline and a quiet stat strip (players, matches, last update). Below the picker, "Top-ranked rivalries" offers up to four one-tap matchups built from the current world ranking. "Top-ranked players" lists the world ranking, each row opening that player's career. The header links jump to these sections: Head-to-head goes to the top of home, Rivalries and Players scroll to their sections and set `#rivalries` / `#players` in the URL, which also marks the current link and opens home on that section when shared. Home-only blocks use `.home-only` and are driven by `body[data-home]`, which is set before data loads so shared links never flash the home screen.
 
 ### Loading and Score Bug
 
