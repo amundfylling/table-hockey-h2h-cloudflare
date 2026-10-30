@@ -497,6 +497,19 @@ OVERLAP_DEDUPE_COLUMNS = [
     "overtime",
 ]
 MIN_TOURNAMENT_CROSSWALK_MATCHES = 3
+# The sources sometimes number stages and rounds differently for the same event,
+# so a second pass matches games on players, date and score alone. Without the
+# round numbers a single overlap is weak evidence, so this pass needs many
+# distinct games and ignores tournament names.
+LOOSE_OVERLAP_DEDUPE_COLUMNS = [
+    "id1",
+    "id2",
+    "date",
+    "goals_id1",
+    "goals_id2",
+    "overtime",
+]
+MIN_LOOSE_TOURNAMENT_CROSSWALK_MATCHES = 10
 
 
 def infer_tournament_crosswalk(
@@ -504,18 +517,22 @@ def infer_tournament_crosswalk(
     is_bordshockey: pd.Series,
     tournament_ids: pd.Series,
     tournament_names: Optional[pd.Series],
+    signature_columns: list[str] = OVERLAP_DEDUPE_COLUMNS,
+    min_matches: int = MIN_TOURNAMENT_CROSSWALK_MATCHES,
+    use_names: bool = True,
 ) -> Tuple[
     Dict[Tuple[int, int], int],
     list[Tuple[Tuple[int, int], list[int], list[int]]],
 ]:
-    """Infer unambiguous tournament pairs from repeated exact game overlaps.
+    """Infer unambiguous tournament pairs from repeated game overlaps.
 
     Cross-source tournament IDs and names are not always the same. Matching normalized
-    names are direct evidence; otherwise, require three distinct matching game
-    signatures. In both cases the inferred ID mapping must be one-to-one.
+    names are direct evidence when use_names is set; otherwise, require min_matches
+    distinct matching game signatures. In both cases the inferred ID mapping must be
+    one-to-one.
     """
     signature_hashes = pd.util.hash_pandas_object(
-        matches[OVERLAP_DEDUPE_COLUMNS], index=False
+        matches[signature_columns], index=False
     )
     bordshockey_hashes = set(signature_hashes.loc[is_bordshockey].tolist())
     primary_mask = (
@@ -525,12 +542,12 @@ def infer_tournament_crosswalk(
     )
     bordshockey_mask = is_bordshockey & tournament_ids.notna()
 
-    primary = matches.loc[primary_mask, OVERLAP_DEDUPE_COLUMNS].copy()
+    primary = matches.loc[primary_mask, signature_columns].copy()
     primary["_primary_index"] = primary.index
     primary["_primary_tournament_id"] = tournament_ids.loc[primary.index].astype(
         "int64"
     )
-    bordshockey = matches.loc[bordshockey_mask, OVERLAP_DEDUPE_COLUMNS].copy()
+    bordshockey = matches.loc[bordshockey_mask, signature_columns].copy()
     bordshockey["_bordshockey_index"] = bordshockey.index
     bordshockey["_bordshockey_tournament_id"] = tournament_ids.loc[
         bordshockey.index
@@ -547,7 +564,7 @@ def infer_tournament_crosswalk(
 
     overlaps = primary.merge(
         bordshockey,
-        on=OVERLAP_DEDUPE_COLUMNS,
+        on=signature_columns,
         how="inner",
         sort=False,
     )
@@ -556,7 +573,7 @@ def infer_tournament_crosswalk(
 
     pair_columns = ["_primary_tournament_id", "_bordshockey_tournament_id"]
     unique_signatures = overlaps.drop_duplicates(
-        [*pair_columns, *OVERLAP_DEDUPE_COLUMNS]
+        [*pair_columns, *signature_columns]
     )
     evidence_counts = unique_signatures.groupby(pair_columns, sort=False).size()
     evidence = {
@@ -564,26 +581,28 @@ def infer_tournament_crosswalk(
         for (primary_id, bordshockey_id), count in evidence_counts.items()
     }
 
-    primary_name_keys = overlaps["_primary_tournament_name"].map(
-        normalize_dedupe_text
-    )
-    bordshockey_name_keys = overlaps["_bordshockey_tournament_name"].map(
-        normalize_dedupe_text
-    )
-    matching_names = primary_name_keys.ne("") & primary_name_keys.eq(
-        bordshockey_name_keys
-    )
-    matching_name_pairs = {
-        (int(primary_id), int(bordshockey_id))
-        for primary_id, bordshockey_id in overlaps.loc[
-            matching_names, pair_columns
-        ].itertuples(index=False, name=None)
-    }
+    matching_name_pairs: set[Tuple[int, int]] = set()
+    if use_names:
+        primary_name_keys = overlaps["_primary_tournament_name"].map(
+            normalize_dedupe_text
+        )
+        bordshockey_name_keys = overlaps["_bordshockey_tournament_name"].map(
+            normalize_dedupe_text
+        )
+        matching_names = primary_name_keys.ne("") & primary_name_keys.eq(
+            bordshockey_name_keys
+        )
+        matching_name_pairs = {
+            (int(primary_id), int(bordshockey_id))
+            for primary_id, bordshockey_id in overlaps.loc[
+                matching_names, pair_columns
+            ].itertuples(index=False, name=None)
+        }
 
     candidates = {
         pair
         for pair, count in evidence.items()
-        if count >= MIN_TOURNAMENT_CROSSWALK_MATCHES or pair in matching_name_pairs
+        if count >= min_matches or pair in matching_name_pairs
     }
     primary_candidates: Dict[int, set[int]] = {}
     bordshockey_candidates: Dict[int, set[int]] = {}
@@ -606,7 +625,7 @@ def infer_tournament_crosswalk(
     overlap_groups = []
     accepted_overlaps = overlaps.loc[accepted_pairs]
     for _, group in accepted_overlaps.groupby(
-        [*pair_columns, *OVERLAP_DEDUPE_COLUMNS],
+        [*pair_columns, *signature_columns],
         dropna=False,
         sort=False,
     ):
@@ -645,27 +664,47 @@ def deduplicate_overlapping_source_matches(matches: pd.DataFrame) -> pd.DataFram
         tournament_ids = pd.Series(pd.NA, index=matches.index, dtype="Int64")
 
     tournament_names = matches.get("tournament_name")
-    tournament_crosswalk, overlap_groups = infer_tournament_crosswalk(
-        matches,
-        is_bordshockey,
-        tournament_ids,
-        tournament_names,
-    )
-
-    drop_indices = []
-    kept_indices = []
-    for pair, non_bordshockey_indices, bordshockey_indices in overlap_groups:
-        if pair not in tournament_crosswalk:
-            continue
-        pair_count = min(len(bordshockey_indices), len(non_bordshockey_indices))
-        kept_indices.extend(bordshockey_indices[:pair_count])
-        drop_indices.extend(non_bordshockey_indices[:pair_count])
+    drop_indices: list[int] = []
+    kept_indices: list[int] = []
+    # Tournament mappings accepted so far, kept one-to-one across both passes.
+    primary_to_bordshockey: Dict[int, int] = {}
+    bordshockey_to_primary: Dict[int, int] = {}
+    # The exact pass runs first; the loose pass only sees rows it left unpaired.
+    for signature_columns, min_matches, use_names in [
+        (OVERLAP_DEDUPE_COLUMNS, MIN_TOURNAMENT_CROSSWALK_MATCHES, True),
+        (LOOSE_OVERLAP_DEDUPE_COLUMNS, MIN_LOOSE_TOURNAMENT_CROSSWALK_MATCHES, False),
+    ]:
+        remaining = matches.index.difference(drop_indices + kept_indices)
+        tournament_crosswalk, overlap_groups = infer_tournament_crosswalk(
+            matches.loc[remaining],
+            is_bordshockey.loc[remaining],
+            tournament_ids.loc[remaining],
+            tournament_names.loc[remaining] if tournament_names is not None else None,
+            signature_columns=signature_columns,
+            min_matches=min_matches,
+            use_names=use_names,
+        )
+        tournament_crosswalk = {
+            (primary_id, bordshockey_id)
+            for primary_id, bordshockey_id in tournament_crosswalk
+            if primary_to_bordshockey.get(primary_id, bordshockey_id) == bordshockey_id
+            and bordshockey_to_primary.get(bordshockey_id, primary_id) == primary_id
+        }
+        for primary_id, bordshockey_id in tournament_crosswalk:
+            primary_to_bordshockey[primary_id] = bordshockey_id
+            bordshockey_to_primary[bordshockey_id] = primary_id
+        for pair, non_bordshockey_indices, bordshockey_indices in overlap_groups:
+            if pair not in tournament_crosswalk:
+                continue
+            pair_count = min(len(bordshockey_indices), len(non_bordshockey_indices))
+            kept_indices.extend(bordshockey_indices[:pair_count])
+            drop_indices.extend(non_bordshockey_indices[:pair_count])
 
     if not drop_indices:
         return matches
 
-    # Each row sits in at most one accepted group (the crosswalk is one-to-one),
-    # so the level backfill can be applied in one assignment.
+    # Each row sits in at most one accepted group (the crosswalk is one-to-one and
+    # the passes see disjoint rows), so the level backfill is one assignment.
     levels = matches["tournament_level"]
     # Plain lists, not Series.map: map would infer a string dtype and turn the
     # None returned for missing levels into NaN.
