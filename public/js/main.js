@@ -650,6 +650,39 @@ export async function renderDataFreshness() {
     if (title) title.textContent = `${formatNumber(meta.matches)} games. Every rivalry, settled.`;
     elements.playerA.placeholder = `Search ${formatNumber(meta.players)} players`;
   }
+  renderDataSources(meta.sources);
+}
+
+// Footer list of source websites with their game counts and latest game.
+function renderDataSources(sources) {
+  const list = document.getElementById("data-sources-list");
+  if (!list || !Array.isArray(sources) || sources.length === 0) return;
+  const items = sources.filter((source) => source?.name && source?.url).map((source) => {
+    const item = document.createElement("li");
+    const link = document.createElement("a");
+    link.href = source.url;
+    link.target = "_blank";
+    link.rel = "noopener";
+    link.textContent = source.name;
+    item.append(link);
+    const details = [];
+    if (Number(source.matches)) details.push(`${formatNumber(source.matches)} games`);
+    const latest = source.latest_date ? new Date(`${source.latest_date}T00:00:00Z`) : null;
+    if (latest && !Number.isNaN(latest.getTime())) {
+      const day = latest.toLocaleDateString("en-GB", {
+        year: "numeric", month: "short", day: "numeric", timeZone: "UTC",
+      });
+      details.push(`last game ${day}`);
+    }
+    if (details.length) {
+      const span = document.createElement("span");
+      span.className = "data-source-details";
+      span.textContent = details.join(" · ");
+      item.append(" ", span);
+    }
+    return item;
+  });
+  if (items.length) list.replaceChildren(...items);
 }
 
 export function initTabs() {
@@ -994,7 +1027,7 @@ export async function init() {
   }
 
   // Decide early whether the home screen shows, so a restored matchup never flashes it.
-  // A "#players" or "#rivalries" link opens on that home section, not the last matchup.
+  // A "#records", "#rivalries" or "#players" link opens on that home section, not the last matchup.
   const linkedSection = homeSectionFromHash();
   const hasInitialSelection = new URLSearchParams(window.location.search).has("p1")
     || (!linkedSection && Boolean(safeStorageGet(STORAGE_KEYS.last, null)?.p1));

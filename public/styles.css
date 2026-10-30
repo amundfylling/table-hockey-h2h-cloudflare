@@ -5856,8 +5856,42 @@ body[data-comparison-mode="matchup"] .player-only {
   text-decoration: underline;
 }
 
-.data-freshness {
+.data-sources {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+
+.data-sources-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.data-sources-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.data-source-details {
+  white-space: nowrap;
+}
+
+.footer-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 24px;
   margin-left: auto;
+}
+
+.footer-meta p {
+  margin: 0;
 }
 
 /* ── Phones ──────────────────────────────────────────────────────── */
@@ -6366,8 +6400,18 @@ body[data-comparison-mode="matchup"] .player-only {
     align-items: flex-start;
   }
 
-  .data-freshness {
+  .footer-meta {
     margin-left: 0;
+  }
+
+  .data-sources,
+  .data-sources-list {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .data-source-details {
+    display: block;
   }
 
   .skeleton-hero {
