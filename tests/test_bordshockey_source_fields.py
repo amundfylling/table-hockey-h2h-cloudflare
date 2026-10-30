@@ -426,6 +426,39 @@ class TestBordshockeySourceFields(unittest.TestCase):
 
         self.assertEqual(len(deduped), 18)
 
+    def test_loose_pass_keeps_exact_tournament_mapping_one_to_one(self):
+        rows = []
+        for round_number in range(1, 4):
+            shared = {
+                "id1": round_number,
+                "id2": round_number + 10,
+                "date": "2018-11-03",
+                "stage_sequence": 1,
+                "round_number": round_number,
+                "playoff_game_number": None,
+                "goals_id1": round_number + 1,
+                "goals_id2": round_number,
+                "overtime": False,
+                "tournament_level": None,
+                "tournament_name": "",
+            }
+            rows.extend(
+                [
+                    {**shared, "tournament_id": 100, "source": ""},
+                    {**shared, "tournament_id": 200, "source": "bordshockey.net"},
+                ]
+            )
+        loose_rows = self.loose_overlap_rows(10)
+        for row in loose_rows:
+            row["tournament_id"] = 101 if row["source"] == "" else 200
+        rows.extend(loose_rows)
+
+        deduped = deduplicate_overlapping_source_matches(pd.DataFrame(rows))
+
+        self.assertEqual((deduped.tournament_id == 100).sum(), 0)
+        self.assertEqual((deduped.tournament_id == 101).sum(), 10)
+        self.assertEqual((deduped.tournament_id == 200).sum(), 13)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -666,6 +666,9 @@ def deduplicate_overlapping_source_matches(matches: pd.DataFrame) -> pd.DataFram
     tournament_names = matches.get("tournament_name")
     drop_indices: list[int] = []
     kept_indices: list[int] = []
+    # Tournament mappings accepted so far, kept one-to-one across both passes.
+    primary_to_bordshockey: Dict[int, int] = {}
+    bordshockey_to_primary: Dict[int, int] = {}
     # The exact pass runs first; the loose pass only sees rows it left unpaired.
     for signature_columns, min_matches, use_names in [
         (OVERLAP_DEDUPE_COLUMNS, MIN_TOURNAMENT_CROSSWALK_MATCHES, True),
@@ -681,6 +684,15 @@ def deduplicate_overlapping_source_matches(matches: pd.DataFrame) -> pd.DataFram
             min_matches=min_matches,
             use_names=use_names,
         )
+        tournament_crosswalk = {
+            (primary_id, bordshockey_id)
+            for primary_id, bordshockey_id in tournament_crosswalk
+            if primary_to_bordshockey.get(primary_id, bordshockey_id) == bordshockey_id
+            and bordshockey_to_primary.get(bordshockey_id, primary_id) == primary_id
+        }
+        for primary_id, bordshockey_id in tournament_crosswalk:
+            primary_to_bordshockey[primary_id] = bordshockey_id
+            bordshockey_to_primary[bordshockey_id] = primary_id
         for pair, non_bordshockey_indices, bordshockey_indices in overlap_groups:
             if pair not in tournament_crosswalk:
                 continue
