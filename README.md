@@ -16,13 +16,14 @@ Raw URLs (overridable via env vars):
 - `TOURNAMENT_METADATA_CSV_URL`: `https://raw.githubusercontent.com/amundfylling/Scorpion-Scraper-2.0/main/data/tournament_metadata.csv`
 - `RANKING_TXT_URL`: `https://stiga.trefik.cz/ithf/ranking/ranking.txt`
 - `EXTRA_MATCHES_URL`: bordshockey.net supplemental results Parquet, `https://raw.githubusercontent.com/amundfylling/bordshockey.net-scraper/refs/heads/main/data/bordshockey_results.parquet` (set to an empty string to disable)
+- `TABLE_HOCKEY_EU_MATCHES_URL`: table-hockey.eu results Parquet in the same schema, `https://raw.githubusercontent.com/amundfylling/table-hockey-eu-fetch/refs/heads/main/data/table_hockey_eu_results.parquet` (set to an empty string to disable)
 - `REQUIRE_RANKINGS`: set to `1` to fail the build instead of deploying without ranking data
 - `MIN_RANKING_ROWS`: minimum parsed ranking rows when rankings are required (CI: `1000`)
 - `MAX_RANKING_AGE_DAYS`: optional maximum age for required ranking data (CI: `45`)
 - `REQUIRE_TOURNAMENT_METADATA`: set to `1` to require tournament-level metadata
 - `MIN_TOURNAMENT_LEVELS`: minimum parsed tournament levels when metadata is required (CI: `1000`)
 - `MAX_MAIN_REJECTION_RATE`: maximum rejected fraction of primary match rows (CI: `0.01`)
-- `MAX_EXTRA_REJECTION_RATE`: maximum rejected fraction of supplemental rows (CI: `0.40`)
+- `MAX_EXTRA_REJECTION_RATE`: maximum rejected fraction of rows, checked per supplemental source (CI: `0.40`)
 
 ## Build-time slicing
 
@@ -98,6 +99,7 @@ export TOURNAMENTS_CSV_URL="https://raw.githubusercontent.com/your-org/your-repo
 export TOURNAMENT_METADATA_CSV_URL="https://raw.githubusercontent.com/your-org/your-repo/main/data/tournament_metadata.csv"
 export RANKING_TXT_URL="https://example.com/ranking.txt"
 export EXTRA_MATCHES_URL="https://example.com/supplemental-results.parquet"
+export TABLE_HOCKEY_EU_MATCHES_URL="https://example.com/table-hockey-eu-results.parquet"
 export REQUIRE_RANKINGS=1
 python3 scripts/build_h2h.py
 ```

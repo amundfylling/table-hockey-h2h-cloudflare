@@ -323,10 +323,67 @@ def load_tournaments(
     return tournaments
 
 
-EXTRA_MATCHES_URL = (
-    "https://raw.githubusercontent.com/amundfylling/bordshockey.net-scraper/"
-    "refs/heads/main/data/bordshockey_results.parquet"
-)
+# Supplemental result sources, each a Parquet in the bordshockey.net-scraper schema. Rows are
+# told apart by their "source" column (see DATA_SOURCES). url_env overrides the URL; an empty
+# value disables the source. "key" names the source in meta.json.
+EXTRA_SOURCES = [
+    {
+        "id": "bordshockey",
+        "key": "supplemental",
+        "url_env": "EXTRA_MATCHES_URL",
+        "url": (
+            "https://raw.githubusercontent.com/amundfylling/bordshockey.net-scraper/"
+            "refs/heads/main/data/bordshockey_results.parquet"
+        ),
+        "cache_name": "extra_matches.parquet",
+    },
+    {
+        "id": "table-hockey-eu",
+        "key": "table_hockey_eu",
+        "url_env": "TABLE_HOCKEY_EU_MATCHES_URL",
+        "url": (
+            "https://raw.githubusercontent.com/amundfylling/table-hockey-eu-fetch/"
+            "refs/heads/main/data/table_hockey_eu_results.parquet"
+        ),
+        "cache_name": "table_hockey_eu_matches.parquet",
+    },
+]
+EXTRA_MATCHES_URL = EXTRA_SOURCES[0]["url"]
+
+
+def extra_source_url(source: dict) -> str:
+    return os.environ.get(source["url_env"], source["url"]).strip()
+
+
+# Source websites listed in the site footer. "marker" is matched against a row's lowercased
+# "source" column; rows matching no marker come from the primary source (Sportscorpion).
+DATA_SOURCES = [
+    {"id": "sportscorpion", "name": "th.sportscorpion.com", "url": "https://th.sportscorpion.com/"},
+    {
+        "id": "bordshockey",
+        "name": "resultat.bordshockey.se",
+        "url": "https://resultat.bordshockey.se/",
+        "marker": "bordshockey",
+    },
+    {
+        "id": "table-hockey-eu",
+        "name": "table-hockey.eu",
+        "url": "https://table-hockey.eu/",
+        "marker": "table-hockey.eu",
+    },
+]
+
+
+def classify_sources(source: pd.Series) -> pd.Series:
+    """DATA_SOURCES id for each row's "source" value."""
+    source_text = source.fillna("").astype(str).str.lower()
+    source_ids = pd.Series(DATA_SOURCES[0]["id"], index=source.index, dtype="object")
+    for data_source in DATA_SOURCES[1:]:
+        source_ids.loc[source_text.str.contains(data_source["marker"], regex=False)] = (
+            data_source["id"]
+        )
+    return source_ids
+
 
 def ensure_int_column(df: pd.DataFrame, name: str) -> None:
     if name in df:
@@ -514,7 +571,7 @@ MIN_LOOSE_TOURNAMENT_CROSSWALK_MATCHES = 10
 
 def infer_tournament_crosswalk(
     matches: pd.DataFrame,
-    is_bordshockey: pd.Series,
+    is_preferred: pd.Series,
     tournament_ids: pd.Series,
     tournament_names: Optional[pd.Series],
     signature_columns: list[str] = OVERLAP_DEDUPE_COLUMNS,
@@ -524,7 +581,9 @@ def infer_tournament_crosswalk(
     Dict[Tuple[int, int], int],
     list[Tuple[Tuple[int, int], list[int], list[int]]],
 ]:
-    """Infer unambiguous tournament pairs from repeated game overlaps.
+    """Infer unambiguous tournament pairs between two sources from repeated game overlaps.
+
+    is_preferred marks the rows of the source whose rows are kept; the rest are "primary".
 
     Cross-source tournament IDs and names are not always the same. Matching normalized
     names are direct evidence when use_names is set; otherwise, require min_matches
@@ -534,36 +593,36 @@ def infer_tournament_crosswalk(
     signature_hashes = pd.util.hash_pandas_object(
         matches[signature_columns], index=False
     )
-    bordshockey_hashes = set(signature_hashes.loc[is_bordshockey].tolist())
+    preferred_hashes = set(signature_hashes.loc[is_preferred].tolist())
     primary_mask = (
-        ~is_bordshockey
+        ~is_preferred
         & tournament_ids.notna()
-        & signature_hashes.isin(bordshockey_hashes)
+        & signature_hashes.isin(preferred_hashes)
     )
-    bordshockey_mask = is_bordshockey & tournament_ids.notna()
+    preferred_mask = is_preferred & tournament_ids.notna()
 
     primary = matches.loc[primary_mask, signature_columns].copy()
     primary["_primary_index"] = primary.index
     primary["_primary_tournament_id"] = tournament_ids.loc[primary.index].astype(
         "int64"
     )
-    bordshockey = matches.loc[bordshockey_mask, signature_columns].copy()
-    bordshockey["_bordshockey_index"] = bordshockey.index
-    bordshockey["_bordshockey_tournament_id"] = tournament_ids.loc[
-        bordshockey.index
+    preferred = matches.loc[preferred_mask, signature_columns].copy()
+    preferred["_preferred_index"] = preferred.index
+    preferred["_preferred_tournament_id"] = tournament_ids.loc[
+        preferred.index
     ].astype("int64")
 
     if tournament_names is not None:
         primary["_primary_tournament_name"] = tournament_names.loc[primary.index]
-        bordshockey["_bordshockey_tournament_name"] = tournament_names.loc[
-            bordshockey.index
+        preferred["_preferred_tournament_name"] = tournament_names.loc[
+            preferred.index
         ]
     else:
         primary["_primary_tournament_name"] = ""
-        bordshockey["_bordshockey_tournament_name"] = ""
+        preferred["_preferred_tournament_name"] = ""
 
     overlaps = primary.merge(
-        bordshockey,
+        preferred,
         on=signature_columns,
         how="inner",
         sort=False,
@@ -571,14 +630,14 @@ def infer_tournament_crosswalk(
     if overlaps.empty:
         return {}, []
 
-    pair_columns = ["_primary_tournament_id", "_bordshockey_tournament_id"]
+    pair_columns = ["_primary_tournament_id", "_preferred_tournament_id"]
     unique_signatures = overlaps.drop_duplicates(
         [*pair_columns, *signature_columns]
     )
     evidence_counts = unique_signatures.groupby(pair_columns, sort=False).size()
     evidence = {
-        (int(primary_id), int(bordshockey_id)): int(count)
-        for (primary_id, bordshockey_id), count in evidence_counts.items()
+        (int(primary_id), int(preferred_id)): int(count)
+        for (primary_id, preferred_id), count in evidence_counts.items()
     }
 
     matching_name_pairs: set[Tuple[int, int]] = set()
@@ -586,15 +645,15 @@ def infer_tournament_crosswalk(
         primary_name_keys = overlaps["_primary_tournament_name"].map(
             normalize_dedupe_text
         )
-        bordshockey_name_keys = overlaps["_bordshockey_tournament_name"].map(
+        preferred_name_keys = overlaps["_preferred_tournament_name"].map(
             normalize_dedupe_text
         )
         matching_names = primary_name_keys.ne("") & primary_name_keys.eq(
-            bordshockey_name_keys
+            preferred_name_keys
         )
         matching_name_pairs = {
-            (int(primary_id), int(bordshockey_id))
-            for primary_id, bordshockey_id in overlaps.loc[
+            (int(primary_id), int(preferred_id))
+            for primary_id, preferred_id in overlaps.loc[
                 matching_names, pair_columns
             ].itertuples(index=False, name=None)
         }
@@ -605,20 +664,20 @@ def infer_tournament_crosswalk(
         if count >= min_matches or pair in matching_name_pairs
     }
     primary_candidates: Dict[int, set[int]] = {}
-    bordshockey_candidates: Dict[int, set[int]] = {}
-    for primary_id, bordshockey_id in candidates:
-        primary_candidates.setdefault(primary_id, set()).add(bordshockey_id)
-        bordshockey_candidates.setdefault(bordshockey_id, set()).add(primary_id)
+    preferred_candidates: Dict[int, set[int]] = {}
+    for primary_id, preferred_id in candidates:
+        primary_candidates.setdefault(primary_id, set()).add(preferred_id)
+        preferred_candidates.setdefault(preferred_id, set()).add(primary_id)
 
     crosswalk = {
-        (primary_id, bordshockey_id): evidence[(primary_id, bordshockey_id)]
-        for primary_id, bordshockey_id in candidates
+        (primary_id, preferred_id): evidence[(primary_id, preferred_id)]
+        for primary_id, preferred_id in candidates
         if len(primary_candidates[primary_id]) == 1
-        and len(bordshockey_candidates[bordshockey_id]) == 1
+        and len(preferred_candidates[preferred_id]) == 1
     }
     accepted_pairs = [
-        (int(primary_id), int(bordshockey_id)) in crosswalk
-        for primary_id, bordshockey_id in overlaps[pair_columns].itertuples(
+        (int(primary_id), int(preferred_id)) in crosswalk
+        for primary_id, preferred_id in overlaps[pair_columns].itertuples(
             index=False, name=None
         )
     ]
@@ -631,17 +690,70 @@ def infer_tournament_crosswalk(
     ):
         pair = (
             int(group.iloc[0]["_primary_tournament_id"]),
-            int(group.iloc[0]["_bordshockey_tournament_id"]),
+            int(group.iloc[0]["_preferred_tournament_id"]),
         )
         primary_indices = list(dict.fromkeys(group["_primary_index"].tolist()))
-        bordshockey_indices = list(
-            dict.fromkeys(group["_bordshockey_index"].tolist())
+        preferred_indices = list(
+            dict.fromkeys(group["_preferred_index"].tolist())
         )
-        overlap_groups.append((pair, primary_indices, bordshockey_indices))
+        overlap_groups.append((pair, primary_indices, preferred_indices))
     return crosswalk, overlap_groups
 
 
+def match_source_pair(
+    matches: pd.DataFrame,
+    is_preferred: pd.Series,
+    tournament_ids: pd.Series,
+    tournament_names: Optional[pd.Series],
+) -> Tuple[list[int], list[int]]:
+    """Pair overlapping games between two sources; returns (kept, dropped) row indices.
+
+    kept[i] is the preferred-source row that replaces dropped[i].
+    """
+    drop_indices: list[int] = []
+    kept_indices: list[int] = []
+    # Tournament mappings accepted so far, kept one-to-one across both passes.
+    primary_to_preferred: Dict[int, int] = {}
+    preferred_to_primary: Dict[int, int] = {}
+    # The exact pass runs first; the loose pass only sees rows it left unpaired.
+    for signature_columns, min_matches, use_names in [
+        (OVERLAP_DEDUPE_COLUMNS, MIN_TOURNAMENT_CROSSWALK_MATCHES, True),
+        (LOOSE_OVERLAP_DEDUPE_COLUMNS, MIN_LOOSE_TOURNAMENT_CROSSWALK_MATCHES, False),
+    ]:
+        remaining = matches.index.difference(drop_indices + kept_indices)
+        tournament_crosswalk, overlap_groups = infer_tournament_crosswalk(
+            matches.loc[remaining],
+            is_preferred.loc[remaining],
+            tournament_ids.loc[remaining],
+            tournament_names.loc[remaining] if tournament_names is not None else None,
+            signature_columns=signature_columns,
+            min_matches=min_matches,
+            use_names=use_names,
+        )
+        tournament_crosswalk = {
+            (primary_id, preferred_id)
+            for primary_id, preferred_id in tournament_crosswalk
+            if primary_to_preferred.get(primary_id, preferred_id) == preferred_id
+            and preferred_to_primary.get(preferred_id, primary_id) == primary_id
+        }
+        for primary_id, preferred_id in tournament_crosswalk:
+            primary_to_preferred[primary_id] = preferred_id
+            preferred_to_primary[preferred_id] = primary_id
+        for pair, primary_indices, preferred_indices in overlap_groups:
+            if pair not in tournament_crosswalk:
+                continue
+            pair_count = min(len(preferred_indices), len(primary_indices))
+            kept_indices.extend(preferred_indices[:pair_count])
+            drop_indices.extend(primary_indices[:pair_count])
+    return kept_indices, drop_indices
+
+
 def deduplicate_overlapping_source_matches(matches: pd.DataFrame) -> pd.DataFrame:
+    """Drop games that two sources both report.
+
+    Each source in DATA_SOURCES is compared with every source listed before it, and on
+    overlap the later source's row is kept.
+    """
     if matches.empty or "source" not in matches:
         return matches
 
@@ -653,11 +765,7 @@ def deduplicate_overlapping_source_matches(matches: pd.DataFrame) -> pd.DataFram
     if "tournament_level" not in matches:
         matches["tournament_level"] = None
 
-    source_text = matches["source"].fillna("").astype(str).str.lower()
-    is_bordshockey = source_text.str.contains("bordshockey", regex=False)
-    if not is_bordshockey.any():
-        return matches
-
+    source_ids = classify_sources(matches["source"])
     if "tournament_id" in matches:
         tournament_ids = to_int(matches["tournament_id"])
     else:
@@ -665,44 +773,38 @@ def deduplicate_overlapping_source_matches(matches: pd.DataFrame) -> pd.DataFram
 
     tournament_names = matches.get("tournament_name")
     drop_indices: list[int] = []
-    kept_indices: list[int] = []
-    # Tournament mappings accepted so far, kept one-to-one across both passes.
-    primary_to_bordshockey: Dict[int, int] = {}
-    bordshockey_to_primary: Dict[int, int] = {}
-    # The exact pass runs first; the loose pass only sees rows it left unpaired.
-    for signature_columns, min_matches, use_names in [
-        (OVERLAP_DEDUPE_COLUMNS, MIN_TOURNAMENT_CROSSWALK_MATCHES, True),
-        (LOOSE_OVERLAP_DEDUPE_COLUMNS, MIN_LOOSE_TOURNAMENT_CROSSWALK_MATCHES, False),
-    ]:
-        remaining = matches.index.difference(drop_indices + kept_indices)
-        tournament_crosswalk, overlap_groups = infer_tournament_crosswalk(
-            matches.loc[remaining],
-            is_bordshockey.loc[remaining],
-            tournament_ids.loc[remaining],
-            tournament_names.loc[remaining] if tournament_names is not None else None,
-            signature_columns=signature_columns,
-            min_matches=min_matches,
-            use_names=use_names,
-        )
-        tournament_crosswalk = {
-            (primary_id, bordshockey_id)
-            for primary_id, bordshockey_id in tournament_crosswalk
-            if primary_to_bordshockey.get(primary_id, bordshockey_id) == bordshockey_id
-            and bordshockey_to_primary.get(bordshockey_id, primary_id) == primary_id
-        }
-        for primary_id, bordshockey_id in tournament_crosswalk:
-            primary_to_bordshockey[primary_id] = bordshockey_id
-            bordshockey_to_primary[bordshockey_id] = primary_id
-        for pair, non_bordshockey_indices, bordshockey_indices in overlap_groups:
-            if pair not in tournament_crosswalk:
+    ordered_ids = [source["id"] for source in DATA_SOURCES]
+    for position, preferred_id in enumerate(ordered_ids):
+        for other_id in ordered_ids[:position]:
+            in_pair = source_ids.isin([preferred_id, other_id])
+            in_pair.loc[drop_indices] = False
+            is_preferred = source_ids.eq(preferred_id) & in_pair
+            if not is_preferred.any() or not (in_pair & ~is_preferred).any():
                 continue
-            pair_count = min(len(bordshockey_indices), len(non_bordshockey_indices))
-            kept_indices.extend(bordshockey_indices[:pair_count])
-            drop_indices.extend(non_bordshockey_indices[:pair_count])
+            rows = matches.index[in_pair]
+            kept_indices, pair_drops = match_source_pair(
+                matches.loc[rows],
+                is_preferred.loc[rows],
+                tournament_ids.loc[rows],
+                tournament_names.loc[rows] if tournament_names is not None else None,
+            )
+            if not pair_drops:
+                continue
+            print(
+                f"Matched {len(pair_drops)} {other_id} games also reported by {preferred_id}."
+            )
+            backfill_tournament_levels(matches, kept_indices, pair_drops)
+            drop_indices.extend(pair_drops)
 
     if not drop_indices:
         return matches
+    return matches.drop(index=drop_indices).reset_index(drop=True)
 
+
+def backfill_tournament_levels(
+    matches: pd.DataFrame, kept_indices: list[int], drop_indices: list[int]
+) -> None:
+    """Copy a dropped row's tournament level onto the kept row that replaces it."""
     # Each row sits in at most one accepted group (the crosswalk is one-to-one and
     # the passes see disjoint rows), so the level backfill is one assignment.
     levels = matches["tournament_level"]
@@ -724,8 +826,6 @@ def deduplicate_overlapping_source_matches(matches: pd.DataFrame) -> pd.DataFram
     if backfill:
         backfill_indices, backfill_levels = zip(*backfill)
         matches.loc[list(backfill_indices), "tournament_level"] = list(backfill_levels)
-
-    return matches.drop(index=drop_indices).reset_index(drop=True)
 
 
 def read_matches_parquet(matches_path: Path) -> pd.DataFrame:
@@ -1473,28 +1573,24 @@ def build_records(matches: pd.DataFrame, player_names: Dict[int, str]) -> dict:
     return records
 
 
-# Source websites listed in the site footer, matched to rows by the "source" column.
-DATA_SOURCES = [
-    {"id": "sportscorpion", "name": "th.sportscorpion.com", "url": "https://th.sportscorpion.com/"},
-    {"id": "bordshockey", "name": "resultat.bordshockey.se", "url": "https://resultat.bordshockey.se/"},
-]
+def build_source_summary(matches: pd.DataFrame, enabled_ids: Iterable[str]) -> list[dict]:
+    """Game count and latest game date per source website.
 
-
-def build_source_summary(matches: pd.DataFrame, include_bordshockey: bool) -> list[dict]:
-    """Game count and latest game date per source website."""
-    source_text = matches["source"].fillna("").astype(str).str.lower()
-    is_bordshockey = source_text.str.contains("bordshockey", regex=False)
+    The primary source is always listed; supplemental ones only when in enabled_ids.
+    """
+    enabled = {DATA_SOURCES[0]["id"], *enabled_ids}
+    source_ids = classify_sources(matches["source"])
     summary = []
-    for source, mask in [
-        (DATA_SOURCES[0], ~is_bordshockey),
-        (DATA_SOURCES[1], is_bordshockey),
-    ]:
-        if source["id"] == "bordshockey" and not include_bordshockey:
+    for source in DATA_SOURCES:
+        if source["id"] not in enabled:
             continue
+        mask = source_ids.eq(source["id"])
         latest = matches.loc[mask, "date_dt"].max()
         summary.append(
             {
-                **source,
+                "id": source["id"],
+                "name": source["name"],
+                "url": source["url"],
                 "matches": int(mask.sum()),
                 "latest_date": latest.strftime("%Y-%m-%d") if pd.notna(latest) else None,
             }
@@ -1528,7 +1624,15 @@ def main() -> int:
         "TOURNAMENT_METADATA_CSV_URL", dl.DEFAULT_TOURNAMENT_METADATA_URL
     )
     ranking_url = os.environ.get("RANKING_TXT_URL", dl.DEFAULT_RANKING_URL)
-    extra_matches_url = os.environ.get("EXTRA_MATCHES_URL", EXTRA_MATCHES_URL).strip()
+    extra_sources = [
+        {
+            **source,
+            "download_url": extra_source_url(source),
+            "path": CACHE_DIR / source["cache_name"],
+        }
+        for source in EXTRA_SOURCES
+    ]
+    enabled_extra_sources = [source for source in extra_sources if source["download_url"]]
     require_rankings = os.environ.get("REQUIRE_RANKINGS", "0").strip().casefold() in {
         "1",
         "true",
@@ -1577,7 +1681,6 @@ def main() -> int:
         raise ValueError("Source rejection-rate limits must be between 0 and 1.")
 
     matches_path = CACHE_DIR / "scraped_matches.parquet"
-    extra_matches_path = CACHE_DIR / "extra_matches.parquet"
     players_path = CACHE_DIR / "players_data.csv"
     tournaments_path = CACHE_DIR / "tournament_data.csv"
     tournament_metadata_path = CACHE_DIR / "tournament_metadata.csv"
@@ -1585,8 +1688,7 @@ def main() -> int:
 
     if skip_downloads:
         required_paths = [matches_path, players_path, tournaments_path]
-        if extra_matches_url:
-            required_paths.append(extra_matches_path)
+        required_paths.extend(source["path"] for source in enabled_extra_sources)
         if require_tournament_metadata:
             required_paths.append(tournament_metadata_path)
         if require_rankings:
@@ -1599,10 +1701,14 @@ def main() -> int:
     else:
         print("Downloading source data...")
         download_cached(matches_url, matches_path)
-        if extra_matches_url:
-            download_cached(extra_matches_url, extra_matches_path)
-        else:
-            print("Supplemental match source disabled (EXTRA_MATCHES_URL is empty).")
+        for source in extra_sources:
+            if source["download_url"]:
+                download_cached(source["download_url"], source["path"])
+            else:
+                print(
+                    f"Supplemental match source {source['id']} disabled "
+                    f"({source['url_env']} is empty)."
+                )
         download_cached(players_url, players_path)
         download_cached(tournaments_url, tournaments_path)
         download_cached(tournament_metadata_url, tournament_metadata_path)
@@ -1661,15 +1767,14 @@ def main() -> int:
         max_main_rejection_rate,
     )
     match_frames = [matches_main]
-    if extra_matches_url:
-        player_name_to_id = build_unique_player_name_index(players)
-        matches_extra = read_extra_matches_parquet(extra_matches_path, player_name_to_id)
-        source_validation["supplemental"] = dict(
-            matches_extra.attrs.get("validation", {})
-        )
+    player_name_to_id = build_unique_player_name_index(players)
+    for source in enabled_extra_sources:
+        print(f"Reading supplemental source {source['id']}...")
+        matches_extra = read_extra_matches_parquet(source["path"], player_name_to_id)
+        source_validation[source["key"]] = dict(matches_extra.attrs.get("validation", {}))
         enforce_rejection_budget(
-            "Supplemental match source",
-            source_validation["supplemental"],
+            f"Supplemental match source {source['id']}",
+            source_validation[source["key"]],
             max_extra_rejection_rate,
         )
         match_frames.append(matches_extra)
@@ -1737,7 +1842,9 @@ def main() -> int:
             "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "players": len(players),
             "matches": int(len(matches)),
-            "sources": build_source_summary(matches, bool(extra_matches_url)),
+            "sources": build_source_summary(
+                matches, [source["id"] for source in enabled_extra_sources]
+            ),
             "source_validation": source_validation,
             "source_files": {
                 label: {
@@ -1746,7 +1853,10 @@ def main() -> int:
                 }
                 for label, path in {
                     "primary_matches": matches_path,
-                    **({"supplemental_matches": extra_matches_path} if extra_matches_url else {}),
+                    **{
+                        f"{source['key']}_matches": source["path"]
+                        for source in enabled_extra_sources
+                    },
                     "players": players_path,
                     "tournaments": tournaments_path,
                     **(

@@ -459,6 +459,43 @@ class TestBordshockeySourceFields(unittest.TestCase):
         self.assertEqual((deduped.tournament_id == 101).sum(), 10)
         self.assertEqual((deduped.tournament_id == 200).sum(), 13)
 
+    def test_table_hockey_eu_rows_replace_overlaps_with_both_older_sources(self):
+        def game(round_number, tournament_id, source):
+            return {
+                "id1": 1,
+                "id2": 2,
+                "date": "2026-10-17",
+                "stage_sequence": 1,
+                "round_number": round_number,
+                "playoff_game_number": None,
+                "goals_id1": 3,
+                "goals_id2": round_number,
+                "overtime": False,
+                "tournament_id": tournament_id,
+                "tournament_name": "Krohnengen Open 2026",
+                "tournament_level": None,
+                "source": source,
+            }
+
+        matches = pd.DataFrame(
+            [
+                # Rounds 1-2 on Sportscorpion, round 3 on bordshockey, all on table-hockey.eu.
+                game(1, 8265, ""),
+                game(2, 8265, ""),
+                game(3, 684751752, "bordshockey.net"),
+                game(1, 2000000040, "table-hockey.eu"),
+                game(2, 2000000040, "table-hockey.eu"),
+                game(3, 2000000040, "table-hockey.eu"),
+                # Only on table-hockey.eu.
+                game(4, 2000000040, "table-hockey.eu"),
+            ]
+        )
+
+        deduped = deduplicate_overlapping_source_matches(matches)
+
+        self.assertEqual(deduped["source"].tolist(), ["table-hockey.eu"] * 4)
+        self.assertEqual(sorted(deduped["round_number"].tolist()), [1, 2, 3, 4])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -21,20 +21,22 @@ class SourceSummaryTest(unittest.TestCase):
                 ("bordshockey.net", "2025-12-31"),
                 ("bordshockey.net", "2026-02-14"),
                 ("bordshockey.net", None),
+                ("table-hockey.eu", "2026-10-28"),
             ]
         )
-        summary = build_source_summary(matches, include_bordshockey=True)
+        summary = build_source_summary(matches, ["bordshockey", "table-hockey-eu"])
         self.assertEqual(
             [(s["name"], s["matches"], s["latest_date"]) for s in summary],
             [
                 ("th.sportscorpion.com", 2, "2026-03-01"),
                 ("resultat.bordshockey.se", 3, "2026-02-14"),
+                ("table-hockey.eu", 1, "2026-10-28"),
             ],
         )
         self.assertEqual(sum(s["matches"] for s in summary), len(matches))
 
-    def test_skips_bordshockey_when_disabled(self):
-        summary = build_source_summary(_matches([("", "2026-01-05")]), include_bordshockey=False)
+    def test_skips_disabled_supplemental_sources(self):
+        summary = build_source_summary(_matches([("", "2026-01-05")]), [])
         self.assertEqual([s["id"] for s in summary], ["sportscorpion"])
 
 

@@ -1,14 +1,14 @@
 import json
-import os
 import unittest
 from pathlib import Path
 
 import pandas as pd
 
 from scripts.build_h2h import (  # noqa: E402
-    EXTRA_MATCHES_URL,
+    EXTRA_SOURCES,
     build_unique_player_name_index,
     deduplicate_overlapping_source_matches,
+    extra_source_url,
     load_players,
     read_extra_matches_parquet,
     read_matches_parquet,
@@ -20,7 +20,6 @@ DATA_DIR = ROOT_DIR / "public" / "data"
 H2H_DIR = DATA_DIR / "h2h"
 PLAYERS_PATH = DATA_DIR / "players.json"
 MATCHES_PATH = ROOT_DIR / ".cache" / "scraped_matches.parquet"
-EXTRA_MATCHES_PATH = ROOT_DIR / ".cache" / "extra_matches.parquet"
 SOURCE_PLAYERS_PATH = ROOT_DIR / ".cache" / "players_data.csv"
 
 
@@ -94,8 +93,13 @@ class TestH2HCounts(unittest.TestCase):
             self.skipTest("No cached matches parquet found; skipping source count check.")
 
         matches = read_matches_parquet(MATCHES_PATH)
-        extra_matches_url = os.environ.get("EXTRA_MATCHES_URL", EXTRA_MATCHES_URL).strip()
-        if extra_matches_url and EXTRA_MATCHES_PATH.exists():
+        extra_paths = [
+            ROOT_DIR / ".cache" / source["cache_name"]
+            for source in EXTRA_SOURCES
+            if extra_source_url(source)
+        ]
+        extra_paths = [path for path in extra_paths if path.exists()]
+        if extra_paths:
             if not SOURCE_PLAYERS_PATH.exists():
                 self.fail(
                     "Cached supplemental matches exist without cached players.csv; "
@@ -103,11 +107,10 @@ class TestH2HCounts(unittest.TestCase):
                 )
             source_players, _ = load_players(SOURCE_PLAYERS_PATH)
             player_name_to_id = build_unique_player_name_index(source_players)
-            extra_matches = read_extra_matches_parquet(
-                EXTRA_MATCHES_PATH,
-                player_name_to_id,
-            )
-            matches = pd.concat([matches, extra_matches], ignore_index=True)
+            extra_frames = [
+                read_extra_matches_parquet(path, player_name_to_id) for path in extra_paths
+            ]
+            matches = pd.concat([matches, *extra_frames], ignore_index=True)
         matches["tournament_level"] = None
         matches = deduplicate_overlapping_source_matches(matches)
 
