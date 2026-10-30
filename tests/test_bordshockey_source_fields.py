@@ -496,6 +496,37 @@ class TestBordshockeySourceFields(unittest.TestCase):
         self.assertEqual(deduped["source"].tolist(), ["table-hockey.eu"] * 4)
         self.assertEqual(sorted(deduped["round_number"].tolist()), [1, 2, 3, 4])
 
+    def test_kept_row_replaces_only_one_row_across_three_sources(self):
+        game = {
+            "id1": 1,
+            "id2": 2,
+            "date": "2026-10-17",
+            "stage_sequence": 1,
+            "round_number": None,
+            "playoff_game_number": None,
+            "goals_id1": 3,
+            "goals_id2": 1,
+            "overtime": False,
+            "tournament_name": "Krohnengen Open 2026",
+            "tournament_level": None,
+        }
+        matches = pd.DataFrame(
+            [
+                # Two real games with the same signature on Sportscorpion, one on each
+                # of the other sources.
+                {**game, "tournament_id": 8265, "source": ""},
+                {**game, "tournament_id": 8265, "source": ""},
+                {**game, "tournament_id": 684751752, "source": "bordshockey.net"},
+                {**game, "tournament_id": 2000000040, "source": "table-hockey.eu"},
+            ]
+        )
+
+        deduped = deduplicate_overlapping_source_matches(matches)
+
+        self.assertEqual(
+            sorted(deduped["source"].tolist()), ["bordshockey.net", "table-hockey.eu"]
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

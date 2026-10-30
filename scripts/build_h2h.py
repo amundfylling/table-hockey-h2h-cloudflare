@@ -752,7 +752,8 @@ def deduplicate_overlapping_source_matches(matches: pd.DataFrame) -> pd.DataFram
     """Drop games that two sources both report.
 
     Each source in DATA_SOURCES is compared with every source listed before it, and on
-    overlap the later source's row is kept.
+    overlap the later source's row is kept. A kept row stands for one game, so it replaces
+    at most one row from one other source.
     """
     if matches.empty or "source" not in matches:
         return matches
@@ -773,11 +774,13 @@ def deduplicate_overlapping_source_matches(matches: pd.DataFrame) -> pd.DataFram
 
     tournament_names = matches.get("tournament_name")
     drop_indices: list[int] = []
+    used_indices: list[int] = []
     ordered_ids = [source["id"] for source in DATA_SOURCES]
     for position, preferred_id in enumerate(ordered_ids):
         for other_id in ordered_ids[:position]:
             in_pair = source_ids.isin([preferred_id, other_id])
             in_pair.loc[drop_indices] = False
+            in_pair.loc[used_indices] &= ~source_ids.loc[used_indices].eq(preferred_id)
             is_preferred = source_ids.eq(preferred_id) & in_pair
             if not is_preferred.any() or not (in_pair & ~is_preferred).any():
                 continue
@@ -795,6 +798,7 @@ def deduplicate_overlapping_source_matches(matches: pd.DataFrame) -> pd.DataFram
             )
             backfill_tournament_levels(matches, kept_indices, pair_drops)
             drop_indices.extend(pair_drops)
+            used_indices.extend(kept_indices)
 
     if not drop_indices:
         return matches
