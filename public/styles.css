@@ -3340,25 +3340,18 @@ select {
   text-decoration: none;
 }
 
-/* The tile stays dark in both themes so the mark keeps its contrast. */
+/* Norges Bordhockeyforbund crest. Dark mode puts it on a white tile, as puck.no does,
+   so the navy lettering keeps its contrast. */
 .mark {
-  width: 28px;
-  height: 28px;
-  border-radius: 7px;
-  background: #15181B;
-  border: 1px solid transparent;
-  display: grid;
-  place-items: center;
+  width: auto;
+  height: 36px;
   flex: none;
+  border-radius: 5px;
 }
 
 body[data-theme="dark"] .mark {
-  border-color: #3E454C;
-}
-
-.mark svg {
-  width: 17px;
-  height: 17px;
+  background: #fff;
+  padding: 2px;
 }
 
 .nav {
