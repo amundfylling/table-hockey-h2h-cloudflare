@@ -393,7 +393,7 @@ function renderTape(items, summary) {
   if (tapeSub) {
     const unit = series ? "playoff series" : "games";
     const filtered = getActiveFilterCount() > 0 || state.stageTab !== "overall";
-    tapeSub.textContent = `${filtered ? "" : "All "}${formatNumber(summary.total)} ${filtered ? `${unit} in this view` : unit} · centre line is 50/50`;
+    tapeSub.textContent = `${filtered ? "" : "All "}${formatNumber(summary.total)} ${filtered ? `${unit} in this view` : unit} · tick marks 50/50`;
   }
 }
 

@@ -5019,30 +5019,40 @@ body[data-theme="dark"] .chip.win { color: #0F1113; }
 .tape-bar {
   position: relative;
   display: flex;
-  gap: 2px;
   height: 8px;
-  margin-top: 8px;
-  border-radius: 2px;
-  overflow: hidden;
+  margin-top: 12px;
+  margin-bottom: 4px;
 }
 
+/* The two shares meet with no seam, so the only mark on the bar is the 50/50 tick. */
 .tape-bar span {
   display: block;
   height: 8px;
 }
 
+.tape-bar span:first-of-type {
+  border-radius: 2px 0 0 2px;
+}
+
+.tape-bar span:last-of-type {
+  border-radius: 0 2px 2px 0;
+}
+
+/* 50/50 reference: an ink tick that pokes out above and below the bar. */
 .tape-bar i {
   position: absolute;
   left: 50%;
-  top: 0;
+  top: -4px;
   width: 2px;
   margin-left: -1px;
-  height: 8px;
-  background: var(--bg);
+  height: 16px;
+  border-radius: 1px;
+  background: var(--ink);
 }
 
 .tape-bar.is-empty {
   background: var(--sunk);
+  border-radius: 2px;
 }
 
 /* ── Scorelines heatmap ──────────────────────────────────────────── */
