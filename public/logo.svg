@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
-  <!-- Two players (rods) and the puck between them -->
-  <rect x="9" y="11" width="7" height="26" rx="3.5" fill="currentColor"/>
-  <rect x="32" y="11" width="7" height="26" rx="3.5" fill="currentColor"/>
-  <circle cx="24" cy="24" r="5.5" fill="currentColor"/>
-</svg>
