@@ -10,7 +10,7 @@ from scripts.build_h2h import (  # noqa: E402
     build_unique_player_name_index,
     deduplicate_overlapping_source_matches,
     load_players,
-    read_extra_matches_csv,
+    read_extra_matches_parquet,
     read_matches_parquet,
 )
 
@@ -20,7 +20,7 @@ DATA_DIR = ROOT_DIR / "public" / "data"
 H2H_DIR = DATA_DIR / "h2h"
 PLAYERS_PATH = DATA_DIR / "players.json"
 MATCHES_PATH = ROOT_DIR / ".cache" / "scraped_matches.parquet"
-EXTRA_MATCHES_PATH = ROOT_DIR / ".cache" / "extra_matches.csv"
+EXTRA_MATCHES_PATH = ROOT_DIR / ".cache" / "extra_matches.parquet"
 SOURCE_PLAYERS_PATH = ROOT_DIR / ".cache" / "players_data.csv"
 
 
@@ -103,7 +103,7 @@ class TestH2HCounts(unittest.TestCase):
                 )
             source_players, _ = load_players(SOURCE_PLAYERS_PATH)
             player_name_to_id = build_unique_player_name_index(source_players)
-            extra_matches = read_extra_matches_csv(
+            extra_matches = read_extra_matches_parquet(
                 EXTRA_MATCHES_PATH,
                 player_name_to_id,
             )
