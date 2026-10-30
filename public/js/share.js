@@ -791,7 +791,7 @@ export async function handleShareImage() {
   ctx.fillStyle = colors.text;
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
-  ctx.fillText("table-hockey-h2h.pages.dev", 64, footerTextY);
+  ctx.fillText("h2h.puck.no", 64, footerTextY);
   
   const dateOptions = { month: "long", day: "numeric", year: "numeric" };
   const dateStr = new Date().toLocaleDateString("en-US", dateOptions);
@@ -840,14 +840,14 @@ export async function handleShareImage() {
     let shareUrl = "";
     try {
       const urlObj = new URL(pageUrlSnapshot);
-      urlObj.host = "table-hockey-h2h.pages.dev";
+      urlObj.host = "h2h.puck.no";
       urlObj.protocol = "https:";
       urlObj.port = "";
       shareUrl = urlObj.toString();
     } catch (e) {
       shareUrl = isSingle
-        ? `https://table-hockey-h2h.pages.dev/?p1=${playerA.id}`
-        : `https://table-hockey-h2h.pages.dev/?p1=${playerA.id}&p2=${playerB?.id}`;
+        ? `https://h2h.puck.no/?p1=${playerA.id}`
+        : `https://h2h.puck.no/?p1=${playerA.id}&p2=${playerB?.id}`;
     }
 
     const shareText = isSingle
