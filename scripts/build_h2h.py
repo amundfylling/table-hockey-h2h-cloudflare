@@ -325,7 +325,7 @@ def load_tournaments(
 
 EXTRA_MATCHES_URL = (
     "https://raw.githubusercontent.com/amundfylling/bordshockey.net-scraper/"
-    "refs/heads/main/bordshockey_results.csv"
+    "refs/heads/main/data/bordshockey_results.parquet"
 )
 
 def ensure_int_column(df: pd.DataFrame, name: str) -> None:
@@ -714,26 +714,12 @@ def read_matches_parquet(matches_path: Path) -> pd.DataFrame:
     return process_matches_df(matches)
 
 
-def read_extra_matches_csv(
-    csv_path: Path,
+def read_extra_matches_parquet(
+    parquet_path: Path,
     player_name_to_id: Optional[Dict[str, int]] = None,
 ) -> pd.DataFrame:
-    matches = pd.read_csv(
-        csv_path,
-        encoding="utf-8-sig",
-        dtype={
-            "StageType": "string",
-            "TournamentURL": "string",
-            "ResultURL": "string",
-            "StageURL": "string",
-            "SourceURL": "string",
-            "Source": "string",
-            "SourceTournamentID": "string",
-            "SourceStageID": "string",
-            "SourceMatchID": "string",
-        },
-    )
-    # Map CSV columns to internal schema
+    matches = pd.read_parquet(parquet_path)
+    # Map source columns to internal schema
     matches = matches.rename(
         columns={
             "StageID": "stage_id",
@@ -781,7 +767,7 @@ def read_extra_matches_csv(
             if name_column not in matches:
                 continue
             raw_ids = matches[id_column]
-            missing_ids = raw_ids.isna() | raw_ids.fillna("").astype(str).str.strip().eq("")
+            missing_ids = raw_ids.astype("string").fillna("").str.strip().eq("")
             resolved_ids = matches[name_column].map(normalize_dedupe_text).map(
                 player_name_to_id
             )
@@ -1523,7 +1509,7 @@ def main() -> int:
         raise ValueError("Source rejection-rate limits must be between 0 and 1.")
 
     matches_path = CACHE_DIR / "scraped_matches.parquet"
-    extra_matches_path = CACHE_DIR / "extra_matches.csv"
+    extra_matches_path = CACHE_DIR / "extra_matches.parquet"
     players_path = CACHE_DIR / "players_data.csv"
     tournaments_path = CACHE_DIR / "tournament_data.csv"
     tournament_metadata_path = CACHE_DIR / "tournament_metadata.csv"
@@ -1609,7 +1595,7 @@ def main() -> int:
     match_frames = [matches_main]
     if extra_matches_url:
         player_name_to_id = build_unique_player_name_index(players)
-        matches_extra = read_extra_matches_csv(extra_matches_path, player_name_to_id)
+        matches_extra = read_extra_matches_parquet(extra_matches_path, player_name_to_id)
         source_validation["supplemental"] = dict(
             matches_extra.attrs.get("validation", {})
         )

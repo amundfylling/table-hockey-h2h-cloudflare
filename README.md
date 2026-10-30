@@ -15,7 +15,7 @@ Raw URLs (overridable via env vars):
 - `TOURNAMENTS_CSV_URL`: `https://raw.githubusercontent.com/amundfylling/Scorpion-Scraper-2.0/main/data/tournament_data.csv`
 - `TOURNAMENT_METADATA_CSV_URL`: `https://raw.githubusercontent.com/amundfylling/Scorpion-Scraper-2.0/main/data/tournament_metadata.csv`
 - `RANKING_TXT_URL`: `https://stiga.trefik.cz/ithf/ranking/ranking.txt`
-- `EXTRA_MATCHES_URL`: bordshockey.net supplemental results CSV (set to an empty string to disable)
+- `EXTRA_MATCHES_URL`: bordshockey.net supplemental results Parquet, `https://raw.githubusercontent.com/amundfylling/bordshockey.net-scraper/refs/heads/main/data/bordshockey_results.parquet` (set to an empty string to disable)
 - `REQUIRE_RANKINGS`: set to `1` to fail the build instead of deploying without ranking data
 - `MIN_RANKING_ROWS`: minimum parsed ranking rows when rankings are required (CI: `1000`)
 - `MAX_RANKING_AGE_DAYS`: optional maximum age for required ranking data (CI: `45`)
@@ -97,7 +97,7 @@ export PLAYERS_CSV_URL="https://raw.githubusercontent.com/your-org/your-repo/mai
 export TOURNAMENTS_CSV_URL="https://raw.githubusercontent.com/your-org/your-repo/main/data/tournament_data.csv"
 export TOURNAMENT_METADATA_CSV_URL="https://raw.githubusercontent.com/your-org/your-repo/main/data/tournament_metadata.csv"
 export RANKING_TXT_URL="https://example.com/ranking.txt"
-export EXTRA_MATCHES_URL="https://example.com/supplemental-results.csv"
+export EXTRA_MATCHES_URL="https://example.com/supplemental-results.parquet"
 export REQUIRE_RANKINGS=1
 python3 scripts/build_h2h.py
 ```

@@ -8,9 +8,31 @@ import pandas as pd
 from scripts.build_h2h import (  # noqa: E402
     build_unique_player_name_index,
     deduplicate_overlapping_source_matches,
-    read_extra_matches_csv,
+    read_extra_matches_parquet,
 )
 
+
+INT_COLUMNS = {
+    "StageID",
+    "Player1ID",
+    "Player2ID",
+    "GoalsPlayer1",
+    "GoalsPlayer2",
+    "RoundNumber",
+    "PlayoffGameNumber",
+    "TournamentID",
+    "StageSequence",
+}
+
+
+def with_source_dtypes(df: pd.DataFrame) -> pd.DataFrame:
+    """Match the scraper's Parquet schema: nullable Int64 ids/counts, strings elsewhere."""
+    return df.astype(
+        {
+            column: "Int64" if column in INT_COLUMNS else "string"
+            for column in df.columns
+        }
+    )
 
 
 class TestBordshockeySourceFields(unittest.TestCase):
@@ -26,33 +48,58 @@ class TestBordshockeySourceFields(unittest.TestCase):
         self.assertNotIn("jose example", index)
         self.assertEqual(index["unique player"], 3)
 
-    def test_extra_csv_preserves_stage_type_and_source_links(self):
-        csv_text = (
-            "\ufeffStageID,Player1,Player1ID,Player2,Player2ID,GoalsPlayer1,"
-            "GoalsPlayer2,Overtime,Stage,RoundNumber,PlayoffGameNumber,Date,"
-            "TournamentName,TournamentID,StageSequence,StageType,TournamentURL,"
-            "ResultURL,StageURL,SourceURL,Source,SourceTournamentID,SourceStageID,"
-            "SourceMatchID\n"
-            "7530,Henrik Brodin,1,Samuel Villius,2,4,2,No,Final groups A,"
-            "1,,2002-03-16,Overum Open,115189097,2,round-robin,"
-            "https://bordshockey.net/tavlingar/0102/overum-open/,"
-            "https://bordshockey.net/tavlingar/0102/overum-open/resultat/,"
-            "https://bordshockey.net/tavlingar/0102/overum-open/resultat/group/?matcher=1,"
-            "https://bordshockey.net/tavlingar/0102/overum-open/resultat/group/?matcher=1,"
-            "bordshockey.net,0102/overum-open,7530,104160\n"
-            "7531,Henrik Brodin,1,Samuel Villius,2,3,1,No,Final groups A,"
-            "2,,2002-03-16,Overum Open,115189097,2,round-robin,"
-            "https://bordshockey.net/tavlingar/0102/overum-open/,"
-            "https://bordshockey.net/tavlingar/0102/overum-open/resultat/,"
-            "https://bordshockey.net/tavlingar/0102/overum-open/resultat/group/?matcher=1,"
-            "https://bordshockey.net/tavlingar/0102/overum-open/resultat/group/?matcher=1,"
-            "bordshockey.net,0102/overum-open,7531,\n"
+    def test_extra_parquet_preserves_stage_type_and_source_links(self):
+        shared = {
+            "StageID": 7530,
+            "Player1": "Henrik Brodin",
+            "Player1ID": 1,
+            "Player2": "Samuel Villius",
+            "Player2ID": 2,
+            "Overtime": "No",
+            "Stage": "Final groups A",
+            "PlayoffGameNumber": None,
+            "Date": "2002-03-16",
+            "TournamentName": "Overum Open",
+            "TournamentID": 115189097,
+            "StageSequence": 2,
+            "StageType": "round-robin",
+            "TournamentURL": "https://bordshockey.net/tavlingar/0102/overum-open/",
+            "ResultURL": "https://bordshockey.net/tavlingar/0102/overum-open/resultat/",
+            "StageURL": (
+                "https://bordshockey.net/tavlingar/0102/overum-open/resultat/group/?matcher=1"
+            ),
+            "SourceURL": (
+                "https://bordshockey.net/tavlingar/0102/overum-open/resultat/group/?matcher=1"
+            ),
+            "Source": "bordshockey.net",
+            "SourceTournamentID": "0102/overum-open",
+            "SourceStageID": "7530",
+        }
+        source = with_source_dtypes(
+            pd.DataFrame(
+                [
+                    {
+                        **shared,
+                        "GoalsPlayer1": 4,
+                        "GoalsPlayer2": 2,
+                        "RoundNumber": 1,
+                        "SourceMatchID": "104160",
+                    },
+                    {
+                        **shared,
+                        "GoalsPlayer1": 3,
+                        "GoalsPlayer2": 1,
+                        "RoundNumber": 2,
+                        "SourceMatchID": None,
+                    },
+                ]
+            )
         )
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            csv_path = Path(tmpdir) / "bordshockey_results.csv"
-            csv_path.write_text(csv_text, encoding="utf-8")
-            matches = read_extra_matches_csv(csv_path)
+            parquet_path = Path(tmpdir) / "bordshockey_results.parquet"
+            source.to_parquet(parquet_path, index=False)
+            matches = read_extra_matches_parquet(parquet_path)
 
         self.assertEqual(len(matches), 2)
         row = matches.iloc[0]
@@ -65,20 +112,41 @@ class TestBordshockeySourceFields(unittest.TestCase):
 
         self.assertEqual(row.source_stage_id, "7530")
         self.assertEqual(row.source_match_id, "104160")
+        self.assertEqual(matches.iloc[1].source_match_id, "")
 
-    def test_extra_csv_resolves_only_missing_ids_from_unique_exact_names(self):
-        csv_text = (
-            "Player1,Player1ID,Player2,Player2ID,GoalsPlayer1,GoalsPlayer2,"
-            "Overtime,Date\n"
-            "José Example,,Other Player,22,4,2,No,2026-01-02\n"
-            "José Example,not-an-id,Other Player,22,3,1,No,2026-01-03\n"
+    def test_extra_parquet_resolves_only_missing_ids_from_unique_exact_names(self):
+        source = with_source_dtypes(
+            pd.DataFrame(
+                [
+                    {
+                        "Player1": "José Example",
+                        "Player1ID": None,
+                        "Player2": "Other Player",
+                        "Player2ID": 22,
+                        "GoalsPlayer1": 4,
+                        "GoalsPlayer2": 2,
+                        "Overtime": "No",
+                        "Date": "2026-01-02",
+                    },
+                    {
+                        "Player1": "Unknown Player",
+                        "Player1ID": None,
+                        "Player2": "Other Player",
+                        "Player2ID": 22,
+                        "GoalsPlayer1": 3,
+                        "GoalsPlayer2": 1,
+                        "Overtime": "No",
+                        "Date": "2026-01-03",
+                    },
+                ]
+            )
         )
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            csv_path = Path(tmpdir) / "missing_player_ids.csv"
-            csv_path.write_text(csv_text, encoding="utf-8")
-            matches = read_extra_matches_csv(
-                csv_path,
+            parquet_path = Path(tmpdir) / "missing_player_ids.parquet"
+            source.to_parquet(parquet_path, index=False)
+            matches = read_extra_matches_parquet(
+                parquet_path,
                 {"jose example": 11, "other player": 22},
             )
 
