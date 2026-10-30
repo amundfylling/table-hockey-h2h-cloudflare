@@ -1473,6 +1473,35 @@ def build_records(matches: pd.DataFrame, player_names: Dict[int, str]) -> dict:
     return records
 
 
+# Source websites listed in the site footer, matched to rows by the "source" column.
+DATA_SOURCES = [
+    {"id": "sportscorpion", "name": "th.sportscorpion.com", "url": "https://th.sportscorpion.com/"},
+    {"id": "bordshockey", "name": "resultat.bordshockey.se", "url": "https://resultat.bordshockey.se/"},
+]
+
+
+def build_source_summary(matches: pd.DataFrame, include_bordshockey: bool) -> list[dict]:
+    """Game count and latest game date per source website."""
+    source_text = matches["source"].fillna("").astype(str).str.lower()
+    is_bordshockey = source_text.str.contains("bordshockey", regex=False)
+    summary = []
+    for source, mask in [
+        (DATA_SOURCES[0], ~is_bordshockey),
+        (DATA_SOURCES[1], is_bordshockey),
+    ]:
+        if source["id"] == "bordshockey" and not include_bordshockey:
+            continue
+        latest = matches.loc[mask, "date_dt"].max()
+        summary.append(
+            {
+                **source,
+                "matches": int(mask.sum()),
+                "latest_date": latest.strftime("%Y-%m-%d") if pd.notna(latest) else None,
+            }
+        )
+    return summary
+
+
 def download_cached(url: str, path: Path) -> None:
     parsed_url = urlparse(url)
     if parsed_url.scheme not in {"http", "https"} or not parsed_url.netloc:
@@ -1708,6 +1737,7 @@ def main() -> int:
             "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "players": len(players),
             "matches": int(len(matches)),
+            "sources": build_source_summary(matches, bool(extra_matches_url)),
             "source_validation": source_validation,
             "source_files": {
                 label: {

@@ -10,7 +10,7 @@ const searchButtons = () => [
 ].filter(Boolean);
 
 // Home sections the main links can jump to, in page order.
-const HOME_SECTIONS = ["rivalries", "players"];
+const HOME_SECTIONS = ["records", "rivalries", "players"];
 
 function isHome() {
   return document.body.dataset.home === "true";

@@ -21,7 +21,7 @@
     href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Golos+Text:wght@400;500;600;700&family=Schibsted+Grotesk:wght@400;500;600;700;800&display=swap"
     rel="stylesheet" />
   <link rel="icon" type="image/png" sizes="32x32" href="favicon.png" />
-  <link rel="stylesheet" href="styles.css?v=20261030-tape-tick" />
+  <link rel="stylesheet" href="styles.css?v=20261030-data-sources" />
 </head>
 
 <body data-home="pending">
@@ -34,8 +34,9 @@
       </a>
       <nav class="nav" aria-label="Main">
         <a href="./" data-nav="home">Head-to-head</a>
-        <a href="./#players" data-nav="players">Players</a>
+        <a href="./#records" data-nav="records">Records</a>
         <a href="./#rivalries" data-nav="rivalries">Rivalries</a>
+        <a href="./#players" data-nav="players">Players</a>
       </nav>
       <button id="header-search" class="header-search" type="button" aria-controls="finder"
         aria-expanded="false">
@@ -78,8 +79,9 @@
     <nav id="mobile-menu" class="mobile-menu" aria-label="Main" hidden>
       <div class="wrap">
         <a href="./" data-nav="home">Head-to-head</a>
-        <a href="./#players" data-nav="players">Players</a>
+        <a href="./#records" data-nav="records">Records</a>
         <a href="./#rivalries" data-nav="rivalries">Rivalries</a>
+        <a href="./#players" data-nav="players">Players</a>
       </div>
     </nav>
   </header>
@@ -610,20 +612,21 @@
 
   <footer class="site-footer">
     <div class="wrap footer-inner">
-      <p>
-        Data from
-        <a href="https://github.com/amundfylling/Scorpion-Scraper-2.0" target="_blank" rel="noopener">Scorpion
-          Scraper</a>
-        and
-        <a href="https://github.com/amundfylling/bordshockey.net-scraper" target="_blank"
-          rel="noopener">bordshockey.net</a>
-      </p>
-      <p id="home-stats" class="footer-stats" hidden></p>
-      <p id="data-freshness" class="data-freshness" hidden></p>
+      <section class="data-sources" aria-labelledby="data-sources-title">
+        <h2 id="data-sources-title" class="data-sources-title">Data sources</h2>
+        <ul id="data-sources-list" class="data-sources-list">
+          <li><a href="https://th.sportscorpion.com/" target="_blank" rel="noopener">th.sportscorpion.com</a></li>
+          <li><a href="https://resultat.bordshockey.se/" target="_blank" rel="noopener">resultat.bordshockey.se</a></li>
+        </ul>
+      </section>
+      <div class="footer-meta">
+        <p id="home-stats" class="footer-stats" hidden></p>
+        <p id="data-freshness" class="data-freshness" hidden></p>
+      </div>
     </div>
   </footer>
 
-  <script type="module" src="js/main.js?v=20261024-redesign-3"></script>
+  <script type="module" src="js/main.js?v=20261030-data-sources"></script>
 </body>
 
 </html>
