@@ -376,6 +376,56 @@ class TestBordshockeySourceFields(unittest.TestCase):
         self.assertEqual(len(deduped), 9)
         self.assertEqual(set(deduped.tournament_id), {100, 101, 200})
 
+    def loose_overlap_rows(self, games):
+        rows = []
+        for game in range(games):
+            shared = {
+                "id1": game + 1,
+                "id2": game + 100,
+                "date": "2018-11-03",
+                "playoff_game_number": None,
+                "goals_id1": game % 5,
+                "goals_id2": 2,
+                "overtime": False,
+                "tournament_level": None,
+            }
+            rows.extend(
+                [
+                    {
+                        **shared,
+                        "stage_sequence": 7,
+                        "round_number": game + 20,
+                        "tournament_id": 100,
+                        "tournament_name": "X Saint Petersburg Open 2018",
+                        "source": "",
+                    },
+                    {
+                        **shared,
+                        "stage_sequence": 1,
+                        "round_number": game + 1,
+                        "tournament_id": 200,
+                        "tournament_name": "St. Petersburg Open",
+                        "source": "bordshockey.net",
+                    },
+                ]
+            )
+        return rows
+
+    def test_overlap_with_different_stage_numbering_is_deduped(self):
+        deduped = deduplicate_overlapping_source_matches(
+            pd.DataFrame(self.loose_overlap_rows(10))
+        )
+
+        self.assertEqual(len(deduped), 10)
+        self.assertTrue((deduped.source == "bordshockey.net").all())
+
+    def test_few_overlaps_with_different_stage_numbering_are_preserved(self):
+        deduped = deduplicate_overlapping_source_matches(
+            pd.DataFrame(self.loose_overlap_rows(9))
+        )
+
+        self.assertEqual(len(deduped), 18)
+
 
 if __name__ == "__main__":
     unittest.main()
