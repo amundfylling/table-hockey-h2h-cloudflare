@@ -60,6 +60,7 @@ graph TD
     subgraph Ingestion
         A[Scorpion-Scraper Parquet] -->|Download| D[scripts/build_h2h.py]
         B[bordshockey.net Parquet] -->|Download| D
+        K[table-hockey.eu Parquet] -->|Download| D
         C[ITHF World Rankings TXT] -->|Download| D
     end
     subgraph Build Time Processing
