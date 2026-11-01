@@ -4,6 +4,7 @@
 // matchup for search engines and link previews. Anything unexpected falls back
 // to the static page unchanged.
 import { pageTitle } from "../public/js/page-title.js";
+import { decodeHtmlEntities } from "../public/js/utils.js";
 
 const ID_RE = /^[1-9]\d{0,9}$/;
 const TAGLINE = "Head-to-head record, form and playoff series.";
@@ -20,9 +21,13 @@ export async function onRequest(context) {
   let p2 = url.searchParams.get("p2");
   if (p2 && (!ID_RE.test(p2) || p2 === p1)) p2 = null;
 
+  // An alias group (p1g/p2g) merges several player files in the browser, so the
+  // single-file record here would be wrong: name the view but leave the numbers out.
+  const grouped = ["p1g", "p2g"].some((key) => (url.searchParams.get(key) || "").includes(","));
+
   let meta;
   try {
-    meta = await buildMeta(env, url, p1, p2);
+    meta = await buildMeta(env, url, p1, p2, { withRecord: !grouped });
   } catch (error) {
     console.error("Error building page metadata:", error);
     return response;
@@ -38,26 +43,31 @@ export async function onRequest(context) {
   });
 }
 
-export async function buildMeta(env, url, p1, p2) {
+export async function buildMeta(env, url, p1, p2, { withRecord = true } = {}) {
   const dataResponse = await env.ASSETS.fetch(new URL(`/data/og/${p1}.json`, url));
   if (!dataResponse.ok) return null;
   const data = await dataResponse.json();
-  const nameA = data?.player?.name;
+  // Names are decoded the same way the browser does (normalizePlayerRecord).
+  const nameA = decodeHtmlEntities(data?.player?.name);
   if (!nameA || String(data.player.id) !== p1) return null;
 
   const opponent = p2 ? data.opponents?.[p2] : null;
-  const nameB = opponent?.player?.name;
+  const nameB = decodeHtmlEntities(opponent?.player?.name);
   if (opponent && nameB) {
     return {
       title: pageTitle({ nameA, nameB }),
-      description: matchupDescription(nameA, nameB, opponent.summary || {}),
+      description: withRecord
+        ? matchupDescription(nameA, nameB, opponent.summary || {})
+        : `${nameA} vs ${nameB}. ${TAGLINE}`,
       url: `${url.origin}/?p1=${p1}&p2=${p2}`,
       image: `${url.origin}/og-default.png`,
     };
   }
   return {
     title: pageTitle({ nameA }),
-    description: playerDescription(nameA, Object.values(data.opponents || {})),
+    description: withRecord
+      ? playerDescription(nameA, Object.values(data.opponents || {}))
+      : `${nameA}: head-to-head records, form and playoff series.`,
     url: `${url.origin}/?p1=${p1}`,
     image: `${url.origin}/og-default.png`,
   };

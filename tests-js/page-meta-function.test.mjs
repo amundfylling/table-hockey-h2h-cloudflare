@@ -66,6 +66,22 @@ test("player URLs sum the record across opponents", async () => {
   assert.match(html, /<link rel="canonical" href="https:\/\/stats.example\/\?p1=1" \/>/);
 });
 
+test("alias-grouped views keep the names but leave out the single-file record", async () => {
+  const html = await (await run("/?p1=1&p1g=1,7&p2=2").response).text();
+  assert.match(html, /<title>&lt;Alice &amp; Co&gt; vs Bob &quot;Two&quot; · Table Hockey H2H<\/title>/);
+  assert.doesNotMatch(html, /3–2/);
+});
+
+test("entity-encoded names are decoded before escaping", async () => {
+  payload.player.name = "Ann &amp; Lee";
+  try {
+    const html = await (await run("/?p1=1").response).text();
+    assert.match(html, /<title>Ann &amp; Lee · Table Hockey H2H<\/title>/);
+  } finally {
+    payload.player.name = "<Alice & Co>";
+  }
+});
+
 test("an unknown opponent falls back to the player head", async () => {
   const html = await (await run("/?p1=1&p2=99").response).text();
   assert.match(html, /<title>&lt;Alice &amp; Co&gt; · Table Hockey H2H<\/title>/);
