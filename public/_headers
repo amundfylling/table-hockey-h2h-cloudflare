@@ -15,3 +15,5 @@
   Cache-Control: no-cache
 /
   Cache-Control: no-cache
+/tournament
+  Cache-Control: no-cache

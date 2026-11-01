@@ -5400,6 +5400,15 @@ a.g:hover {
   border-color: var(--ink-3);
 }
 
+.g.g-page {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.table-link + .table-link-source {
+  margin-left: 6px;
+}
+
 .g b {
   font-family: var(--num);
   font-size: 18px;
@@ -6553,3 +6562,285 @@ body[data-comparison-mode="matchup"] .player-only {
   }
 }
 
+
+/* ── Tournament page ───────────────────────────────────────────────── */
+.t-title {
+  margin-top: 12px;
+  font-size: 40px;
+  line-height: 44px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.t-meta {
+  margin-top: 8px;
+  font-size: 15px;
+  color: var(--ink-2);
+}
+
+.t-source {
+  margin-top: 8px;
+  font-size: 14px;
+}
+
+.t-source a,
+.t-player:is(a),
+.t-podium-name:is(a) {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--line-2);
+  text-underline-offset: 3px;
+}
+
+.t-source a:hover,
+.t-player:is(a):hover,
+.t-podium-name:is(a):hover {
+  text-decoration-color: currentColor;
+}
+
+.t-empty {
+  padding: 24px;
+  display: grid;
+  gap: 8px;
+}
+
+.t-podium {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.t-podium-card {
+  padding: 16px 20px;
+  display: grid;
+  gap: 4px;
+}
+
+.t-podium-card.is-champion {
+  border-color: var(--a);
+  box-shadow: inset 4px 0 0 var(--a);
+}
+
+.t-podium-name {
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 700;
+}
+
+.t-podium-num {
+  font-family: var(--num);
+  font-size: 28px;
+  line-height: 28px;
+  font-weight: 600;
+}
+
+.t-upsets {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.t-upset {
+  padding: 12px 20px;
+  display: grid;
+  gap: 2px;
+}
+
+.t-upset + .t-upset {
+  border-top: 1px solid var(--line);
+}
+
+.t-upset-line {
+  font-weight: 500;
+}
+
+.t-upset-meta {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.t-score {
+  font-family: var(--num);
+  font-weight: 600;
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.tournament-page .header-search {
+  text-decoration: none;
+}
+
+.t-stages {
+  display: grid;
+  gap: 8px;
+}
+
+.t-stage {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.t-stage-summary {
+  padding: 14px 20px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  cursor: pointer;
+  list-style-position: inside;
+}
+
+.t-stage-name {
+  font-weight: 700;
+}
+
+.t-stage[open] .t-stage-summary {
+  border-bottom: 1px solid var(--line);
+}
+
+.t-stage .t-groups {
+  padding: 16px;
+}
+
+.t-stage .t-table-wrap {
+  border-radius: 8px;
+}
+
+.t-round {
+  min-width: 0;
+}
+
+.t-bracket {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(220px, 1fr);
+  gap: 16px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.t-round-title {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 8px;
+}
+
+.t-series-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.t-series {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.t-series-side {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--ink-2);
+  min-width: 0;
+}
+
+.t-series-side .t-player {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.t-series-side.is-winner {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.t-series-wins {
+  font-family: var(--num);
+  font-weight: 600;
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.t-series-games {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.t-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  gap: 16px;
+}
+
+.t-table-wrap {
+  overflow-x: auto;
+}
+
+.t-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.t-table th,
+.t-table td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.t-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.t-table th {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-3);
+}
+
+.t-table abbr {
+  text-decoration: none;
+}
+
+.t-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.t-table .t-pts {
+  font-weight: 700;
+}
+
+@media (max-width: 700px) {
+  .t-title {
+    font-size: 30px;
+    line-height: 34px;
+  }
+
+  .t-bracket {
+    grid-auto-flow: row;
+    grid-auto-columns: auto;
+    overflow-x: visible;
+  }
+
+  .t-table th,
+  .t-table td {
+    padding: 8px;
+  }
+}
