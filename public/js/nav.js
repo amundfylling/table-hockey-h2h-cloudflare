@@ -2,6 +2,7 @@
 // phone menu, and the "/" shortcut.
 import { elements, isSinglePlayerMode } from "./state.js";
 import { requestView } from "./dom.js";
+import { syncDocumentTitle } from "./url-state.js";
 
 const finder = () => document.getElementById("finder");
 const searchButtons = () => [
@@ -34,6 +35,7 @@ export function showHomeSection(name) {
   const url = new URL(window.location.href);
   url.hash = shown ? name : "";
   window.history.replaceState(window.history.state, "", url);
+  syncDocumentTitle();
   updateNav();
   if (shown) {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;

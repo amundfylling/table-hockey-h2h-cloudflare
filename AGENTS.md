@@ -12,7 +12,8 @@ exploration interface with zero runtime database queries.
 * `.github/` - Houses GitHub Action workflows for weekly automated and push-triggered builds.
 * `.cache/` - Local cache directory used by build scripts to store downloaded source files.
 * `design-system/` - Contains design resource directories and specifications.
-* `functions/` - Cloudflare Pages Functions (dynamic OG tags and redirects for shared matchup links).
+* `functions/` - Cloudflare Pages Functions: `index.js` fills in the page head (title,
+  description, canonical, OG tags) for `/?p1=…&p2=…` views; `h2h/` serves legacy share links.
 * `prompts/` - Historical feature prompts kept as project records.
 * `public/` - The static web root containing the HTML, CSS, and vanilla JS frontend application.
 * `public/js/` - Frontend ES modules (see "Frontend Module Map" below).
@@ -101,7 +102,8 @@ The frontend is vanilla ES modules under `public/js/`, loaded from `index.html` 
 * `data.js` - JSON fetching, matchup/player/opponents loaders.
 * `players.js` - Player record helpers, input selection state, alias/ID resolution.
 * `typeahead.js` - Player search dropdowns (combobox ARIA pattern).
-* `url-state.js` - URL <-> app-state sync (query params, restore, clear).
+* `url-state.js` - URL <-> app-state sync (query params, restore, clear) and the tab title.
+* `page-title.js` - Page title format shared by the browser tab and `functions/index.js`.
 * `recent.js` - Recent-matchup chips + first-visit suggestions (`initRecent({ onCompare })`).
 * `filters.js` - Filter bar, advanced panel, active-filter chips.
 * `summary.js` - H2H scoreboard + highlight cards.

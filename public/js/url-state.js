@@ -1,6 +1,8 @@
 import { state, elements } from "./state.js";
 import { URL_PARAM_KEYS } from "./constants.js";
+import { pageTitle } from "./page-title.js";
 import {
+  getPlayerById,
   normalizeAliasIds,
   resolvePlayerId,
   getSelectionIds,
@@ -26,6 +28,21 @@ function writeUrl(url) {
     .some((key) => (current.get(key) || "") !== (url.searchParams.get(key) || ""));
   if (historyPushEnabled && changesView) window.history.pushState({}, "", url);
   else window.history.replaceState({}, "", url);
+  syncDocumentTitle();
+}
+
+function playerNameFromParam(value) {
+  const id = Number.parseInt(value || "", 10);
+  return (Number.isFinite(id) && getPlayerById(id)?.name) || "";
+}
+
+// Names the tab after the player or matchup in the URL, or the home section.
+export function syncDocumentTitle() {
+  const params = new URLSearchParams(window.location.search);
+  const nameA = playerNameFromParam(params.get("p1"));
+  const nameB = nameA ? playerNameFromParam(params.get("p2")) : "";
+  const section = nameA ? "" : window.location.hash.slice(1);
+  document.title = pageTitle({ nameA, nameB, section });
 }
 
 export function clearUrlSelection() {
