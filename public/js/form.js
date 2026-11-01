@@ -405,7 +405,8 @@ export function renderForm(matches, canonicalItems = matches) {
     const scoreEl = document.createElement("b");
     scoreEl.textContent = score;
     chip.append(scoreEl, letter);
-    chip.setAttribute("aria-label", `${index === 0 ? "Latest: " : ""}${chip.title}`);
+    // Visible score first, then the details, so the name contains what is on screen.
+    appendTextPart(chip, "sr-only", `, ${index === 0 ? "latest, " : ""}${chip.title}`);
     const showDetail = () => {
       if (!elements.formDetail) return;
       elements.formDetail.textContent = chip.title;

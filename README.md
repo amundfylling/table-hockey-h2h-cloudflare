@@ -86,7 +86,9 @@ Required GitHub Secrets:
 - `CLOUDFLARE_PROJECT_NAME`
 
 The GitHub Actions workflow validates pull requests, then builds and deploys the dataset on
-push, on a weekly schedule, or via manual dispatch.
+push, daily at 04:00 UTC, or via manual dispatch. The daily run skips the build and deploy when
+every source file matches the one the live site was built from. Before deploying, CI also runs an
+accessibility check of the main views (`npm ci && npm run a11y`, after the data build).
 
 ## Changing the data source
 

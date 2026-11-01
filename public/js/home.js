@@ -64,20 +64,20 @@ function renderList() {
   const rows = (showAll ? rivalries : rivalries.slice(0, LIST_ROWS)).map((rivalry, index) => {
     const nameA = playerName(rivalry.p1);
     const nameB = playerName(rivalry.p2);
+    // The accessible name is the visible row text, joined into a sentence by hidden words.
     return el("button", {
       class: "rrow",
       type: "button",
-      "aria-label": `${nameA} against ${nameB}: ${rivalry.wins_p1} wins to ${rivalry.wins_p2} in ${formatNumber(rivalry.games)} games`,
       onclick: () => openRivalry(rivalry),
     },
-    el("span", { class: "rank" }, String(index + 1)),
+    el("span", { class: "rank" }, srOnly("Rank "), String(index + 1), srOnly(": ")),
     el("span", { class: "pair" }, namedPlayer(rivalry.p1), el("i", {}, "vs"), namedPlayer(rivalry.p2)),
     el("span", { class: "rec" },
-      el("span", {}, formatNumber(rivalry.wins_p1)),
+      el("span", {}, srOnly(", "), formatNumber(rivalry.wins_p1), srOnly(" wins to ")),
       recordBar(rivalry),
       el("span", {}, formatNumber(rivalry.wins_p2))),
-    el("span", { class: "gn" }, formatNumber(rivalry.games)),
-    el("span", { class: "mut" }, formatDate(rivalry.last_meeting_date)),
+    el("span", { class: "gn" }, srOnly(" in "), formatNumber(rivalry.games), srOnly(" games")),
+    el("span", { class: "mut" }, srOnly(", last played "), formatDate(rivalry.last_meeting_date)),
     el("span", { class: "chev" }, icon(ICONS.right)));
   });
   const children = [head, ...rows];
@@ -114,13 +114,15 @@ function renderPlayers() {
     return el("button", {
       class: "rrow prow",
       type: "button",
-      "aria-label": `${name}, world rank ${rank}${player.country ? `, ${player.country}` : ""}: open career`,
       onclick: () => requestView({ p1: Number(player.id) }),
     },
-    el("span", { class: "rank" }, String(rank)),
+    el("span", { class: "rank" }, srOnly("World rank "), String(rank), srOnly(": ")),
     el("span", { class: "pair" }, name),
-    el("span", { class: "mut" }, [flag, player.country].filter(Boolean).join(" ")),
-    el("span", { class: "gn" }, player.ranking_points == null ? "" : formatNumber(player.ranking_points)),
+    el("span", { class: "mut" }, player.country ? srOnly(", ") : null,
+      flag ? el("span", { "aria-hidden": "true" }, `${flag} `) : null, player.country || ""),
+    el("span", { class: "gn" }, player.ranking_points == null
+      ? ""
+      : [srOnly(", "), formatNumber(player.ranking_points), srOnly(" points")]),
     el("span", { class: "chev" }, icon(ICONS.right)));
   });
   const children = [head, ...rows];
@@ -267,6 +269,10 @@ function knownPlayers(...players) {
   return players.every((p) => state.playersById.has(Number(p?.id)));
 }
 
+function srOnly(text) {
+  return el("span", { class: "sr-only" }, text);
+}
+
 function openView(p1, p2) {
   requestView({ p1: Number(p1.id), ...(p2 ? { p2: Number(p2.id) } : {}) });
 }
@@ -281,7 +287,6 @@ function streakRow(record, unit, results, legend) {
   return el("button", {
     class: "streak-row",
     type: "button",
-    "aria-label": `${formatNumber(record.games)} ${unit}: ${playerName(record.player)}, ${spanText(record.start_date, record.end_date)}`,
     onclick: () => openView(record.player),
   },
   el("span", { class: "streak-head" },
@@ -316,7 +321,6 @@ function recordCard({ kind, label, visual, value, unit, who, when, onclick }) {
   return el("button", {
     class: `panel record record--${kind}`,
     type: "button",
-    "aria-label": `${label}: ${value} ${unit}, ${who}, ${when}`,
     onclick,
   },
   el("span", { class: "eyebrow" }, label),

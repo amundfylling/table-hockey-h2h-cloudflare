@@ -124,7 +124,7 @@ body {
   --sunk: #ECEAE4;
   --ink: #15181B;
   --ink-2: #4A525B;
-  --ink-3: #6F757D;
+  --ink-3: #60666E;
   --line: #E2DFD8;
   --line-2: #CFCBC2;
   --a: #1D6A59;
@@ -132,7 +132,7 @@ body {
   --b: #D4532A;
   --b-tint: #F7E0D6;
   /* Orange for small text: the bright orange is under 4.5:1 on white. */
-  --b-text: #B4441F;
+  --b-text: #A93F1C;
   --draw: #B6BABF;
   --shadow: 0 12px 32px rgba(21, 24, 27, 0.12);
   --sans: "Schibsted Grotesk", "Golos Text", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -5111,7 +5111,7 @@ body[data-theme="dark"] .chip.win { color: #0F1113; }
 }
 
 .tape-top .v.win.a { color: var(--a); }
-.tape-top .v.win.b { color: var(--b); }
+.tape-top .v.win.b { color: var(--b-text); }
 
 .tape-top .k {
   font-size: 13px;
@@ -5347,7 +5347,7 @@ body[data-theme="dark"] .chip.win { color: #0F1113; }
 }
 
 .sc.a { color: var(--a); }
-.sc.b { color: var(--b); }
+.sc.b { color: var(--b-text); }
 .sc.d { color: var(--ink-2); }
 
 .trow .chev svg {

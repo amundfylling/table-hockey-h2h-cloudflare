@@ -15,6 +15,7 @@ from xml.sax.saxutils import escape
 
 import numpy as np
 import pandas as pd
+import requests
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT_DIR = SCRIPT_DIR.parent
@@ -1670,6 +1671,39 @@ def download_cached(url: str, path: Path) -> None:
     )
 
 
+def describe_source_files(paths: Dict[str, Path]) -> Dict[str, dict]:
+    """Checksum and size of each source file, as meta.json records them."""
+    return {
+        label: {"sha256": file_sha256(path), "bytes": path.stat().st_size}
+        for label, path in paths.items()
+    }
+
+
+def sources_unchanged(source_files: Dict[str, dict], published_meta_url: str) -> bool:
+    """True when the meta.json at published_meta_url was built from exactly these files.
+
+    Scheduled builds use this to skip rebuilding and redeploying unchanged data. Any doubt
+    (no URL, a failed request, a malformed file) means build.
+    """
+    if not published_meta_url:
+        return False
+    try:
+        response = requests.get(published_meta_url, timeout=30)
+        response.raise_for_status()
+        published = response.json().get("source_files")
+    except (requests.RequestException, ValueError, AttributeError) as exc:
+        print(f"Could not read the published meta.json ({exc}); building.")
+        return False
+    return published == source_files
+
+
+def write_github_output(name: str, value: str) -> None:
+    output_path = os.environ.get("GITHUB_OUTPUT")
+    if output_path:
+        with open(output_path, "a", encoding="utf-8") as output:
+            output.write(f"{name}={value}\n")
+
+
 def main() -> int:
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -1780,6 +1814,23 @@ def main() -> int:
             else:
                 print(f"Warning: failed to download ranking; continuing without it. {exc}")
 
+    source_files = describe_source_files({
+        "primary_matches": matches_path,
+        **{f"{source['key']}_matches": source["path"] for source in enabled_extra_sources},
+        "players": players_path,
+        "tournaments": tournaments_path,
+        **(
+            {"tournament_metadata": tournament_metadata_path}
+            if tournament_metadata_path.exists()
+            else {}
+        ),
+        **({"rankings": ranking_path} if ranking_path.exists() else {}),
+    })
+    if sources_unchanged(source_files, os.environ.get("SKIP_IF_SOURCES_MATCH_URL", "")):
+        print("Sources match the published dataset; skipping the build.")
+        write_github_output("changed", "false")
+        return 0
+    write_github_output("changed", "true")
 
     print("Loading players...")
     rankings = load_rankings(ranking_path) if ranking_path.exists() else {}
@@ -1914,27 +1965,7 @@ def main() -> int:
                 matches, [source["id"] for source in enabled_extra_sources]
             ),
             "source_validation": source_validation,
-            "source_files": {
-                label: {
-                    "sha256": file_sha256(path),
-                    "bytes": path.stat().st_size,
-                }
-                for label, path in {
-                    "primary_matches": matches_path,
-                    **{
-                        f"{source['key']}_matches": source["path"]
-                        for source in enabled_extra_sources
-                    },
-                    "players": players_path,
-                    "tournaments": tournaments_path,
-                    **(
-                        {"tournament_metadata": tournament_metadata_path}
-                        if tournament_metadata_path.exists()
-                        else {}
-                    ),
-                    **({"rankings": ranking_path} if ranking_path.exists() else {}),
-                }.items()
-            },
+            "source_files": source_files,
         },
     )
 

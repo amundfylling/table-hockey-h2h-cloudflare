@@ -173,7 +173,7 @@ export async function handleShareImage() {
     border: isDark ? "#262B30" : "#E2DFD8",
     teal: isDark ? "#4DBFA3" : "#1D6A59",
     orange: isDark ? "#F07A52" : "#D4532A",
-    orangeText: isDark ? "#F07A52" : "#B4441F",
+    orangeText: isDark ? "#F07A52" : "#A93F1C",
     draw: isDark ? "#59606A" : "#B6BABF",
     drawChipBg: isDark ? "#343A40" : "#CFCBC2",
     drawPillBg: isDark ? "#1E2226" : "#FFFFFF",

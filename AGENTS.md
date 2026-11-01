@@ -9,7 +9,7 @@ exploration interface with zero runtime database queries.
 
 ## Repository Structure
 
-* `.github/` - Houses GitHub Action workflows for weekly automated and push-triggered builds.
+* `.github/` - Houses GitHub Action workflows for daily automated and push-triggered builds.
 * `.cache/` - Local cache directory used by build scripts to store downloaded source files.
 * `design-system/` - Contains design resource directories and specifications.
 * `functions/` - Cloudflare Pages Functions: `index.js` fills in the page head (title,
@@ -150,10 +150,14 @@ standard `unittest` framework.
   ```bash
   python -m unittest discover -s tests -v
   ```
+* **Accessibility check**: after the data build, `npm ci && npm run a11y` loads the home, player,
+  matchup and tournament views in Chromium and fails on any axe-core WCAG 2.1 A/AA violation
+  (`scripts/a11y-check.mjs`). CI runs it before deploying.
 * **CI Pipeline Execution**:
   The test suite runs automatically in the GitHub Actions `Validate H2H data` job during the `build`
-  workflow. Tests run on every push to the `main` branch, on a weekly cron schedule, or via manual
-  dispatch. Tests verify:
+  workflow. Tests run on every push to the `main` branch, on the daily cron schedule (which stops
+  after the download when the sources match the live site's `meta.json`), or via manual dispatch.
+  Tests verify:
   1. Match counts match the raw source dataset.
   2. Ranking data and tournament levels match metadata.
   3. Nested H2H files exist for all eligible players.
