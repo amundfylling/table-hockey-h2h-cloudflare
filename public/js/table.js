@@ -169,20 +169,31 @@ export function createExternalIcon() {
   return icon;
 }
 
+export function getTournamentPageUrl(item) {
+  const id = Number(item?.tournament_id);
+  return Number.isInteger(id) && id > 0 ? `tournament?id=${id}` : "";
+}
+
+// The name opens the tournament page; the icon opens the results on the source site.
 export function renderTournamentCell(cell, item) {
   const label = item.tournament_name || "-";
+  const pageUrl = getTournamentPageUrl(item);
   const url = getItemSourceUrl(item);
-  if (!url) {
-    cell.textContent = label;
-    return;
+  if (pageUrl) {
+    cell.appendChild(el("a", { class: "table-link", href: pageUrl }, label));
+  } else {
+    cell.appendChild(document.createTextNode(label));
   }
+  if (!url) return;
 
   const link = document.createElement("a");
   link.href = url;
   link.target = "_blank";
   link.rel = "noopener noreferrer external";
-  link.className = "table-link";
-  link.appendChild(document.createTextNode(label));
+  link.className = "table-link table-link-source";
+  link.setAttribute("aria-label", `${label} results on the source site`);
+  link.title = "Results on the source site";
+  if (!pageUrl) link.appendChild(document.createTextNode(label));
   link.appendChild(createExternalIcon());
   cell.appendChild(link);
 }

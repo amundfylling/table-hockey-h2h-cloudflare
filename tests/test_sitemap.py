@@ -37,6 +37,13 @@ class SitemapTest(unittest.TestCase):
         self.assertIn("&amp;p2=", text)
         self.assertIn("<lastmod>2026-11-01</lastmod>", text)
 
+    def test_lists_tournaments_after_players(self):
+        payloads = _payloads({(1, 2): 9})
+        locs = _locs(build_sitemap(payloads, "2026-11-01", "https://h2h.example",
+                                   tournament_ids=[30, 4]))
+        self.assertEqual(locs[3:5], ["https://h2h.example/tournament?id=4",
+                                     "https://h2h.example/tournament?id=30"])
+
     def test_respects_url_cap(self):
         payloads = _payloads({(1, 2): 9, (1, 3): 40, (2, 3): 20})
         locs = _locs(build_sitemap(payloads, "2026-11-01", "https://h2h.example", max_urls=5))

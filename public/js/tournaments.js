@@ -2,7 +2,7 @@
 // the games played there.
 import { state, isSeriesMode } from "./state.js";
 import { formatDate, formatNumber } from "./utils.js";
-import { getItemSourceUrl } from "./table.js";
+import { getItemSourceUrl, getTournamentPageUrl } from "./table.js";
 import { el, icon, ICONS } from "./dom.js";
 import { groupTournaments, lastName } from "./insights.js";
 
@@ -66,7 +66,10 @@ function createRow(group, names, index, rerender) {
   el("span", { class: "res" }, winnerPill(group, names),
     el("span", { class: `sc ${group.winner}` }, `${group.winsA}–${group.winsB}`)),
   el("span", { class: "chev" }, icon(ICONS.down)));
-  const games = el("div", { class: "games", id, hidden: !open }, ...group.games.map(gameChip));
+  const pageUrl = getTournamentPageUrl(group.games[0]);
+  const games = el("div", { class: "games", id, hidden: !open },
+    ...group.games.map(gameChip),
+    pageUrl ? el("a", { class: "g g-page", href: pageUrl }, "Whole tournament") : null);
   return el("div", { class: "titem" }, row, games);
 }
 

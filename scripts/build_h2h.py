@@ -21,6 +21,7 @@ ROOT_DIR = SCRIPT_DIR.parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
 import download as dl  # noqa: E402
+import tournaments as tournament_pages  # noqa: E402
 
 CACHE_DIR = ROOT_DIR / ".cache"
 PUBLIC_DIR = ROOT_DIR / "public"
@@ -459,6 +460,11 @@ def process_matches_df(matches: pd.DataFrame) -> pd.DataFrame:
 
     ensure_int_column(matches, "stage_id")
     ensure_int_column(matches, "stage_sequence")
+    # Some sources number playoff rounds as fractions (0.125 = 1/8 final, 1 = final); the
+    # integer column drops those, so tournament brackets read the round order from here.
+    matches["round_value"] = pd.to_numeric(
+        matches.get("round_number", pd.Series(pd.NA, index=matches.index)), errors="coerce"
+    )
     ensure_int_column(matches, "round_number")
     ensure_int_column(matches, "playoff_game_number")
     ensure_int_column(matches, "tournament_id")
@@ -1340,14 +1346,17 @@ def build_sitemap(
     site_url: str = SITE_URL,
     max_urls: int = SITEMAP_MAX_URLS,
     min_pair_games: int = SITEMAP_MIN_PAIR_GAMES,
+    tournament_ids: Iterable[int] = (),
 ) -> str:
-    """sitemap.xml text: the home page, every player, then the most played matchups.
+    """sitemap.xml text: the home page, every player and tournament, then the most played
+    matchups.
 
     Matchups are listed once, lower id first, most games first, until the file is full.
     """
     base = site_url.rstrip("/")
     urls = [f"{base}/"]
     urls.extend(f"{base}/?p1={pid}" for pid in sorted(int(pid) for pid in player_payloads))
+    urls.extend(f"{base}/tournament?id={tid}" for tid in sorted(int(t) for t in tournament_ids))
     pairs = []
     for pid, payload in player_payloads.items():
         for opponent_id, opponent in payload["opponents"].items():
@@ -1860,6 +1869,7 @@ def main() -> int:
     all_names.update(player_names)
     records = build_records(matches, all_names)
 
+    all_matches = matches
     print(f"Filtering players with {min_matches}+ matches...")
     all_ids = pd.concat([matches["player1_id"], matches["player2_id"]])
     match_counts = all_ids.value_counts()
@@ -1881,6 +1891,17 @@ def main() -> int:
         DATA_STAGING_DIR / "og",
     )
     write_json(DATA_STAGING_DIR / "rivalries.json", build_rivalries(player_payloads, players))
+
+    print("Building tournament files...")
+    tournament_index = tournament_pages.build_tournament_files(
+        all_matches,
+        all_names,
+        {int(player["id"]) for player in players},
+        tournament_pages.load_tournament_details(tournament_metadata_path),
+        write_json,
+        DATA_STAGING_DIR / "t",
+    )
+    print(f"Wrote {len(tournament_index)} tournament files.")
     write_json(DATA_STAGING_DIR / "records.json", records)
 
     write_json(
@@ -1920,7 +1941,11 @@ def main() -> int:
     print("Publishing complete dataset...")
     publish_staged_data()
     SITEMAP_PATH.write_text(
-        build_sitemap(player_payloads, datetime.now(timezone.utc).date().isoformat()),
+        build_sitemap(
+            player_payloads,
+            datetime.now(timezone.utc).date().isoformat(),
+            tournament_ids=[entry["id"] for entry in tournament_index],
+        ),
         encoding="utf-8",
     )
     print("Build completed.")

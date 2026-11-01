@@ -13,11 +13,14 @@ exploration interface with zero runtime database queries.
 * `.cache/` - Local cache directory used by build scripts to store downloaded source files.
 * `design-system/` - Contains design resource directories and specifications.
 * `functions/` - Cloudflare Pages Functions: `index.js` fills in the page head (title,
-  description, canonical, OG tags) for `/?p1=…&p2=…` views; `h2h/` serves legacy share links.
+  description, canonical, OG tags) for `/?p1=…&p2=…` views, `tournament.js` does the same for
+  tournament pages; `h2h/` serves legacy share links.
 * `prompts/` - Historical feature prompts kept as project records.
 * `public/` - The static web root containing the HTML, CSS, and vanilla JS frontend application.
 * `public/js/` - Frontend ES modules (see "Frontend Module Map" below).
 * `scripts/` - Ingestion, caching, and processing Python scripts used to build the static dataset.
+  `tournaments.py` builds the per-tournament files (standings, brackets, champion, upsets by a
+  pre-game Elo rating).
 * `tests/` - Automated Python integration and validation tests verifying match counts and data sanity.
 
 ## Build & Development Commands
@@ -104,6 +107,9 @@ The frontend is vanilla ES modules under `public/js/`, loaded from `index.html` 
 * `typeahead.js` - Player search dropdowns (combobox ARIA pattern).
 * `url-state.js` - URL <-> app-state sync (query params, restore, clear) and the tab title.
 * `page-title.js` - Page title format shared by the browser tab and `functions/index.js`.
+* `tournament-page.js` - The tournament page (`tournament.html?id=…`), rendered from
+  `data/t/{id % 1000}.json`. `date-range.js` formats its dates and names that file (also used
+  by `functions/tournament.js`).
 * `recent.js` - Recent-matchup chips + first-visit suggestions (`initRecent({ onCompare })`).
 * `filters.js` - Filter bar, advanced panel, active-filter chips.
 * `summary.js` - H2H scoreboard + highlight cards.
