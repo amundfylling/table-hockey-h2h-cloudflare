@@ -1,0 +1,13 @@
+{
+  "name": "table-hockey-h2h",
+  "private": true,
+  "description": "Development tools for the Table Hockey H2H site; the site itself has no build step.",
+  "scripts": {
+    "test": "node --test tests-js/*.test.mjs",
+    "a11y": "node scripts/a11y-check.mjs"
+  },
+  "devDependencies": {
+    "axe-core": "4.14.0",
+    "playwright": "1.63.0"
+  }
+}

@@ -168,9 +168,10 @@ function updateSortUI() {
       th.setAttribute("aria-sort", "none");
       if (indicator) indicator.textContent = "";
     }
+    // Use the visible header words so the accessible name contains them.
     const label = key === "winPct"
-      ? "win percentage"
-      : key === "games" ? unitLabel.toLowerCase() : key;
+      ? "win rate"
+      : key === "games" ? unitLabel.toLowerCase() : "opponent";
     button.setAttribute(
       "aria-label",
       isActive

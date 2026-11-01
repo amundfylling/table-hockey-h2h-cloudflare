@@ -19,7 +19,7 @@
   <link rel="preload" href="fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="fonts/barlow-condensed-latin-600.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="icon" type="image/png" sizes="32x32" href="favicon.png" />
-  <link rel="stylesheet" href="styles.css?v=20261101-tournaments" />
+  <link rel="stylesheet" href="styles.css?v=20261101-a11y" />
 </head>
 
 <body data-home="pending">
@@ -264,8 +264,8 @@
             <div class="filter-bar-primary">
               <div class="filter-bar-period">
                 <button id="period-toggle" class="period-toggle select-btn" type="button" aria-expanded="false"
-                  aria-controls="period-popover" aria-label="Filter by year range">
-                  <span id="period-label">All years</span>
+                  aria-controls="period-popover">
+                  <span class="sr-only">Year range: </span><span id="period-label">All years</span>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                     stroke-linejoin="round" aria-hidden="true">
                     <path d="M6 9l6 6 6-6"></path>
@@ -306,7 +306,7 @@
                 <span>Copy link</span>
               </button>
               <button id="share-image-btn" class="btn share-image-btn" type="button"
-                aria-label="Share as image" disabled>
+                aria-label="Share image" disabled>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"
                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <path d="M12 3v12"></path>

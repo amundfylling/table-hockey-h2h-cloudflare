@@ -167,13 +167,15 @@ function renderRoundRobin(data, player) {
   const items = stages.map((stage) => {
     const many = stage.groups.length > 1;
     const playerCount = stage.groups.reduce((sum, rows) => sum + rows.length, 0);
-    const leader = stage.groups.length === 1 && stage.groups[0][0]
-      ? ["Top: ", player(stage.groups[0][0].id)]
-      : [`${stage.groups.length} groups`];
+    // Plain text: a link inside <summary> would be a control nested in a control.
+    const leaderId = stage.groups.length === 1 ? stage.groups[0][0]?.id : null;
+    const leader = leaderId
+      ? `Top: ${decodeHtmlEntities(data.players?.[String(leaderId)] || `Player ${leaderId}`)}`
+      : `${stage.groups.length} groups`;
     return el("details", { class: "t-stage", open: startOpen },
       el("summary", { class: "t-stage-summary" },
         el("span", { class: "t-stage-name" }, stage.name),
-        el("span", { class: "sec-sub" }, `${formatNumber(playerCount)} players · `, ...leader)),
+        el("span", { class: "sec-sub" }, `${formatNumber(playerCount)} players · ${leader}`)),
       el("div", { class: "t-groups" }, stage.groups.map((rows, index) => {
         const label = many ? `Group ${index + 1}` : stage.name;
         return el("div", { class: "t-group" },

@@ -8,7 +8,8 @@ on:
     branches:
       - main
   schedule:
-    - cron: "0 4 * * 0"
+    # Daily data refresh. Runs whose sources match the live site stop after the download.
+    - cron: "0 4 * * *"
   workflow_dispatch:
 
 concurrency:
@@ -62,19 +63,36 @@ jobs:
           pip install -r requirements.txt
 
       - name: Build H2H data
+        id: build
+        env:
+          # Only the daily run may skip: code changes always rebuild and deploy.
+          SKIP_IF_SOURCES_MATCH_URL: ${{ github.event_name == 'schedule' && 'https://h2h.puck.no/data/meta.json' || '' }}
         run: python scripts/build_h2h.py
 
       - name: Validate JavaScript syntax
+        if: steps.build.outputs.changed == 'true'
         run: find public functions -type f -name '*.js' -print0 | xargs -0 -n1 node --check
 
       - name: Run frontend and Pages Function tests
+        if: steps.build.outputs.changed == 'true'
         run: node --test tests-js/*.test.mjs
 
       - name: Validate H2H data
+        if: steps.build.outputs.changed == 'true'
         run: python -m unittest discover -s tests -v
 
+      - name: Install accessibility check tools
+        if: steps.build.outputs.changed == 'true'
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Check accessibility
+        if: steps.build.outputs.changed == 'true'
+        run: npm run a11y
+
       - name: Deploy to Cloudflare Pages
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && steps.build.outputs.changed == 'true'
         uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
