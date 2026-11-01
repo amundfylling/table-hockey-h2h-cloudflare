@@ -5,6 +5,7 @@ node_modules/
 .cache/
 public/data/
 public/h2h/
+public/sitemap.xml
 .data-build/
 .data-previous/
 .wrangler/

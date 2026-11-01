@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Iterable, Optional, Tuple
 from urllib.parse import urlparse
+from xml.sax.saxutils import escape
 
 import numpy as np
 import pandas as pd
@@ -28,6 +29,11 @@ H2H_DIR = DATA_DIR / "h2h"
 OG_H2H_DIR = DATA_DIR / "og"
 DATA_STAGING_DIR = ROOT_DIR / ".data-build"
 DATA_BACKUP_DIR = ROOT_DIR / ".data-previous"
+SITEMAP_PATH = PUBLIC_DIR / "sitemap.xml"
+SITE_URL = os.environ.get("SITE_URL", "https://h2h.puck.no").rstrip("/")
+# One sitemap file holds at most 50,000 URLs. Matchups need this many games to be listed.
+SITEMAP_MAX_URLS = 50_000
+SITEMAP_MIN_PAIR_GAMES = 5
 RANKING_HEADER = "Rank ID_Player Player Club Nation Points Player_Value"
 RANKING_ROW_RE = re.compile(
     r"(?:^|\s)(\d+)\s+(\d+)\s+(.+?)\s+([A-Z]{3})\s+(\d+)\s+(\d+)"
@@ -1328,6 +1334,43 @@ def build_player_files(
 
 
 
+def build_sitemap(
+    player_payloads: Dict[int, dict],
+    generated_on: str,
+    site_url: str = SITE_URL,
+    max_urls: int = SITEMAP_MAX_URLS,
+    min_pair_games: int = SITEMAP_MIN_PAIR_GAMES,
+) -> str:
+    """sitemap.xml text: the home page, every player, then the most played matchups.
+
+    Matchups are listed once, lower id first, most games first, until the file is full.
+    """
+    base = site_url.rstrip("/")
+    urls = [f"{base}/"]
+    urls.extend(f"{base}/?p1={pid}" for pid in sorted(int(pid) for pid in player_payloads))
+    pairs = []
+    for pid, payload in player_payloads.items():
+        for opponent_id, opponent in payload["opponents"].items():
+            if int(opponent_id) <= int(pid):
+                continue
+            games = int(opponent["summary"].get("total_matches", 0) or 0)
+            if games >= min_pair_games:
+                pairs.append((-games, int(pid), int(opponent_id)))
+    pairs.sort()
+    room = max(0, max_urls - len(urls))
+    urls.extend(f"{base}/?p1={a}&p2={b}" for _, a, b in pairs[:room])
+    urls = urls[:max_urls]
+    entries = "".join(
+        f"<url><loc>{escape(url)}</loc><lastmod>{generated_on}</lastmod></url>\n"
+        for url in urls
+    )
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        f"{entries}</urlset>\n"
+    )
+
+
 def _rivalry_entry(payload: dict, opponent: dict) -> dict:
     summary = opponent["summary"]
     return {
@@ -1876,6 +1919,10 @@ def main() -> int:
 
     print("Publishing complete dataset...")
     publish_staged_data()
+    SITEMAP_PATH.write_text(
+        build_sitemap(player_payloads, datetime.now(timezone.utc).date().isoformat()),
+        encoding="utf-8",
+    )
     print("Build completed.")
     return 0
 
