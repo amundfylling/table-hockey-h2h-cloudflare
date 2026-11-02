@@ -67,6 +67,19 @@ class TestRankingData(unittest.TestCase):
         self.assertEqual(by_name["Amund Risa Fylling"]["ranking_points"], 3163)
         self.assertIsNone(by_name["Edgars Caics"]["world_rank"])
 
+    def test_load_players_decodes_html_entities_in_names(self):
+        players_csv = """PlayerID,Name,RankingID,Country,City,DateOfBirth,Sex
+2081,Bj&#246;rn S&#246;derstr&#246;m,,,,,
+1525,Gustav Br&#229;dland,,,,,
+"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            players_path = Path(tmpdir) / "players_data.csv"
+            players_path.write_text(players_csv, encoding="utf-8")
+            _players, names = load_players(players_path)
+
+        self.assertEqual(names[2081], "Björn Söderström")
+        self.assertEqual(names[1525], "Gustav Brådland")
+
     def test_load_players_rejects_fractional_ids_and_names_blank_players(self):
         players_csv = """PlayerID,Name,RankingID,Country,City,DateOfBirth,Sex
 10,,1,Norway,,,Male
