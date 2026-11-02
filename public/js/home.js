@@ -446,36 +446,34 @@ export async function renderHome() {
     .sort((a, b) => getWorldRank(a) - getWorldRank(b))
     .filter((player) => !seenRanks.has(getWorldRank(player)) && seenRanks.add(getWorldRank(player)))
     .slice(0, 50);
-  renderPlayers();
-  const recordsReady = fetchJson("data/records.json")
-    .then((payload) => { records = payload && typeof payload === "object" ? payload : {}; })
-    .catch((err) => {
+  // Fetch both lists first and reveal every section in one go: sections that appeared one
+  // by one pushed the ones already on screen down as the page loaded.
+  const [recordsPayload, rivalriesPayload] = await Promise.all([
+    fetchJson("data/records.json").catch((err) => {
       console.warn("Could not load records:", err);
-      records = {};
-    })
-    .then(renderRecords);
-  try {
-    const payload = await fetchJson("data/rivalries.json");
-    const known = (list) => (Array.isArray(list) ? list : [])
-      .filter((r) => state.playersById.has(Number(r?.p1?.id)) && state.playersById.has(Number(r?.p2?.id)));
-    // Older builds wrote a plain list of the most-played pairs.
-    mostPlayed = known(Array.isArray(payload) ? payload : payload?.most_played);
-    const topRanked = known(payload?.top_ranked)
-      .filter((r) => rankOf(r.p1) && rankOf(r.p2))
-      .sort((x, y) => {
-        const [xa, xb] = [rankOf(x.p1), rankOf(x.p2)].sort((a, b) => a - b);
-        const [ya, yb] = [rankOf(y.p1), rankOf(y.p2)].sort((a, b) => a - b);
-        return xb - yb || xa - ya;
-      });
-    ranked = topRanked.length > 0;
-    rivalries = ranked ? topRanked : mostPlayed;
-  } catch (err) {
-    console.warn("Could not load rivalries:", err);
-    mostPlayed = [];
-    rivalries = [];
-    ranked = false;
-  }
+      return null;
+    }),
+    fetchJson("data/rivalries.json").catch((err) => {
+      console.warn("Could not load rivalries:", err);
+      return null;
+    }),
+  ]);
+  records = recordsPayload && typeof recordsPayload === "object" ? recordsPayload : {};
+  const known = (list) => (Array.isArray(list) ? list : [])
+    .filter((r) => state.playersById.has(Number(r?.p1?.id)) && state.playersById.has(Number(r?.p2?.id)));
+  // Older builds wrote a plain list of the most-played pairs.
+  mostPlayed = known(Array.isArray(rivalriesPayload) ? rivalriesPayload : rivalriesPayload?.most_played);
+  const topRanked = known(rivalriesPayload?.top_ranked)
+    .filter((r) => rankOf(r.p1) && rankOf(r.p2))
+    .sort((x, y) => {
+      const [xa, xb] = [rankOf(x.p1), rankOf(x.p2)].sort((a, b) => a - b);
+      const [ya, yb] = [rankOf(y.p1), rankOf(y.p2)].sort((a, b) => a - b);
+      return xb - yb || xa - ya;
+    });
+  ranked = topRanked.length > 0;
+  rivalries = ranked ? topRanked : mostPlayed;
+  renderPlayers();
+  renderRecords();
   renderFeature();
   renderList();
-  await recordsReady;
 }

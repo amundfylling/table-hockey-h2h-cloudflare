@@ -135,5 +135,20 @@ class TestMatchValidation(unittest.TestCase):
         self.assertTrue(bool(processed.iloc[3].overtime))
 
 
+    def test_html_entities_in_names_are_decoded(self):
+        matches = pd.DataFrame([{
+            "player1_id": 1, "player2_id": 2, "goals_player1": 3, "goals_player2": 2,
+            "overtime_raw": "No", "date_raw": "2014-09-20",
+            "player1_name": "Peter &#214;stlund", "player2_name": "Ola R&#248;nningen",
+            "tournament_name": "J&#230;rligaen #1",
+        }])
+
+        row = process_matches_df(matches).iloc[0]
+
+        self.assertEqual(row.player1_name, "Peter Östlund")
+        self.assertEqual(row.player2_name, "Ola Rønningen")
+        self.assertEqual(row.tournament_name, "Jærligaen #1")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -23,11 +23,6 @@ import {
   winRate,
 } from "./insights.js";
 
-export function formatAxisValue(value) {
-  if (!Number.isFinite(value)) return "0";
-  return String(Math.round(value));
-}
-
 export function ensureChartTooltip(container) {
   let tooltip = container.querySelector(".chart-tooltip");
   if (!tooltip) {
@@ -415,6 +410,51 @@ function renderTournamentStrip(items) {
 }
 
 // ── Scorelines heatmap ──────────────────────────────────────────────
+// ── Scoreline grid ──────────────────────────────────────────────────
+// The cell counts sit on tinted cells whose shade follows the count, so the label colour
+// is picked from the cell's actual colour: the usual ink-2 or white when that reaches
+// WCAG AA (4.5:1), otherwise whichever of black and white reads better.
+function hexToRgb(value) {
+  const hex = String(value || "").trim().replace(/^#/, "");
+  const full = hex.length === 3 ? hex.replace(/./g, "$&$&") : hex;
+  if (!/^[0-9a-f]{6}$/i.test(full)) return null;
+  return [0, 2, 4].map((i) => parseInt(full.slice(i, i + 2), 16));
+}
+
+function luminance([r, g, b]) {
+  const f = (c) => {
+    const v = c / 255;
+    return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+}
+
+export function contrastRatio(a, b) {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+function themeColors(element) {
+  if (typeof getComputedStyle !== "function" || !element) return null;
+  const style = getComputedStyle(element);
+  const read = (name) => hexToRgb(style.getPropertyValue(name));
+  const colors = { a: read("--a"), b: read("--b"), d: read("--draw"), surface: read("--surface"), ink2: read("--ink-2") };
+  return Object.values(colors).every(Boolean) ? colors : null;
+}
+
+export function cellLabelFill(colors, tone, opacity) {
+  const preferred = opacity > 0.55 ? "#FFFFFF" : INK2;
+  if (!colors || !colors[tone]) return preferred;
+  // The SVG gets the opacity rounded to two decimals; a little headroom covers rounding.
+  const alpha = Number(opacity.toFixed(2));
+  const cell = colors[tone].map((c, i) => c * alpha + colors.surface[i] * (1 - alpha));
+  const white = [255, 255, 255];
+  const black = [0, 0, 0];
+  const preferredRgb = preferred === INK2 ? colors.ink2 : white;
+  if (contrastRatio(preferredRgb, cell) >= 4.6) return preferred;
+  return contrastRatio(white, cell) >= contrastRatio(black, cell) ? "#FFFFFF" : "#000000";
+}
+
 function renderScorelines(items) {
   const container = document.getElementById("scorelines");
   const caption = document.getElementById("scorelines-cap");
@@ -438,6 +478,7 @@ function renderScorelines(items) {
   const width = lw + span;
   const height = th + span + 4;
   const label = (value) => (grid.capped && value === grid.cap ? `${value}+` : String(value));
+  const colors = themeColors(container);
   const parts = [];
   parts.push(`<text x="${lw + span / 2}" y="12" ${FONT} font-weight="600" fill="${INK2}" text-anchor="middle">${escapeHtml(b)} ${series ? "games" : "goals"} →</text>`);
   parts.push(`<text transform="translate(12 ${th + span / 2}) rotate(-90)" ${FONT} font-weight="600" fill="${INK2}" text-anchor="middle">${escapeHtml(a)} ${series ? "games" : "goals"} →</text>`);
@@ -454,7 +495,7 @@ function renderScorelines(items) {
       const x = lw + gb * (cell + gap);
       const y = th + (size - 1 - ga) * (cell + gap);
       const opacity = 0.12 + 0.88 * (entry.count / grid.max) ** 0.7;
-      const text = opacity > 0.55 ? "#FFFFFF" : INK2;
+      const text = cellLabelFill(colors, entry.tone, opacity);
       const result = entry.tone === "a" ? `${a} won` : entry.tone === "b" ? `${b} won` : "Draw";
       parts.push(`<g><title>${escapeHtml(`${label(ga)}–${label(gb)}: ${fmt(entry.count)} ${series ? "series" : "games"} (${result})`)}</title>`);
       parts.push(`<rect x="${x}" y="${y}" width="${cell}" height="${cell}" rx="3" fill="${TONE[entry.tone]}" fill-opacity="${opacity.toFixed(2)}"/>`);
@@ -480,7 +521,7 @@ function renderScorelines(items) {
   caption.append(
     strong,
     ` ${best.tone === "d" ? "are" : "is"} the most common ${series ? "series score" : "result"} (${fmt(best.count)} ${unit}).`,
-    series ? "" : ` ${fmt(oneGoal)} of ${fmt(items.length)} games were decided by one goal.`,
+    series ? "" : ` ${fmt(oneGoal)} of ${fmt(items.length)} games ${oneGoal === 1 ? "was" : "were"} decided by one goal.`,
     ` Above the dotted line ${a} won, below it ${b} won.`
   );
 }
@@ -1420,6 +1461,14 @@ function bindResize() {
       renderCharts(lastItems);
     }, 150);
   });
+  // The scoreline labels are coloured for the current theme, so redraw them when it changes.
+  const redrawScorelines = () => {
+    if (lastItems.length && state.playerA && !isSinglePlayerMode()) renderScorelines(lastItems);
+  };
+  if (typeof MutationObserver === "function" && document.body) {
+    new MutationObserver(redrawScorelines).observe(document.body, { attributeFilter: ["data-theme"] });
+  }
+  window.matchMedia?.("(prefers-color-scheme: dark)").addEventListener?.("change", redrawScorelines);
 }
 
 export function renderCharts(items) {

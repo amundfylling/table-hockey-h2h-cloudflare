@@ -9,6 +9,9 @@ export function normalizeText(text) {
 
 export function decodeHtmlEntities(value) {
   if (value == null) return "";
+  const text = String(value);
+  // Most names and tournament fields carry no entities; skip the eight replace passes.
+  if (!text.includes("&")) return text;
   const decodeCodePoint = (code, radix) => {
     const point = Number.parseInt(code, radix);
     if (
@@ -21,7 +24,7 @@ export function decodeHtmlEntities(value) {
     }
     return String.fromCodePoint(point);
   };
-  return String(value)
+  return text
     .replace(/&#(\d+);/g, (_, code) => decodeCodePoint(code, 10))
     .replace(/&#x([\da-f]+);/gi, (_, code) => decodeCodePoint(code, 16))
     .replace(/&amp;/g, "&")

@@ -8,18 +8,26 @@
   <meta name="description" content="Head-to-head records, form and playoff series for every competitive table hockey rivalry." />
   <meta name="theme-color" content="#F4F3EF" />
   <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Table Hockey H2H" />
   <meta property="og:title" content="Table Hockey H2H" />
   <meta property="og:description" content="Head-to-head records, form and playoff series for every competitive table hockey rivalry." />
   <meta property="og:url" content="https://h2h.puck.no/" />
   <meta property="og:image" content="https://h2h.puck.no/og-default.png" />
   <link rel="canonical" href="https://h2h.puck.no/" />
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Table Hockey H2H","alternateName":"H2H","url":"https://h2h.puck.no/"}</script>
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="preload" href="fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="fonts/barlow-condensed-latin-600.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="icon" type="image/png" sizes="32x32" href="favicon.png" />
-  <link rel="stylesheet" href="styles.css?v=20261102-uxaudit2" />
+  <link rel="stylesheet" href="styles.css?v=20261103-ux" />
+  <!-- Start the small data files every page reads while the scripts load. Player and matchup
+       links also preload the player index and the player's file (functions/index.js). -->
+  <link rel="preload" href="aliases.json" as="fetch" crossorigin />
+  <link rel="preload" href="data/meta.json" as="fetch" crossorigin />
+  <link rel="preload" href="data/records.json" as="fetch" crossorigin />
+  <link rel="preload" href="data/rivalries.json" as="fetch" crossorigin />
 </head>
 
 <body data-home="pending">
@@ -226,7 +234,7 @@
 
     <section id="summary-section" data-story="summary" class="view-hero" aria-labelledby="headline" aria-busy="false" hidden>
       <div class="wrap">
-        <h2 id="headline" class="sr-only" tabindex="-1">Pick two players</h2>
+        <h1 id="headline" class="sr-only" tabindex="-1">Pick two players</h1>
         <p id="summary-scope" class="sr-only"></p>
         <div id="summary-hero" class="summary-hero"></div>
         <p id="subhead" class="sr-only">Matchup stats and filters appear once you compare.</p>
@@ -565,7 +573,7 @@
         <div class="matches-header">
           <div class="sec-head">
             <h2 id="match-list-heading" class="sec-title" tabindex="-1">Every game</h2>
-            <span id="match-count" class="sec-sub" aria-live="polite">0 matches</span>
+            <span id="match-count" class="sec-sub" aria-live="polite">0 games</span>
           </div>
           <div class="header-controls">
             <div id="mobile-sort-control" class="mobile-sort-control">
@@ -606,7 +614,7 @@
 
         <div class="panel table-wrap">
           <table id="matches-table">
-            <caption class="sr-only">Match results</caption>
+            <caption class="sr-only">Game results</caption>
             <thead>
               <tr id="matches-head-row">
                 <th></th>
@@ -643,7 +651,7 @@
     </section>
 
     <section id="empty-state" class="wrap empty-state" role="status" hidden>
-      <h3 id="empty-state-title">No matches yet</h3>
+      <h3 id="empty-state-title">No games yet</h3>
       <p id="empty-state-copy">These players have not faced each other in the dataset.</p>
       <div id="empty-state-actions" class="empty-state-actions" hidden></div>
     </section>
@@ -672,7 +680,7 @@
     </div>
   </footer>
 
-  <script type="module" src="js/main.js?v=20261102-uxaudit2"></script>
+  <script type="module" src="js/main.js?v=20261103-ux"></script>
 </body>
 
 </html>

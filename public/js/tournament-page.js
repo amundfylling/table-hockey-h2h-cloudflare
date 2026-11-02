@@ -3,7 +3,7 @@
 import { el } from "./dom.js";
 import { initChrome } from "./chrome.js";
 import { pageTitle } from "./page-title.js";
-import { formatDateRange, tournamentDataPath } from "./date-range.js";
+import { formatDateRange, tournamentDataPath, tournamentLabel } from "./date-range.js";
 import { decodeHtmlEntities, formatNumber, safeExternalUrl } from "./utils.js";
 
 const ID_RE = /^[1-9]\d{0,9}$/;
@@ -42,7 +42,7 @@ function renderHeader(data) {
     }, `Full results on ${host}`));
     source.hidden = false;
   }
-  document.title = pageTitle({ nameA: data.name });
+  document.title = pageTitle({ nameA: tournamentLabel(data.name, data.date) });
 }
 
 function renderPodium(data, player) {
@@ -74,7 +74,7 @@ function renderUpsets(data, player) {
       player(u.winner), " beat ", player(u.loser), " ",
       el("span", { class: "t-score" }, scoreText(u.score[0], u.score[1], u.ot))),
     el("span", { class: "t-upset-meta" },
-      [u.stage, `rated ${formatNumber(u.gap)} lower (${u.winner_rating} v ${u.loser_rating})`]
+      [u.stage, `rated ${formatNumber(u.gap)} lower (${formatNumber(u.winner_rating)} vs ${formatNumber(u.loser_rating)})`]
         .filter(Boolean).join(" · ")))));
   document.getElementById("t-upsets-section").hidden = false;
 }
@@ -171,6 +171,15 @@ function renderRoundRobin(data, player) {
     el("div", { class: "t-stages" }, items))] : []));
 }
 
+// Keeps a page that names no known tournament out of search results. Not used for load errors,
+// which can be passing.
+function markNotFound() {
+  const meta = document.createElement("meta");
+  meta.name = "robots";
+  meta.content = "noindex";
+  document.head.append(meta);
+}
+
 function showError(message) {
   document.getElementById("t-title").textContent = "Tournament not found";
   document.getElementById("t-error-text").textContent = message;
@@ -183,6 +192,7 @@ async function init() {
   const id = new URLSearchParams(window.location.search).get("id") || "";
   try {
     if (!ID_RE.test(id)) {
+      markNotFound();
       showError("This link does not name a tournament.");
       return;
     }
@@ -190,6 +200,7 @@ async function init() {
     const bucket = response.ok ? await response.json() : null;
     const data = bucket?.[id];
     if (!data) {
+      if (response.ok) markNotFound();
       showError("We have no games recorded for this tournament.");
       return;
     }

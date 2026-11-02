@@ -14,7 +14,10 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Only pull request runs cancel each other. On main, a newer run waits instead: the daily
+  # run skips when the sources are unchanged, so if it cancelled a code push mid-build, that
+  # push would not be deployed until the data next changed.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -96,7 +99,8 @@ jobs:
 
       - name: Deploy to Cloudflare Pages
         if: github.event_name != 'pull_request' && steps.build.outputs.changed == 'true'
-        uses: cloudflare/wrangler-action@v4
+        # Pinned to a commit (v4.1.3): this step holds the Cloudflare deploy token.
+        uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4.1.3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

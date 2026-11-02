@@ -1,5 +1,6 @@
 // Accessibility check: loads the main views of the built site in Chromium and runs axe-core
-// (WCAG 2.1 A and AA rules) on each, in light mode on desktop and dark mode on a phone.
+// (WCAG 2.1 A and AA rules, plus WCAG 2.2 AA such as target size) on each, in light mode on
+// desktop and dark mode on a phone.
 // Exits non-zero when axe reports any violation.
 //
 //   node scripts/a11y-check.mjs                 serves ./public (after the data build)
@@ -18,7 +19,7 @@ const { chromium } = require("playwright");
 const AXE_PATH = require.resolve("axe-core/axe.min.js");
 
 const PUBLIC_DIR = fileURLToPath(new URL("../public/", import.meta.url));
-const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
+const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 const TYPES = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css",

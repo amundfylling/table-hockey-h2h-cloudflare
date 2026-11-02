@@ -53,7 +53,6 @@ export const elements = {
   shareImageBtn: document.getElementById("share-image-btn"),
   status: document.getElementById("status"),
   recentList: document.getElementById("recent-list"),
-  featuredList: document.getElementById("featured-list"),
   tabs: document.querySelectorAll(".tab"),
   playoffModeToggle: document.getElementById("playoff-mode-toggle"),
   modeButtons: document.querySelectorAll("#playoff-mode-toggle .mode-btn"),

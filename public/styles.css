@@ -522,6 +522,9 @@ button:disabled {
 
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
+    /* One pass only: an infinite loop at 0.01ms shows a random frame on every repaint,
+       which turns the loading shimmer into a flicker. */
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
 }
@@ -7208,6 +7211,9 @@ body[data-comparison-mode="matchup"] .player-only {
 }
 
 .t-stage {
+  /* Grid items default to min-width: auto; without this a wide standings table stretches
+     the card past a narrow screen and its last columns are cut off instead of scrolling. */
+  min-width: 0;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--surface);
@@ -7287,6 +7293,8 @@ body[data-comparison-mode="matchup"] .player-only {
 
 .t-series-side .t-player {
   min-width: 0;
+  /* Two names sit directly on top of each other: 24px keeps each a large enough tap target. */
+  line-height: 24px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -7315,6 +7323,10 @@ body[data-comparison-mode="matchup"] .player-only {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
   gap: 16px;
+}
+
+.t-group {
+  min-width: 0;
 }
 
 .t-table-wrap {

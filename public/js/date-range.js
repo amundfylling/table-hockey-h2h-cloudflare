@@ -23,3 +23,12 @@ export function formatDateRange(start, end) {
 export function tournamentDataPath(id) {
   return `data/t/${Number(BigInt(id) % 1000n)}.json`;
 }
+
+// A tournament's name with its year added when the name has none, so the many events called
+// "SM" or "Swedish Masters" read apart in page titles and the tournament filter.
+export function tournamentLabel(name, date) {
+  const text = String(name || "");
+  const year = /^\d{4}/.exec(String(date || ""))?.[0];
+  if (!text || !year || /(?:^|\D)(?:19|20)\d\d(?:\D|$)/.test(text)) return text;
+  return `${text} ${year}`;
+}

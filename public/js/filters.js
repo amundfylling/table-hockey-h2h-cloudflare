@@ -1,4 +1,5 @@
 import { state, elements } from "./state.js";
+import { tournamentLabel } from "./date-range.js";
 import {
   normalizeText,
   getTournamentLevelKey,
@@ -178,7 +179,13 @@ export function refreshFilterOptions(matches) {
   matches.forEach((match) => {
     if (match.year) years.add(match.year);
     if (match.tournament_key) {
-      tournaments.set(match.tournament_key, match.tournament_name || "Unknown tournament");
+      if (!tournaments.has(match.tournament_key)) {
+        const name = match.tournament_name || "Unknown tournament";
+        // One event per id, so its year tells same-named events apart; a name-only key can
+        // span years.
+        tournaments.set(match.tournament_key, match.tournament_key.startsWith("id:")
+          ? tournamentLabel(name, match.date) : name);
+      }
     }
     tournamentLevels.add(getTournamentLevelKey(match));
     if (match.stage) stages.add(match.stage);

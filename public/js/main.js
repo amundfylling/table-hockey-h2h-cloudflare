@@ -231,7 +231,7 @@ export function updateView() {
     const stageHasNoData = state.stageMatches.length === 0 && state.stageTab !== "overall";
     if (elements.filterEmptyTitle) {
       elements.filterEmptyTitle.textContent = stageHasNoData
-        ? "No matches in this stage"
+        ? "No games in this stage"
         : "No results in this view";
     }
     if (elements.filterEmptyCopy) {
@@ -325,7 +325,7 @@ export function renderIdleState() {
   if (elements.recordChart) elements.recordChart.replaceChildren();
   if (elements.goalsChart) elements.goalsChart.replaceChildren();
   if (elements.matchesBody) elements.matchesBody.replaceChildren();
-  if (elements.matchCount) elements.matchCount.textContent = "0 matches";
+  if (elements.matchCount) elements.matchCount.textContent = "0 games";
   [elements.prevPage, elements.nextPage, elements.prevPageBottom, elements.nextPageBottom]
     .filter(Boolean)
     .forEach((button) => { button.disabled = true; });
@@ -366,12 +366,25 @@ function setStageFilterCardsVisible(visible) {
   if (elements.filterCard) elements.filterCard.hidden = !visible;
 }
 
+// True when the control that opened a view has been hidden or removed by it, which
+// leaves keyboard and screen reader users back at the top of the page.
+function focusWasLost() {
+  const active = document.activeElement;
+  if (!active || active === document.body || !active.isConnected) return true;
+  return typeof active.checkVisibility === "function"
+    ? !active.checkVisibility()
+    : !active.getClientRects().length;
+}
+
 function maybeScrollToResults(options = {}) {
-  if (options.restoreUrlState || options.scrollToResults === false) return;
-  if (!window.matchMedia("(max-width: 900px)").matches) return;
+  if (options.restoreUrlState || options.pageLoad) return;
   const target = elements.summarySection;
   const heading = elements.headline;
   if (!target || target.hidden) return;
+  if (options.scrollToResults === false || !window.matchMedia("(max-width: 900px)").matches) {
+    if (heading && focusWasLost()) heading.focus({ preventScroll: true });
+    return;
+  }
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   target.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "start" });
   if (heading) heading.focus({ preventScroll: true });
@@ -480,12 +493,12 @@ export async function handleCompare(options = {}) {
       if (elements.emptyState) elements.emptyState.hidden = false;
       if (elements.emptyStateTitle) {
         elements.emptyStateTitle.textContent = isSingle
-          ? "No recorded matches"
-          : "No matches yet";
+          ? "No recorded games"
+          : "No games yet";
       }
       if (elements.emptyStateCopy) {
         elements.emptyStateCopy.textContent = isSingle
-          ? "No eligible opponent matches are available for this player."
+          ? "No games against eligible opponents are recorded for this player."
           : `${state.playerA.name} and ${state.playerB.name} have not faced each other in the dataset.`;
       }
       renderEmptyStateActions(isSingle ? [] : [state.playerA, state.playerB]);
@@ -496,7 +509,7 @@ export async function handleCompare(options = {}) {
       setStageFilterCardsVisible(false);
       setResultsSectionsVisible(false);
       setLoading(false);
-      setStatus("No matches found.");
+      setStatus("No games found.");
       updateSelectionControls();
       return;
     }
@@ -659,10 +672,21 @@ export function handleCopyLink() {
   }
 }
 
-export async function renderDataFreshness() {
+// The home title and search placeholder carry the game and player counts. Setting them
+// before the home screen first paints keeps the longer title from pushing the page down.
+function renderHomeCounts(meta) {
+  if (!meta || !Number(meta.players) || !Number(meta.matches)) return;
+  const title = document.getElementById("home-title");
+  const text = `${formatNumber(meta.matches)} games. Every rivalry, settled.`;
+  if (title && title.textContent !== text) title.textContent = text;
+  elements.playerA.placeholder = `Search ${formatNumber(meta.players)} players`;
+}
+
+export async function renderDataFreshness(metaPromise = fetchJson("data/meta.json")) {
+  const meta = await metaPromise;
+  renderHomeCounts(meta);
   const el = document.getElementById("data-freshness");
   if (!el) return;
-  const meta = await fetchJson("data/meta.json");
   if (!meta || !meta.generated_at) return;
   const date = new Date(meta.generated_at);
   if (Number.isNaN(date.getTime())) return;
@@ -670,11 +694,8 @@ export async function renderDataFreshness() {
   el.hidden = false;
   const stats = document.getElementById("home-stats");
   if (stats && Number(meta.players) && Number(meta.matches)) {
-    stats.textContent = `${formatNumber(meta.players)} players · ${formatNumber(meta.matches)} matches`;
+    stats.textContent = `${formatNumber(meta.players)} players · ${formatNumber(meta.matches)} games`;
     stats.hidden = false;
-    const title = document.getElementById("home-title");
-    if (title) title.textContent = `${formatNumber(meta.matches)} games. Every rivalry, settled.`;
-    elements.playerA.placeholder = `Search ${formatNumber(meta.players)} players`;
   }
   renderDataSources(meta.sources);
 }
@@ -793,6 +814,9 @@ export function setStageTab(stage) {
 
 export async function loadPlayers() {
   setStatus("Loading players...");
+  // Both files are needed; fetch them side by side rather than one after the other.
+  const aliasesRequest = fetchJson("aliases.json");
+  aliasesRequest.catch(() => {});
   const payload = await fetchJson("data/players.json");
   if (!Array.isArray(payload)) {
     throw new Error("Player index is missing or invalid.");
@@ -807,7 +831,7 @@ export async function loadPlayers() {
       && player.name.trim())
     .map((player) => ({ ...player, id: Number(player.id) }));
   state.players.forEach((player) => state.playersById.set(player.id, player));
-  const aliasesPayload = (await fetchJson("aliases.json"))
+  const aliasesPayload = (await aliasesRequest)
     || (await fetchJson("data/aliases.json"));
   if (!aliasesPayload) {
     throw new Error("Alias index is missing or unavailable.");
@@ -1069,12 +1093,20 @@ export async function init() {
   const linkedSection = homeSectionFromHash();
   const hasInitialSelection = new URLSearchParams(window.location.search).has("p1")
     || (!linkedSection && Boolean(safeStorageGet(STORAGE_KEYS.last, null)?.p1));
+  // meta.json is preloaded by index.html, so it is usually here already; wait briefly for it.
+  const metaReady = fetchJson("data/meta.json").catch((err) => {
+    console.warn("Could not load data freshness:", err);
+    return null;
+  });
+  if (!hasInitialSelection) {
+    renderHomeCounts(await Promise.race([metaReady, new Promise((done) => setTimeout(done, 500))]));
+  }
   setHomeVisible(!hasInitialSelection);
 
   await loadPlayers();
   renderRecent();
   const homeReady = renderHome();
-  renderDataFreshness().catch((err) => console.warn("Could not load data freshness:", err));
+  renderDataFreshness(metaReady).catch((err) => console.warn("Could not load data freshness:", err));
 
   const urlSelection = getUrlSelection();
   const storedSelection = linkedSection ? null : safeStorageGet(STORAGE_KEYS.last, null);
@@ -1167,7 +1199,8 @@ async function showSelection(selection, fromUrl) {
       );
       await Promise.all([comparePromise, opponentsPromise]);
     } else {
-      const comparePromise = handleCompare({ scrollToResults: false });
+      // Only reached on page load (a saved selection), so focus stays where the browser put it.
+      const comparePromise = handleCompare({ scrollToResults: false, pageLoad: true });
       const opponentsPromise = loadOpponentsForPlayer(
         selection.p1,
         p1Ids,
