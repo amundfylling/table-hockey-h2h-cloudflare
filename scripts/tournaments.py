@@ -9,6 +9,7 @@ brackets are rebuilt from who beat whom rather than from round numbers.
 
 from __future__ import annotations
 
+import html
 import math
 import re
 import unicodedata
@@ -280,7 +281,7 @@ def _natural(text: str) -> list:
 def _clean(value: object) -> str:
     if value is None or (isinstance(value, float) and math.isnan(value)) or value is pd.NA:
         return ""
-    return str(value).strip()
+    return html.unescape(str(value)).strip()
 
 
 def _opt_int(value: object) -> Optional[int]:
