@@ -192,7 +192,7 @@ function getScopeLabel() {
     "round-robin": "Round-robin",
     playoff: isSeriesMode() ? "Playoff series" : "Playoff games",
   }[state.stageTab] || "Overall";
-  const prefix = isSinglePlayerMode() ? "Career" : "Head to head";
+  const prefix = isSinglePlayerMode() ? "Career" : "Head-to-head";
   const filtered = getActiveFilterCount() > 0 ? " · Filtered" : "";
   return `${prefix} · ${stage}${filtered}`;
 }
@@ -659,7 +659,7 @@ export function renderSummary(items) {
   if (elements.summaryScope) elements.summaryScope.textContent = getScopeLabel();
   elements.subhead.textContent = summary.total
     ? getScopeLabel()
-    : "No matches for this filter.";
+    : "No games for this filter.";
 
   closePlayerSwitcher();
   if (single) {

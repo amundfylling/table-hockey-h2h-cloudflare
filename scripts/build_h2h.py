@@ -1537,16 +1537,44 @@ def build_sitemap(
     max_urls: int = SITEMAP_MAX_URLS,
     min_pair_games: int = SITEMAP_MIN_PAIR_GAMES,
     tournament_ids: Iterable[int] = (),
+    tournament_dates: Optional[Dict[int, str]] = None,
 ) -> str:
     """sitemap.xml text: the home and ratings pages, every player and tournament, then the most played
     matchups.
 
-    Matchups are listed once, lower id first, most games first, until the file is full.
+    Matchups are listed once, lower id first, most games first, until the file is full. Each page's
+    lastmod is the last day its content can have changed (a player's latest game, the later of the
+    pair's latest games, a tournament's date), not the build date, so crawlers can trust it.
     """
     base = site_url.rstrip("/")
-    urls = [f"{base}/", f"{base}/ratings"]
-    urls.extend(f"{base}/?p1={pid}" for pid in sorted(int(pid) for pid in player_payloads))
-    urls.extend(f"{base}/tournament?id={tid}" for tid in sorted(int(t) for t in tournament_ids))
+    tournament_dates = {int(k): v for k, v in (tournament_dates or {}).items()}
+
+    def day(value) -> str:
+        text = str(value or "")[:10]
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", text) or text > generated_on:
+            return generated_on
+        return text
+
+    last_game: Dict[int, str] = {}
+    for pid, payload in player_payloads.items():
+        dates = [
+            str(opponent["summary"].get("last_meeting_date") or "")[:10]
+            for opponent in payload["opponents"].values()
+        ]
+        # The rating counts every game, including ones against opponents too rare to list.
+        history = (payload.get("rating") or {}).get("history") or []
+        if history and history[-1]:
+            dates.append(str(history[-1][0] or "")[:10])
+        last_game[int(pid)] = day(max(dates, default=""))
+
+    urls = [(f"{base}/", generated_on), (f"{base}/ratings", generated_on)]
+    urls.extend(
+        (f"{base}/?p1={pid}", last_game[pid]) for pid in sorted(int(pid) for pid in player_payloads)
+    )
+    urls.extend(
+        (f"{base}/tournament?id={tid}", day(tournament_dates.get(tid)))
+        for tid in sorted(int(t) for t in tournament_ids)
+    )
     pairs = []
     for pid, payload in player_payloads.items():
         for opponent_id, opponent in payload["opponents"].items():
@@ -1557,11 +1585,14 @@ def build_sitemap(
                 pairs.append((-games, int(pid), int(opponent_id)))
     pairs.sort()
     room = max(0, max_urls - len(urls))
-    urls.extend(f"{base}/?p1={a}&p2={b}" for _, a, b in pairs[:room])
+    urls.extend(
+        (f"{base}/?p1={a}&p2={b}", max(last_game.get(a, generated_on), last_game.get(b, generated_on)))
+        for _, a, b in pairs[:room]
+    )
     urls = urls[:max_urls]
     entries = "".join(
-        f"<url><loc>{escape(url)}</loc><lastmod>{generated_on}</lastmod></url>\n"
-        for url in urls
+        f"<url><loc>{escape(url)}</loc><lastmod>{lastmod}</lastmod></url>\n"
+        for url, lastmod in urls
     )
     return (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
@@ -2189,6 +2220,7 @@ def main() -> int:
             player_payloads,
             datetime.now(timezone.utc).date().isoformat(),
             tournament_ids=[entry["id"] for entry in tournament_index],
+            tournament_dates={entry["id"]: entry["date"] for entry in tournament_index},
         ),
         encoding="utf-8",
     )

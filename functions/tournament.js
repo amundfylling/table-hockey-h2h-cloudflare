@@ -4,7 +4,7 @@
 // back to the static page unchanged.
 import { injectMeta } from "./index.js";
 import { pageTitle } from "../public/js/page-title.js";
-import { formatDateRange, tournamentDataPath } from "../public/js/date-range.js";
+import { formatDateRange, tournamentDataPath, tournamentLabel } from "../public/js/date-range.js";
 import { decodeHtmlEntities } from "../public/js/utils.js";
 
 const ID_RE = /^[1-9]\d{0,9}$/;
@@ -26,7 +26,7 @@ export async function onRequest(context) {
     const data = (await dataResponse.json())?.[id];
     if (String(data?.id) !== id || !data.name) return response;
     meta = {
-      title: pageTitle({ nameA: decodeHtmlEntities(data.name) }),
+      title: pageTitle({ nameA: tournamentLabel(decodeHtmlEntities(data.name), data.date) }),
       description: tournamentDescription(data),
       url: `${url.origin}/tournament?id=${id}`,
       image: `${url.origin}/og-default.png`,

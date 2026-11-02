@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { onRequest, tournamentDescription } from "../functions/tournament.js";
+import { tournamentLabel } from "../public/js/date-range.js";
 
 const pageHtml = `<!doctype html><html><head>
 <title>Tournament · Table Hockey H2H</title>
@@ -49,7 +50,7 @@ function run(path, { status = 200 } = {}) {
 
 test("tournament pages get a named, escaped head", async () => {
   const html = await (await run("/tournament?id=7").response).text();
-  assert.match(html, /<title>Riga &amp; Friends Open · Table Hockey H2H<\/title>/);
+  assert.match(html, /<title>Riga &amp; Friends Open 2024 · Table Hockey H2H<\/title>/);
   assert.match(html, /Won by &lt;Ann&gt; ahead of Bo\. 3 players, 1,200 games\./);
   assert.match(html, /<link rel="canonical" href="https:\/\/stats.example\/tournament\?id=7" \/>/);
   assert.equal(requested.at(-1), "https://stats.example/data/t/7.json");
@@ -69,4 +70,13 @@ test("bad ids, mismatched data and missing files pass through", async () => {
     const { page, response } = run(path, options);
     assert.equal(await response, page, path);
   }
+});
+
+test("tournament labels add the year only when the name lacks one", () => {
+  assert.equal(tournamentLabel("SM", "2022-05-14"), "SM 2022");
+  assert.equal(tournamentLabel("Latvia Open 2018 / 2", "2018-10-13"), "Latvia Open 2018 / 2");
+  assert.equal(tournamentLabel("Latvijas Kauss 2016/2017 #1", "2016-11-05"), "Latvijas Kauss 2016/2017 #1");
+  assert.equal(tournamentLabel("Umeligan 17", "2019-02-01"), "Umeligan 17 2019");
+  assert.equal(tournamentLabel("Cup 120", "2019-02-01"), "Cup 120 2019");
+  assert.equal(tournamentLabel("Riga Cup", ""), "Riga Cup");
 });
