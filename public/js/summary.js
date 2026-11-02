@@ -1,17 +1,15 @@
 import { state, elements, isSeriesMode, isSinglePlayerMode } from "./state.js";
-import { formatDate, formatDateRange, formatNumber, normalizeText } from "./utils.js";
+import { formatDate, formatNumber } from "./utils.js";
 import {
   enrichPlayerRecord,
   formatWorldRank,
   getAliasGroup,
 } from "./players.js";
 import {
-  formatSeriesLength,
   computeSeriesSummary,
   buildPlayoffSeries,
 } from "./series.js";
 import { updateFormTitle, getChronologicalItems } from "./form.js?v=20260801-generational-run-v3";
-import { getItemSourceUrl } from "./table.js";
 import { getActiveFilterCount } from "./filters.js";
 import { el, icon, ICONS, requestView } from "./dom.js";
 import { createPlayerSwitcher, closePlayerSwitcher } from "./switcher.js";
@@ -93,94 +91,6 @@ export function computeSummary(matches) {
 
   return summary;
 }
-
-export function formatPercent(value) {
-  if (!Number.isFinite(value)) return "0%";
-  return `${value.toFixed(1)}%`;
-}
-
-export function formatCardValue(value) {
-  if (value == null || value === "") return DASH;
-  if (Number.isNaN(value)) return DASH;
-  return typeof value === "number" ? formatNumber(value) : String(value);
-}
-
-export function getHighlightInfo(match, side) {
-  if (!match) {
-    return { score: DASH, date: DASH, opponent: DASH, tournament: DASH, url: "" };
-  }
-  if (isSinglePlayerMode()) {
-    return {
-      score: scoreFormat(match) || DASH,
-      date: match.date ? formatDate(match.date) : DASH,
-      opponent: match.opponent_name || DASH,
-      tournament: match.tournament_name || DASH,
-      url: getItemSourceUrl(match) || "",
-    };
-  }
-  const score = side === "b" ? `${match.goals_b}–${match.goals_a}` : scoreFormat(match);
-  const opponent = side === "b" ? state.playerA?.name : state.playerB?.name;
-  return {
-    score: score || DASH,
-    date: match.date ? formatDate(match.date) : DASH,
-    opponent: opponent || DASH,
-    tournament: match.tournament_name || DASH,
-    url: getItemSourceUrl(match) || "",
-  };
-}
-
-// Local helper to avoid importing from table.js
-function scoreFormat(match) {
-  if (!match) return DASH;
-  if (!Number.isFinite(match.goals_a) || !Number.isFinite(match.goals_b)) return DASH;
-  return `${match.goals_a}–${match.goals_b}`;
-}
-
-export function getCanonOpponentKey(item) {
-  if (!item || !isSinglePlayerMode()) return "";
-  if (item.opponent_id != null) {
-    const opponentId = Number(item.opponent_id);
-    const canonicalId = Number.isInteger(opponentId) ? getAliasGroup(opponentId)[0] : opponentId;
-    return `id:${canonicalId}`;
-  }
-  return normalizeText(item.opponent_name || "");
-}
-
-export function getCanonRivalryTooltip(winItem, lossItem) {
-  const winKey = getCanonOpponentKey(winItem);
-  const lossKey = getCanonOpponentKey(lossItem);
-  return winKey && winKey === lossKey
-    ? "The biggest win and biggest loss were against the same opponent."
-    : "";
-}
-
-export function getSeriesHighlightInfo(series, side) {
-  if (!series) {
-    return { score: DASH, date: DASH, opponent: DASH, tournament: DASH, url: "" };
-  }
-  if (isSinglePlayerMode()) {
-    return {
-      score: `${series.game_wins_a}–${series.game_wins_b}`,
-      date: formatDateRange(series.date, series.end_date),
-      opponent: series.opponent_name || DASH,
-      tournament: `${series.tournament_name || DASH} · ${formatSeriesLength(series)} · goals ${series.goals_a}–${series.goals_b}`,
-      url: getItemSourceUrl(series) || "",
-    };
-  }
-  const score =
-    side === "b"
-      ? `${series.game_wins_b}–${series.game_wins_a}`
-      : `${series.game_wins_a}–${series.game_wins_b}`;
-  const goalScore = side === "b" ? `${series.goals_b}–${series.goals_a}` : `${series.goals_a}–${series.goals_b}`;
-  return {
-    score,
-    date: formatDateRange(series.date, series.end_date),
-    opponent: side === "b" ? state.playerA?.name : state.playerB?.name,
-    tournament: `${series.tournament_name || DASH} · ${formatSeriesLength(series)} · goals ${goalScore}`,
-    url: getItemSourceUrl(series) || "",
-  };
-}
-
 
 function plural(count, one, many) {
   return `${formatNumber(count)} ${count === 1 ? one : many}`;
