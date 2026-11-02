@@ -14,7 +14,10 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Only pull request runs cancel each other. On main, a newer run waits instead: the daily
+  # run skips when the sources are unchanged, so if it cancelled a code push mid-build, that
+  # push would not be deployed until the data next changed.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read

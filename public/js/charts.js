@@ -23,11 +23,6 @@ import {
   winRate,
 } from "./insights.js";
 
-export function formatAxisValue(value) {
-  if (!Number.isFinite(value)) return "0";
-  return String(Math.round(value));
-}
-
 export function ensureChartTooltip(container) {
   let tooltip = container.querySelector(".chart-tooltip");
   if (!tooltip) {

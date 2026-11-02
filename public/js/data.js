@@ -1,6 +1,5 @@
 import { state, elements } from "./state.js";
 import {
-  normalizeText,
   decodeHtmlEntities,
   toNumber,
   normalizeTournamentLevel,
@@ -13,9 +12,6 @@ import {
   getEffectiveAliasGroup,
   getAliasGroup,
   getPlayerById,
-  normalizeAliasIds,
-  resolvePlayerId,
-  parseIdList,
 } from "./players.js";
 
 function setBoundedCache(cache, key, value, maxEntries = 12) {
@@ -57,37 +53,12 @@ export async function fetchJson(url, timeoutMs = 20000, externalSignal = null) {
   }
 }
 
-export async function fetchPairPayload(id1, id2, onProgress, signal = null) {
-  const payload = await fetchJson(`data/h2h/${id1}/${id2}.json`, 20000, signal);
-  if (!payload) return null;
-  const normalizedPlayers = {
-    player1: normalizePlayerRecord(payload.player1),
-    player2: normalizePlayerRecord(payload.player2),
-  };
-  if (payload.chunks && Array.isArray(payload.chunks)) {
-    const matches = [];
-    for (let i = 0; i < payload.chunks.length; i += 1) {
-      const chunkPath = payload.chunks[i];
-      const chunkUrl = chunkPath.startsWith("data/") ? chunkPath : `data/${chunkPath}`;
-      if (onProgress) {
-        onProgress(i + 1, payload.chunks.length);
-      }
-      const chunkPayload = await fetchJson(chunkUrl, 20000, signal);
-      if (!chunkPayload) {
-        throw new Error(`Missing chunk ${chunkUrl}`);
-      }
-      if (Array.isArray(chunkPayload.matches)) {
-        matches.push(...chunkPayload.matches);
-      }
-    }
-    return { ...payload, ...normalizedPlayers, matches };
-  }
-  return { ...payload, ...normalizedPlayers };
-}
-
 export async function fetchPlayerPayload(playerId, signal = null) {
   if (state.playerFileCache.has(playerId)) {
-    return state.playerFileCache.get(playerId);
+    const cached = state.playerFileCache.get(playerId);
+    // Mark it as recently used, so the files of the open view are the last to go.
+    setBoundedCache(state.playerFileCache, playerId, cached);
+    return cached;
   }
   const existingRequest = state.playerFileRequests.get(playerId);
   if (existingRequest && !existingRequest.signal?.aborted) {
@@ -114,6 +85,15 @@ export async function fetchPlayerPayload(playerId, signal = null) {
     if (state.playerFileRequests.get(playerId) === requestEntry) {
       state.playerFileRequests.delete(playerId);
     }
+  }
+}
+
+// The views read ratings, forecasts and results against each nation straight from the
+// cached player files (charts.js, summary.js, story.js, share.js). The match caches below
+// outlive those files, so a cached view loads its files again before it is shown.
+async function ensurePlayerFiles(ids, signal) {
+  for (const id of ids) {
+    await fetchPlayerPayload(id, signal);
   }
 }
 
@@ -181,16 +161,6 @@ export function finishMatchNormalization(raw, goalsA, goalsB) {
     overtime,
     result: diff > 0 ? "A" : diff < 0 ? "B" : "D",
   };
-}
-
-export function normalizePairMatch(raw, aIsId1) {
-  const goalsId1 = toNumber(
-    raw.goals_id1 ?? raw.goals_for_id1 ?? raw.goalsPlayer1 ?? raw.goals_player1 ?? raw.goals_player ?? 0
-  );
-  const goalsId2 = toNumber(
-    raw.goals_id2 ?? raw.goals_for_id2 ?? raw.goalsPlayer2 ?? raw.goals_player2 ?? raw.goals_opponent ?? 0
-  );
-  return finishMatchNormalization(raw, aIsId1 ? goalsId1 : goalsId2, aIsId1 ? goalsId2 : goalsId1);
 }
 
 export function normalizePlayerMatch(raw, isPlayerA) {
@@ -269,6 +239,7 @@ export async function loadPlayerStats(
   const groupA = getEffectiveAliasGroup(playerId, explicitIds);
   const cacheKey = groupA.join(",");
   if (state.playerStatsCache.has(cacheKey)) {
+    await ensurePlayerFiles(groupA, signal);
     return state.playerStatsCache.get(cacheKey);
   }
 
@@ -321,14 +292,16 @@ export async function loadMatchup(
   const groupB = getEffectiveAliasGroup(p2, explicitIdsB);
   const cacheKey = `${groupA.join(",")}-${groupB.join(",")}`;
   if (state.pairCache.has(cacheKey)) {
-    return state.pairCache.get(cacheKey);
+    const cached = state.pairCache.get(cacheKey);
+    await ensurePlayerFiles(cached.fileIds || groupA, signal);
+    return cached;
   }
 
   if (groupA.length > 1 || groupB.length > 1) {
     const matches = await buildGroupMatches(groupA, groupB, onProgress, signal);
     const playerA = getPlayerById(p1) || { id: p1, name: `Player ${p1}` };
     const playerB = getPlayerById(p2) || { id: p2, name: `Player ${p2}` };
-    const data = { playerA, playerB, matches };
+    const data = { playerA, playerB, matches, fileIds: groupA };
     setBoundedCache(state.pairCache, cacheKey, data, 20);
     return data;
   }
@@ -344,7 +317,7 @@ export async function loadMatchup(
       const matches = Array.isArray(opponent.matches)
         ? opponent.matches.map((match) => normalizePlayerMatch(match, true))
         : [];
-      const data = { playerA, playerB, matches };
+      const data = { playerA, playerB, matches, fileIds: [p1] };
       setBoundedCache(state.pairCache, cacheKey, data, 20);
       return data;
     }
@@ -359,7 +332,7 @@ export async function loadMatchup(
       const matches = Array.isArray(opponent.matches)
         ? opponent.matches.map((match) => normalizePlayerMatch(match, false))
         : [];
-      const data = { playerA, playerB, matches };
+      const data = { playerA, playerB, matches, fileIds: [p1, p2] };
       setBoundedCache(state.pairCache, cacheKey, data, 20);
       return data;
     }
