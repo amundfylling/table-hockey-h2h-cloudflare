@@ -64,6 +64,11 @@ export async function buildMeta(env, url, p1, p2, { withRecord = true } = {}) {
         ? matchupDescription(nameA, nameB, opponent.summary || {})
         : `${nameA} vs ${nameB}. ${TAGLINE}`,
       url: `${url.origin}/?p1=${p1}&p2=${p2}`,
+      // Both orders show the same games, so search engines get one address per pair: lower
+      // id first, as in the sitemap. Link previews keep the order that was shared.
+      canonical: Number(p1) < Number(p2)
+        ? `${url.origin}/?p1=${p1}&p2=${p2}`
+        : `${url.origin}/?p1=${p2}&p2=${p1}`,
       image: `${url.origin}/og-default.png`,
     };
   }
@@ -153,7 +158,7 @@ export function injectMeta(html, meta) {
   out = setTag(
     out,
     /<link\s+rel="canonical"\s+href="[^"]*"\s*\/?>/,
-    `<link rel="canonical" href="${escapeHtml(meta.url)}" />`,
+    `<link rel="canonical" href="${escapeHtml(meta.canonical || meta.url)}" />`,
   );
   return out;
 }

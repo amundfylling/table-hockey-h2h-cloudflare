@@ -231,7 +231,7 @@ export function updateView() {
     const stageHasNoData = state.stageMatches.length === 0 && state.stageTab !== "overall";
     if (elements.filterEmptyTitle) {
       elements.filterEmptyTitle.textContent = stageHasNoData
-        ? "No matches in this stage"
+        ? "No games in this stage"
         : "No results in this view";
     }
     if (elements.filterEmptyCopy) {
@@ -325,7 +325,7 @@ export function renderIdleState() {
   if (elements.recordChart) elements.recordChart.replaceChildren();
   if (elements.goalsChart) elements.goalsChart.replaceChildren();
   if (elements.matchesBody) elements.matchesBody.replaceChildren();
-  if (elements.matchCount) elements.matchCount.textContent = "0 matches";
+  if (elements.matchCount) elements.matchCount.textContent = "0 games";
   [elements.prevPage, elements.nextPage, elements.prevPageBottom, elements.nextPageBottom]
     .filter(Boolean)
     .forEach((button) => { button.disabled = true; });
@@ -366,12 +366,25 @@ function setStageFilterCardsVisible(visible) {
   if (elements.filterCard) elements.filterCard.hidden = !visible;
 }
 
+// True when the control that opened a view has been hidden or removed by it, which
+// leaves keyboard and screen reader users back at the top of the page.
+function focusWasLost() {
+  const active = document.activeElement;
+  if (!active || active === document.body || !active.isConnected) return true;
+  return typeof active.checkVisibility === "function"
+    ? !active.checkVisibility()
+    : !active.getClientRects().length;
+}
+
 function maybeScrollToResults(options = {}) {
-  if (options.restoreUrlState || options.scrollToResults === false) return;
-  if (!window.matchMedia("(max-width: 900px)").matches) return;
+  if (options.restoreUrlState || options.pageLoad) return;
   const target = elements.summarySection;
   const heading = elements.headline;
   if (!target || target.hidden) return;
+  if (options.scrollToResults === false || !window.matchMedia("(max-width: 900px)").matches) {
+    if (heading && focusWasLost()) heading.focus({ preventScroll: true });
+    return;
+  }
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   target.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "start" });
   if (heading) heading.focus({ preventScroll: true });
@@ -463,12 +476,12 @@ export async function handleCompare(options = {}) {
       if (elements.emptyState) elements.emptyState.hidden = false;
       if (elements.emptyStateTitle) {
         elements.emptyStateTitle.textContent = isSingle
-          ? "No recorded matches"
-          : "No matches yet";
+          ? "No recorded games"
+          : "No games yet";
       }
       if (elements.emptyStateCopy) {
         elements.emptyStateCopy.textContent = isSingle
-          ? "No eligible opponent matches are available for this player."
+          ? "No games against eligible opponents are recorded for this player."
           : "These players have not faced each other in the dataset.";
       }
       state.baseMatches = [];
@@ -478,7 +491,7 @@ export async function handleCompare(options = {}) {
       setStageFilterCardsVisible(false);
       setResultsSectionsVisible(false);
       setLoading(false);
-      setStatus("No matches found.");
+      setStatus("No games found.");
       updateSelectionControls();
       return;
     }
@@ -663,7 +676,7 @@ export async function renderDataFreshness(metaPromise = fetchJson("data/meta.jso
   el.hidden = false;
   const stats = document.getElementById("home-stats");
   if (stats && Number(meta.players) && Number(meta.matches)) {
-    stats.textContent = `${formatNumber(meta.players)} players · ${formatNumber(meta.matches)} matches`;
+    stats.textContent = `${formatNumber(meta.players)} players · ${formatNumber(meta.matches)} games`;
     stats.hidden = false;
   }
   renderDataSources(meta.sources);
@@ -1159,7 +1172,8 @@ async function showSelection(selection, fromUrl) {
       );
       await Promise.all([comparePromise, opponentsPromise]);
     } else {
-      const comparePromise = handleCompare({ scrollToResults: false });
+      // Only reached on page load (a saved selection), so focus stays where the browser put it.
+      const comparePromise = handleCompare({ scrollToResults: false, pageLoad: true });
       const opponentsPromise = loadOpponentsForPlayer(
         selection.p1,
         p1Ids,

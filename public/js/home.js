@@ -405,7 +405,7 @@ function smallCards() {
   if (even && knownPlayers(even.player, even.opponent)) {
     cards.push(recordCard({ kind: "even", label: "Dead even", visual: evenVisual(even),
       value: `${formatNumber(even.wins)}–${formatNumber(even.wins)}`,
-      unit: even.draws ? `and ${formatNumber(even.draws)} draws` : "",
+      unit: even.draws ? `and ${formatNumber(even.draws)} draw${even.draws === 1 ? "" : "s"}` : "",
       who: `${playerName(even.player)} and ${playerName(even.opponent)}`,
       when: `After ${formatNumber(even.games)} games`, onclick: () => openView(even.player, even.opponent) }));
   }

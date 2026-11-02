@@ -1,17 +1,15 @@
 import { state, elements, isSeriesMode, isSinglePlayerMode } from "./state.js";
-import { formatDate, formatDateRange, formatNumber, normalizeText } from "./utils.js";
+import { formatDate, formatNumber } from "./utils.js";
 import {
   enrichPlayerRecord,
   formatWorldRank,
   getAliasGroup,
 } from "./players.js";
 import {
-  formatSeriesLength,
   computeSeriesSummary,
   buildPlayoffSeries,
 } from "./series.js";
 import { updateFormTitle, getChronologicalItems } from "./form.js?v=20260801-generational-run-v3";
-import { getItemSourceUrl } from "./table.js";
 import { getActiveFilterCount } from "./filters.js";
 import { el, icon, ICONS, requestView } from "./dom.js";
 import { createPlayerSwitcher, closePlayerSwitcher } from "./switcher.js";
@@ -94,94 +92,6 @@ export function computeSummary(matches) {
   return summary;
 }
 
-export function formatPercent(value) {
-  if (!Number.isFinite(value)) return "0%";
-  return `${value.toFixed(1)}%`;
-}
-
-export function formatCardValue(value) {
-  if (value == null || value === "") return DASH;
-  if (Number.isNaN(value)) return DASH;
-  return typeof value === "number" ? formatNumber(value) : String(value);
-}
-
-export function getHighlightInfo(match, side) {
-  if (!match) {
-    return { score: DASH, date: DASH, opponent: DASH, tournament: DASH, url: "" };
-  }
-  if (isSinglePlayerMode()) {
-    return {
-      score: scoreFormat(match) || DASH,
-      date: match.date ? formatDate(match.date) : DASH,
-      opponent: match.opponent_name || DASH,
-      tournament: match.tournament_name || DASH,
-      url: getItemSourceUrl(match) || "",
-    };
-  }
-  const score = side === "b" ? `${match.goals_b}–${match.goals_a}` : scoreFormat(match);
-  const opponent = side === "b" ? state.playerA?.name : state.playerB?.name;
-  return {
-    score: score || DASH,
-    date: match.date ? formatDate(match.date) : DASH,
-    opponent: opponent || DASH,
-    tournament: match.tournament_name || DASH,
-    url: getItemSourceUrl(match) || "",
-  };
-}
-
-// Local helper to avoid importing from table.js
-function scoreFormat(match) {
-  if (!match) return DASH;
-  if (!Number.isFinite(match.goals_a) || !Number.isFinite(match.goals_b)) return DASH;
-  return `${match.goals_a}–${match.goals_b}`;
-}
-
-export function getCanonOpponentKey(item) {
-  if (!item || !isSinglePlayerMode()) return "";
-  if (item.opponent_id != null) {
-    const opponentId = Number(item.opponent_id);
-    const canonicalId = Number.isInteger(opponentId) ? getAliasGroup(opponentId)[0] : opponentId;
-    return `id:${canonicalId}`;
-  }
-  return normalizeText(item.opponent_name || "");
-}
-
-export function getCanonRivalryTooltip(winItem, lossItem) {
-  const winKey = getCanonOpponentKey(winItem);
-  const lossKey = getCanonOpponentKey(lossItem);
-  return winKey && winKey === lossKey
-    ? "The biggest win and biggest loss were against the same opponent."
-    : "";
-}
-
-export function getSeriesHighlightInfo(series, side) {
-  if (!series) {
-    return { score: DASH, date: DASH, opponent: DASH, tournament: DASH, url: "" };
-  }
-  if (isSinglePlayerMode()) {
-    return {
-      score: `${series.game_wins_a}–${series.game_wins_b}`,
-      date: formatDateRange(series.date, series.end_date),
-      opponent: series.opponent_name || DASH,
-      tournament: `${series.tournament_name || DASH} · ${formatSeriesLength(series)} · goals ${series.goals_a}–${series.goals_b}`,
-      url: getItemSourceUrl(series) || "",
-    };
-  }
-  const score =
-    side === "b"
-      ? `${series.game_wins_b}–${series.game_wins_a}`
-      : `${series.game_wins_a}–${series.game_wins_b}`;
-  const goalScore = side === "b" ? `${series.goals_b}–${series.goals_a}` : `${series.goals_a}–${series.goals_b}`;
-  return {
-    score,
-    date: formatDateRange(series.date, series.end_date),
-    opponent: side === "b" ? state.playerA?.name : state.playerB?.name,
-    tournament: `${series.tournament_name || DASH} · ${formatSeriesLength(series)} · goals ${goalScore}`,
-    url: getItemSourceUrl(series) || "",
-  };
-}
-
-
 function plural(count, one, many) {
   return `${formatNumber(count)} ${count === 1 ? one : many}`;
 }
@@ -192,7 +102,7 @@ function getScopeLabel() {
     "round-robin": "Round-robin",
     playoff: isSeriesMode() ? "Playoff series" : "Playoff games",
   }[state.stageTab] || "Overall";
-  const prefix = isSinglePlayerMode() ? "Career" : "Head to head";
+  const prefix = isSinglePlayerMode() ? "Career" : "Head-to-head";
   const filtered = getActiveFilterCount() > 0 ? " · Filtered" : "";
   return `${prefix} · ${stage}${filtered}`;
 }
@@ -314,7 +224,7 @@ function createForecastInfo(series) {
     },
   }, icon(ICONS.info));
   return el("div", { class: "forecast-head" },
-    el("h3", { class: "forecast-title" },
+    el("h2", { class: "forecast-title" },
       series ? "If they met in a best-of-7 series today" : "If they met today"),
     button,
     panel);
@@ -418,7 +328,7 @@ function createMatchupHero(items, summary) {
       createWho(state.playerB, "b")),
     createForecast(),
     el("div", { class: "share" },
-      el("h3", { class: "forecast-title share-title" },
+      el("h2", { class: "forecast-title share-title" },
         series ? "Series record so far" : "Record so far"),
       bar,
       labels),
@@ -560,7 +470,8 @@ function createPlayerHero(items, summary) {
     crumbs([{ label: "Players", nav: "players" }, { label: player.name }]),
     el("div", { class: "p-top" },
       el("div", {},
-        el("h1", { class: "p-name" }, player.name),
+        // The page heading is the hidden #headline, which already names the player.
+        el("p", { class: "p-name" }, player.name),
         meta ? el("p", { class: "p-meta" }, meta) : null),
       el("div", { class: "actions" }, compare)),
     kpis);
@@ -659,7 +570,7 @@ export function renderSummary(items) {
   if (elements.summaryScope) elements.summaryScope.textContent = getScopeLabel();
   elements.subhead.textContent = summary.total
     ? getScopeLabel()
-    : "No matches for this filter.";
+    : "No games for this filter.";
 
   closePlayerSwitcher();
   if (single) {

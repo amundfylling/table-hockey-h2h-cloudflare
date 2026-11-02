@@ -80,6 +80,7 @@ export function renderTableHeaders() {
 
     if (!column.key) {
       th.className = "expand-header";
+      th.append(Object.assign(document.createElement("span"), { className: "sr-only", textContent: "Details" }));
       fragment.appendChild(th);
       return;
     }
@@ -207,10 +208,10 @@ export function renderGameTable(matches) {
     row.className = "empty-table-row";
     const cell = document.createElement("td");
     cell.colSpan = colSpan;
-    cell.textContent = "No matches for these filters.";
+    cell.textContent = "No games for these filters.";
     row.appendChild(cell);
     elements.matchesBody.appendChild(row);
-    elements.matchCount.textContent = "0 matches";
+    elements.matchCount.textContent = "0 games";
     return;
   }
 
@@ -230,7 +231,7 @@ export function renderGameTable(matches) {
     expBtn.dataset.row = rowId;
     expBtn.setAttribute("aria-controls", `detail-${rowId}`);
     expBtn.setAttribute("aria-expanded", "false");
-    expBtn.setAttribute("aria-label", "Show match details");
+    expBtn.setAttribute("aria-label", "Show game details");
     expBtn.innerHTML = CHEVRON_SVG;
     expCell.appendChild(expBtn);
 
@@ -743,7 +744,7 @@ export function updatePagination(total) {
 }
 
 export function formatMatchCountText(start, end, total) {
-  return `Showing ${start + 1}–${end} of ${formatNumber(total)} matches`;
+  return `Showing ${start + 1}–${end} of ${formatNumber(total)} games`;
 }
 
 export function initPagination() {
@@ -843,7 +844,7 @@ export function initTableDetails() {
     button.closest("tr")?.classList.toggle("is-expanded", !isOpen);
     button.setAttribute("aria-expanded", isOpen ? "false" : "true");
     if (button.getAttribute("aria-label")) {
-      const itemLabel = detailRow.classList.contains("series-detail-row") ? "series games" : "match details";
+      const itemLabel = detailRow.classList.contains("series-detail-row") ? "series games" : "game details";
       button.setAttribute("aria-label", isOpen ? `Show ${itemLabel}` : `Hide ${itemLabel}`);
     }
     button.classList.toggle("is-open", !isOpen);
