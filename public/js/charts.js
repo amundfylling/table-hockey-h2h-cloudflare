@@ -1129,7 +1129,7 @@ function renderBeats() {
     hideChartTooltip(tooltip);
   };
   bindChartTooltip(cols, (event) => {
-    const line = event.target.closest?.(".beats-row");
+    const line = event.target.closest?.(".beats-row[data-index]");
     if (!line) {
       hide();
       return;

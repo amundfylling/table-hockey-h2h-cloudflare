@@ -7913,7 +7913,7 @@ body.share-open {
   font-size: 14px;
 }
 
-.beats-row.is-active {
+.beats-row[data-index].is-active {
   background: var(--sunk);
 }
 
