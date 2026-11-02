@@ -109,3 +109,11 @@ test("the plain home page, bad ids, HEAD and missing data pass through unchanged
     assert.equal(await response, page, path);
   }
 });
+
+test("player and matchup views preload the player index and the player's file", async () => {
+  const html = await (await run("/?p1=1&p2=2").response).text();
+  assert.match(html, /<link rel="preload" href="\/data\/players\.json" as="fetch" crossorigin \/>/);
+  assert.match(html, /<link rel="preload" href="\/data\/h2h\/1\.json" as="fetch" crossorigin \/>\s*<\/head>/);
+  const missing = await (await run("/?p1=1", { assetStatus: 404 }).response).text();
+  assert.doesNotMatch(missing, /data\/h2h\/1\.json/);
+});

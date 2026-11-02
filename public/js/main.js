@@ -654,10 +654,21 @@ export function handleCopyLink() {
   }
 }
 
-export async function renderDataFreshness() {
+// The home title and search placeholder carry the game and player counts. Setting them
+// before the home screen first paints keeps the longer title from pushing the page down.
+function renderHomeCounts(meta) {
+  if (!meta || !Number(meta.players) || !Number(meta.matches)) return;
+  const title = document.getElementById("home-title");
+  const text = `${formatNumber(meta.matches)} games. Every rivalry, settled.`;
+  if (title && title.textContent !== text) title.textContent = text;
+  elements.playerA.placeholder = `Search ${formatNumber(meta.players)} players`;
+}
+
+export async function renderDataFreshness(metaPromise = fetchJson("data/meta.json")) {
+  const meta = await metaPromise;
+  renderHomeCounts(meta);
   const el = document.getElementById("data-freshness");
   if (!el) return;
-  const meta = await fetchJson("data/meta.json");
   if (!meta || !meta.generated_at) return;
   const date = new Date(meta.generated_at);
   if (Number.isNaN(date.getTime())) return;
@@ -667,9 +678,6 @@ export async function renderDataFreshness() {
   if (stats && Number(meta.players) && Number(meta.matches)) {
     stats.textContent = `${formatNumber(meta.players)} players · ${formatNumber(meta.matches)} games`;
     stats.hidden = false;
-    const title = document.getElementById("home-title");
-    if (title) title.textContent = `${formatNumber(meta.matches)} games. Every rivalry, settled.`;
-    elements.playerA.placeholder = `Search ${formatNumber(meta.players)} players`;
   }
   renderDataSources(meta.sources);
 }
@@ -788,6 +796,9 @@ export function setStageTab(stage) {
 
 export async function loadPlayers() {
   setStatus("Loading players...");
+  // Both files are needed; fetch them side by side rather than one after the other.
+  const aliasesRequest = fetchJson("aliases.json");
+  aliasesRequest.catch(() => {});
   const payload = await fetchJson("data/players.json");
   if (!Array.isArray(payload)) {
     throw new Error("Player index is missing or invalid.");
@@ -802,7 +813,7 @@ export async function loadPlayers() {
       && player.name.trim())
     .map((player) => ({ ...player, id: Number(player.id) }));
   state.players.forEach((player) => state.playersById.set(player.id, player));
-  const aliasesPayload = (await fetchJson("aliases.json"))
+  const aliasesPayload = (await aliasesRequest)
     || (await fetchJson("data/aliases.json"));
   if (!aliasesPayload) {
     throw new Error("Alias index is missing or unavailable.");
@@ -1055,12 +1066,20 @@ export async function init() {
   const linkedSection = homeSectionFromHash();
   const hasInitialSelection = new URLSearchParams(window.location.search).has("p1")
     || (!linkedSection && Boolean(safeStorageGet(STORAGE_KEYS.last, null)?.p1));
+  // meta.json is preloaded by index.html, so it is usually here already; wait briefly for it.
+  const metaReady = fetchJson("data/meta.json").catch((err) => {
+    console.warn("Could not load data freshness:", err);
+    return null;
+  });
+  if (!hasInitialSelection) {
+    renderHomeCounts(await Promise.race([metaReady, new Promise((done) => setTimeout(done, 500))]));
+  }
   setHomeVisible(!hasInitialSelection);
 
   await loadPlayers();
   renderRecent();
   const homeReady = renderHome();
-  renderDataFreshness().catch((err) => console.warn("Could not load data freshness:", err));
+  renderDataFreshness(metaReady).catch((err) => console.warn("Could not load data freshness:", err));
 
   const urlSelection = getUrlSelection();
   const storedSelection = linkedSection ? null : safeStorageGet(STORAGE_KEYS.last, null);

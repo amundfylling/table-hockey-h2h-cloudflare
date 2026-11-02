@@ -37,7 +37,11 @@ export async function onRequest(context) {
   const headers = new Headers(response.headers);
   headers.delete("content-length");
   headers.delete("etag");
-  return new Response(injectMeta(await response.text(), meta), {
+  const html = injectPreload(injectMeta(await response.text(), meta), [
+    "/data/players.json",
+    `/data/h2h/${p1}.json`,
+  ]);
+  return new Response(html, {
     status: response.status,
     headers,
   });
@@ -131,6 +135,17 @@ function setTag(html, pattern, replacement) {
 function setMeta(html, attr, key, value) {
   const pattern = new RegExp(`<meta\\s+${attr}="${key}"\\s+content="[^"]*"\\s*/?>`);
   return setTag(html, pattern, `<meta ${attr}="${key}" content="${escapeHtml(value)}" />`);
+}
+
+// A player or matchup view needs the player index and the player's own file before it can
+// show anything, but the browser only asks for them once the app's scripts have run. Naming
+// them in the head starts both downloads alongside the scripts.
+export function injectPreload(html, paths) {
+  if (!html.includes("</head>")) return html;
+  const links = paths
+    .map((path) => `  <link rel="preload" href="${escapeHtml(path)}" as="fetch" crossorigin />\n`)
+    .join("");
+  return html.replace("</head>", () => `${links}</head>`);
 }
 
 export function injectMeta(html, meta) {
