@@ -103,7 +103,11 @@ def compute_ratings(
     g1 = rows["goals_player1"].astype("int64").tolist()
     g2 = rows["goals_player2"].astype("int64").tolist()
     days = ((rows["date_dt"] - pd.Timestamp("1970-01-01")).dt.days).tolist()
-    dates = rows["date"].tolist()
+    # Missing dates and names become None so the JSON stays valid (no bare NaN).
+    dates = [value if isinstance(value, str) and value else None for value in rows["date"]]
+    names = [
+        value if isinstance(value, str) and value else None for value in rows["tournament_name"]
+    ]
     tournaments = rows["tournament_id"].astype("Int64").tolist()
 
     wanted = {int(pid) for pid in player_ids}
@@ -157,7 +161,8 @@ def compute_ratings(
                 continue
             tournament = tournaments[i]
             key = ("t", int(tournament)) if tournament is not pd.NA else ("d", dates[i])
-            point = [key, dates[i], START_RATING + SCALE * new_mu, SCALE * new_phi, games[pid]]
+            point = [key, dates[i], START_RATING + SCALE * new_mu, SCALE * new_phi, games[pid],
+                     names[i] if key[0] == "t" else None]
             points = history.setdefault(pid, [])
             if points and points[-1][0] == key:
                 points[-1] = point
@@ -185,10 +190,10 @@ def _payload(points: List[list]) -> dict:
         "rd": round(last[3]),
         "games": last[4],
         "peak": {"rating": round(peak[2]), "date": peak[1]} if peak else None,
-        # [date, rating, rd, tournament id or None] after each tournament (or day, for games
-        # without one).
+        # [date, rating, rd, tournament name or None] after each tournament (or day, for games
+        # without one). The name is stored because games against players without a page are
+        # not in the player's match list.
         "history": [
-            [point[1], round(point[2]), round(point[3]), point[0][1] if point[0][0] == "t" else None]
-            for point in points
+            [point[1], round(point[2]), round(point[3]), point[5]] for point in points
         ],
     }

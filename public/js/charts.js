@@ -1,6 +1,6 @@
 import { state, elements, isSeriesMode, isSinglePlayerMode } from "./state.js";
 import { getChronologicalItems } from "./form.js?v=20260801-generational-run-v3";
-import { escapeHtml, formatDate, formatDateRange } from "./utils.js";
+import { decodeHtmlEntities, escapeHtml, formatDate, formatDateRange } from "./utils.js";
 import { SVG_TREND, SVG_BAR_CHART } from "./constants.js";
 import { getAliasGroup, getPlayerById } from "./players.js";
 import { requestView } from "./dom.js";
@@ -598,11 +598,7 @@ function renderRatingChart() {
   setLegend("rating-legend", [["a", "Rating"], ["aband", "± rating deviation"]]);
 
   const time = (date) => Date.parse(`${date}T00:00:00Z`);
-  const points = history.map(([date, value, rd, tournamentId]) => ({ date, t: time(date), value, rd, tournamentId }));
-  const tournamentNames = new Map();
-  state.baseMatches.forEach((match) => {
-    if (match.tournament_id != null && match.tournament_name) tournamentNames.set(match.tournament_id, match.tournament_name);
-  });
+  const points = history.map(([date, value, rd, tournament]) => ({ date, t: time(date), value, rd, tournament }));
 
   const width = widthOf(container, 1150);
   const compact = width < 560;
@@ -698,7 +694,7 @@ function renderRatingChart() {
     cursor.setAttribute("cx", gx);
     cursor.setAttribute("cy", gy);
     cursor.setAttribute("opacity", "1");
-    const tournament = best.tournamentId != null ? tournamentNames.get(best.tournamentId) : "";
+    const tournament = best.tournament ? decodeHtmlEntities(best.tournament) : "";
     const html = `<div class="tooltip-title">${escapeHtml(formatDate(best.date))}</div>
       ${tournament ? `<div class="tooltip-kv">${escapeHtml(tournament)}</div>` : ""}
       <div class="tooltip-kv">Rating after: <strong>${fmt(best.value)}</strong> ±${fmt(best.rd)}</div>`;

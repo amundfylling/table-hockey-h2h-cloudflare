@@ -1,3 +1,4 @@
+import json
 import unittest
 
 import pandas as pd
@@ -11,6 +12,7 @@ def _frame(games):
         rows.append({
             "player1_id": p1, "player2_id": p2, "goals_player1": g1, "goals_player2": g2,
             "date": date, "date_dt": pd.Timestamp(date), "tournament_id": tournament,
+            "tournament_name": None if tournament is None else f"Open {tournament}",
             "stage_sequence": 1, "stage_id": 1, "round_number": index,
             "playoff_game_number": None,
         })
@@ -36,6 +38,7 @@ class RatingsTest(unittest.TestCase):
                  (1, 2, 1, 3, "2024-02-01", 11)]
         history = compute_ratings(_frame(games), [1])[1]["history"]
         self.assertEqual([point[0] for point in history], ["2024-01-01", "2024-02-01"])
+        self.assertEqual([point[3] for point in history], ["Open 10", "Open 11"])
         self.assertEqual(compute_ratings(_frame(games), [1])[1]["games"], 3)
 
     def test_rd_widens_after_time_away(self):
@@ -44,6 +47,15 @@ class RatingsTest(unittest.TestCase):
         later = compute_ratings(_frame(base + [(1, 2, 3, 2, "2026-01-01", 11)]), [1])
         # The game itself narrows RD, but less of the time-away widening is undone.
         self.assertGreater(later[1]["rd"], soon[1]["rd"])
+
+    def test_missing_date_serializes_as_null(self):
+        frame = _frame([(1, 2, 3, 1, "2024-01-01", 10), (1, 2, 3, 1, "2024-02-01", None)])
+        frame.loc[1, "date"] = float("nan")
+        frame.loc[1, "date_dt"] = pd.NaT
+        history = compute_ratings(frame, [1])[1]["history"]
+        self.assertEqual(history[-1][0], None)
+        self.assertEqual(history[-1][3], None)
+        json.dumps(history, allow_nan=False)
 
     def test_alias_ids_share_one_rating(self):
         games = [(1, 3, 4, 1, "2024-01-01", 10), (2, 3, 4, 1, "2024-02-01", 11)]
