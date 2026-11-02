@@ -51,6 +51,9 @@ class SitemapTest(unittest.TestCase):
         payloads[2]["opponents"]["1"]["summary"]["last_meeting_date"] = "2024-05-01"
         payloads[1]["opponents"]["3"]["summary"]["last_meeting_date"] = "2025-02-03"
         payloads[3]["opponents"]["1"]["summary"]["last_meeting_date"] = "2025-02-03"
+        # A later rated game against an unlisted opponent still changes player 2's page.
+        payloads[2]["rating"] = {"history": [["2023-01-01", 1500, 350, "A"],
+                                             ["2025-06-07", 1510, 300, "B"]]}
         text = build_sitemap(payloads, "2026-11-01", "https://h2h.example", min_pair_games=5,
                              tournament_ids=[4, 5], tournament_dates={4: "2019-03-02"})
         lastmod = {
@@ -60,9 +63,10 @@ class SitemapTest(unittest.TestCase):
         base = "https://h2h.example"
         self.assertEqual(lastmod[f"{base}/"], "2026-11-01")
         self.assertEqual(lastmod[f"{base}/?p1=1"], "2025-02-03")
-        self.assertEqual(lastmod[f"{base}/?p1=2"], "2024-05-01")
+        self.assertEqual(lastmod[f"{base}/?p1=2"], "2025-06-07")
+        self.assertEqual(lastmod[f"{base}/?p1=3"], "2025-02-03")
         # A pair page also shows a forecast from both players' current ratings.
-        self.assertEqual(lastmod[f"{base}/?p1=1&p2=2"], "2025-02-03")
+        self.assertEqual(lastmod[f"{base}/?p1=1&p2=2"], "2025-06-07")
         self.assertEqual(lastmod[f"{base}/tournament?id=4"], "2019-03-02")
         self.assertEqual(lastmod[f"{base}/tournament?id=5"], "2026-11-01")
 

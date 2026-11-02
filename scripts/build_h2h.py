@@ -1436,6 +1436,10 @@ def build_sitemap(
             str(opponent["summary"].get("last_meeting_date") or "")[:10]
             for opponent in payload["opponents"].values()
         ]
+        # The rating counts every game, including ones against opponents too rare to list.
+        history = (payload.get("rating") or {}).get("history") or []
+        if history and history[-1]:
+            dates.append(str(history[-1][0] or "")[:10])
         last_game[int(pid)] = day(max(dates, default=""))
 
     urls = [(f"{base}/", generated_on), (f"{base}/ratings", generated_on)]
