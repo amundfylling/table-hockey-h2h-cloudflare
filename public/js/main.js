@@ -390,6 +390,23 @@ function maybeScrollToResults(options = {}) {
   if (heading) heading.focus({ preventScroll: true });
 }
 
+// A matchup with no games links to each player's own page, so the view is not a dead end.
+function renderEmptyStateActions(players) {
+  const host = document.getElementById("empty-state-actions");
+  if (!host) return;
+  const links = players
+    .filter((player) => Number.isInteger(Number(player?.id)) && Number(player.id) > 0)
+    .map((player) => {
+      const link = document.createElement("a");
+      link.className = "btn";
+      link.href = `./?p1=${Number(player.id)}`;
+      link.textContent = `${player.name}’s games`;
+      return link;
+    });
+  host.replaceChildren(...links);
+  host.hidden = links.length === 0;
+}
+
 export async function handleCompare(options = {}) {
   const idA = resolvePlayerId(elements.playerA);
   const idB = resolvePlayerId(elements.playerB);
@@ -482,8 +499,9 @@ export async function handleCompare(options = {}) {
       if (elements.emptyStateCopy) {
         elements.emptyStateCopy.textContent = isSingle
           ? "No games against eligible opponents are recorded for this player."
-          : "These players have not faced each other in the dataset.";
+          : `${state.playerA.name} and ${state.playerB.name} have not faced each other in the dataset.`;
       }
+      renderEmptyStateActions(isSingle ? [] : [state.playerA, state.playerB]);
       state.baseMatches = [];
       state.filteredMatches = [];
       setStageCounts();
@@ -1063,6 +1081,15 @@ export async function init() {
 
   // Decide early whether the home screen shows, so a restored matchup never flashes it.
   // A "#records", "#rivalries" or "#players" link opens on that home section, not the last matchup.
+  // Links home from the ratings and tournament pages carry "?home", so they open the home
+  // screen instead of resuming the last matchup; the flag is dropped from the address.
+  const startUrl = new URL(window.location.href);
+  const wantsHome = startUrl.searchParams.has("home");
+  if (wantsHome) {
+    startUrl.searchParams.delete("home");
+    window.history.replaceState({}, "", startUrl);
+    safeStorageRemove(STORAGE_KEYS.last);
+  }
   const linkedSection = homeSectionFromHash();
   const hasInitialSelection = new URLSearchParams(window.location.search).has("p1")
     || (!linkedSection && Boolean(safeStorageGet(STORAGE_KEYS.last, null)?.p1));

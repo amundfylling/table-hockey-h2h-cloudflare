@@ -173,9 +173,14 @@ function miniLeadChart(rivalry, lead) {
     parts.push(`<rect x="${X(peak).toFixed(1)}" y="${pt}" width="${(X(n - 1) - X(peak)).toFixed(1)}" height="${ph}" fill="${final >= 0 ? "var(--b)" : "var(--a)"}" fill-opacity="0.07"/>`);
   }
   parts.push(`<polyline points="${pts.join(" ")}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>`);
-  Object.entries(rivalry.year_starts || {}).forEach(([year, index], i, all) => {
-    if (all.length > 4 && i % 2) return;
-    parts.push(`<text x="${(X(index) + 2).toFixed(1)}" y="${height - 4}" font-size="11" fill="var(--ink-3)">${year}</text>`);
+  // Year labels at each season's first game, skipping any that would collide with the
+  // previous label or run past the right edge (a four-digit year is about 26 units wide).
+  let lastLabelX = -Infinity;
+  Object.entries(rivalry.year_starts || {}).forEach(([year, index]) => {
+    const x = X(index) + 2;
+    if (x - lastLabelX < 34 || x + 26 > width) return;
+    parts.push(`<text x="${x.toFixed(1)}" y="${height - 4}" font-size="11" fill="var(--ink-3)">${year}</text>`);
+    lastLabelX = x;
   });
   if (peak > 0 && peak < n - 1) {
     parts.push(`<circle cx="${X(peak).toFixed(1)}" cy="${Y(lead[peak]).toFixed(1)}" r="3.5" fill="${color}" stroke="var(--surface)" stroke-width="2"/>`);
@@ -426,8 +431,11 @@ function renderRecords() {
   const list = document.getElementById("records-list");
   const section = document.getElementById("records");
   if (!list || !section) return;
-  const cards = [streaksCard(), ...smallCards()].filter(Boolean);
+  const small = smallCards();
+  const cards = [streaksCard(), ...small].filter(Boolean);
   section.hidden = cards.length === 0;
+  list.style.setProperty("--record-cols", String(Math.min(4, Math.max(1, small.length))));
+  list.classList.toggle("records--odd", small.length % 2 === 1);
   list.replaceChildren(...cards);
 }
 

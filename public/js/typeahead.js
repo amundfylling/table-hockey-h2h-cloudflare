@@ -105,6 +105,31 @@ export function buildOpponentSuggestions(query, opponents = state.opponentsOfA, 
   return withGroupedDuplicateSuggestions(results).slice(0, limit);
 }
 
+// Players listed under the same name (such as two "Andrey Babintsev" entries) get a short
+// detail that tells the rows apart: the city if it differs, else the birth year, else the id.
+// Returns a map from player id to that detail.
+function twinLabels(items) {
+  const groups = new Map();
+  items.forEach((item) => {
+    if (item.isCareer || item.isGroup || item.inGroup || !item.name) return;
+    const key = normalizeText(item.name);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(item);
+  });
+  const labels = new Map();
+  const bornOf = (player) => /(\d{4})$/.exec(String(player.date_of_birth || ""))?.[1] || "";
+  const pickers = [(player) => player.city || "", (player) => (bornOf(player) ? `born ${bornOf(player)}` : "")];
+  groups.forEach((group) => {
+    if (group.length < 2) return;
+    const pick = pickers.find((fn) => {
+      const values = group.map(fn);
+      return values.every(Boolean) && new Set(values).size === group.length;
+    }) || ((player) => `#${player.id}`);
+    group.forEach((player) => labels.set(Number(player.id), pick(player)));
+  });
+  return labels;
+}
+
 export function createSuggestionIdentity(player) {
   const identity = document.createElement("span");
   identity.className = player.isGroup ? "typeahead-player typeahead-player--group" : "typeahead-player";
@@ -231,6 +256,7 @@ export function setupTypeahead(inputEl, listEl, options = {}) {
     }
     currentItems = items.some((item) => item.isGroup) ? items : withGroupedDuplicateSuggestions(items);
     if (career) currentItems = [career, ...currentItems];
+    const twins = twinLabels(currentItems);
     const fragment = document.createDocumentFragment();
     currentItems.forEach((player, idx) => {
       const btn = document.createElement("button");
@@ -269,11 +295,16 @@ export function setupTypeahead(inputEl, listEl, options = {}) {
         const count = document.createElement("span");
         count.className = "game-count";
         const rank = formatWorldRank(player);
-        count.textContent = `${player.totalMatches} game${player.totalMatches !== 1 ? "s" : ""}${rank ? ` · ${rank}` : ""}`;
+        const twin = twins.get(Number(player.id)) || "";
+        count.textContent = [twin, `${player.totalMatches} game${player.totalMatches !== 1 ? "s" : ""}`, rank]
+          .filter(Boolean).join(" · ");
         count.title = formatRankingTitle(player);
         btn.appendChild(count);
       } else {
-        const playerMeta = player.inGroup ? `#${player.id}` : formatPlayerMeta(player);
+        const twin = player.inGroup ? "" : twins.get(Number(player.id)) || "";
+        const playerMeta = player.inGroup
+          ? `#${player.id}`
+          : [twin, formatPlayerMeta(player)].filter(Boolean).join(" · ");
         if (playerMeta) {
           const meta = document.createElement("span");
           meta.className = "muted";
