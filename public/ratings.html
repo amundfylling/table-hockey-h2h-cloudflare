@@ -183,6 +183,36 @@
           draw. Draws get rarer as the gap grows.</p>
       </section>
 
+      <section aria-labelledby="doc-series">
+        <h2 id="doc-series">Playoff series</h2>
+        <p>With the Playoff and Series filters selected, the forecast gives the chance of winning a
+          <strong>best-of-7 series</strong>, first to four wins, instead of a single game.</p>
+        <p><strong>Each playoff game.</strong> A playoff game can't end drawn, because a draw goes to
+          golden-goal overtime. In the backtest, 25,200 overtime games split between the players in the
+          same proportion as games decided in regulation. So the draw chance is shared out in that ratio:</p>
+        <p class="doc-formula">P(A wins a playoff game) = P(A wins) / (P(A wins) + P(B wins))</p>
+        <p>On playoff games from 2022 to 2026 these chances matched what happened to within about 1.5
+          percentage points at every level, from coin-flips to 90% favourites.</p>
+        <p><strong>The series.</strong> Every game is treated as a fresh game with the same chance p, so
+          the chance of reaching four wins first is</p>
+        <p class="doc-formula">P(series) = Σ<sub>k=0..3</sub> C(3+k, k) · p<sup>4</sup> · (1 − p)<sup>k</sup></p>
+        <p>A longer series rewards the better player, as the table shows.</p>
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <thead><tr><th scope="col">Chance to win one playoff game</th><th scope="col">Chance to win a best-of-7</th></tr></thead>
+            <tbody>
+              <tr><td>50%</td><td>50%</td></tr>
+              <tr><td>55%</td><td>61%</td></tr>
+              <tr><td>60%</td><td>71%</td></tr>
+              <tr><td>70%</td><td>87%</td></tr>
+              <tr><td>80%</td><td>97%</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Real playoff rounds can be first to one, two, three or four wins. The forecast always shows
+          best of 7, so it is a common yardstick rather than a forecast for a particular round.</p>
+      </section>
+
       <section aria-labelledby="doc-h2h">
         <h2 id="doc-h2h">The head-to-head adjustment</h2>
         <p>Some players beat a particular opponent more often than their ratings say, for example because
@@ -248,8 +278,8 @@
       <section aria-labelledby="doc-limits">
         <h2 id="doc-limits">What it doesn't know</h2>
         <ul>
-          <li>The format. A forecast is for a single game. It doesn't know if the game is a group game or
-            part of a best-of-seven playoff series.</li>
+          <li>The format of a real round. The game forecast doesn't know if a game is a group game or a
+            playoff game, and the series forecast always assumes best of 7.</li>
           <li>Anything off the table, such as injuries, travel or a new table.</li>
           <li>Games that aren't in the data sources listed below.</li>
           <li>Results from today. The site rebuilds once a day.</li>
