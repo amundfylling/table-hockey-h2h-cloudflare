@@ -435,6 +435,7 @@ function renderRecords() {
   const cards = [streaksCard(), ...small].filter(Boolean);
   section.hidden = cards.length === 0;
   list.style.setProperty("--record-cols", String(Math.min(4, Math.max(1, small.length))));
+  list.classList.toggle("records--odd", small.length % 2 === 1);
   list.replaceChildren(...cards);
 }
 

@@ -4249,7 +4249,7 @@ button.record:hover,
   }
 
   /* An odd number of small cards: the last one takes the whole row. */
-  .records > .record:not(.record--streaks):last-child:nth-child(even) {
+  .records--odd > .record:not(.record--streaks):last-child {
     grid-column: 1 / -1;
   }
 }
