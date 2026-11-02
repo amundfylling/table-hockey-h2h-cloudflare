@@ -1368,13 +1368,13 @@ def build_sitemap(
     min_pair_games: int = SITEMAP_MIN_PAIR_GAMES,
     tournament_ids: Iterable[int] = (),
 ) -> str:
-    """sitemap.xml text: the home page, every player and tournament, then the most played
+    """sitemap.xml text: the home and ratings pages, every player and tournament, then the most played
     matchups.
 
     Matchups are listed once, lower id first, most games first, until the file is full.
     """
     base = site_url.rstrip("/")
-    urls = [f"{base}/"]
+    urls = [f"{base}/", f"{base}/ratings"]
     urls.extend(f"{base}/?p1={pid}" for pid in sorted(int(pid) for pid in player_payloads))
     urls.extend(f"{base}/tournament?id={tid}" for tid in sorted(int(t) for t in tournament_ids))
     pairs = []
