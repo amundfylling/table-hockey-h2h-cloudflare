@@ -80,6 +80,7 @@ export function renderTableHeaders() {
 
     if (!column.key) {
       th.className = "expand-header";
+      th.append(Object.assign(document.createElement("span"), { className: "sr-only", textContent: "Details" }));
       fragment.appendChild(th);
       return;
     }
