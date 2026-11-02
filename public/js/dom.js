@@ -43,6 +43,7 @@ export const ICONS = {
   right: "M9 6l6 6-6 6",
   down: "M6 9l6 6 6-6",
   swap: ["M7 4L3 8l4 4", "M3 8h14", "M17 20l4-4-4-4", "M21 16H7"],
+  info: ["M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z", "M12 11v5", "M12 7.5h.01"],
 };
 
 // Asks main.js to open a view without importing it (avoids an import cycle).

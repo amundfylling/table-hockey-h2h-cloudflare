@@ -74,6 +74,7 @@ function pickViews() {
     ["player", `./?p1=${p1}`],
     ["matchup", `./?p1=${p1}&p2=${p2}`],
     ["tournament", `./tournament.html?id=${tournament}`],
+    ["ratings", "./ratings.html"],
   ];
 }
 

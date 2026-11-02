@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>How the ratings work · Table Hockey H2H</title>
+  <meta name="description" content="How Table Hockey H2H rates players with Glicko-2 and goal difference, and how the head-to-head forecast is worked out and tested." />
+  <meta name="theme-color" content="#F4F3EF" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="How the ratings work · Table Hockey H2H" />
+  <meta property="og:description" content="How Table Hockey H2H rates players with Glicko-2 and goal difference, and how the head-to-head forecast is worked out and tested." />
+  <meta property="og:url" content="https://h2h.puck.no/ratings" />
+  <meta property="og:image" content="https://h2h.puck.no/og-default.png" />
+  <link rel="canonical" href="https://h2h.puck.no/ratings" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="preload" href="fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="fonts/barlow-condensed-latin-600.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon.png" />
+  <link rel="stylesheet" href="styles.css?v=20261102-ratings-doc" />
+</head>
+
+<body data-home="false" class="doc-page">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <a class="brand" href="./" data-nav="home" aria-label="Table Hockey H2H, home">
+        <img class="mark" src="nbhf-logo.png" alt="" width="24" height="36" />
+        <span class="brand-name">Table Hockey H2H</span>
+      </a>
+      <nav class="nav" aria-label="Main">
+        <a href="./" data-nav="home">Head-to-head</a>
+        <a href="./#records" data-nav="records">Records</a>
+        <a href="./#rivalries" data-nav="rivalries">Rivalries</a>
+        <a href="./#players" data-nav="players">Players</a>
+      </nav>
+      <a id="header-search" class="header-search" href="./">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
+          stroke-linejoin="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="7"></circle>
+          <path d="M20 20l-3.5-3.5"></path>
+        </svg>
+        <span class="header-search-label">Search players</span>
+        </a>
+      <div class="topbar-actions">
+        <a id="mobile-search" class="icon-button only-m" href="./" aria-label="Search players">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="7"></circle>
+            <path d="M20 20l-3.5-3.5"></path>
+          </svg>
+        </a>
+        <button id="theme-toggle" class="icon-button theme-toggle" type="button" aria-pressed="false"
+          aria-label="Switch to dark mode">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 3a6 6 0 0 0 9 7.4A9 9 0 1 1 12 3z"></path>
+          </svg>
+          <span class="sr-only">Dark mode</span>
+        </button>
+        <button id="menu-toggle" class="icon-button only-m" type="button" aria-label="Open menu"
+          aria-controls="mobile-menu" aria-expanded="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 7h16"></path>
+            <path d="M4 12h16"></path>
+            <path d="M4 17h16"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <nav id="mobile-menu" class="mobile-menu" aria-label="Main" hidden>
+      <div class="wrap">
+        <a href="./" data-nav="home">Head-to-head</a>
+        <a href="./#records" data-nav="records">Records</a>
+        <a href="./#rivalries" data-nav="rivalries">Rivalries</a>
+        <a href="./#players" data-nav="players">Players</a>
+      </div>
+    </nav>
+  </header>
+
+  <main id="main" class="doc-main">
+    <div class="wrap view-hero">
+      <nav class="crumbs" aria-label="Breadcrumb">
+        <a href="./">Head-to-head</a><span class="sep" aria-hidden="true">/</span><span aria-current="page">How the ratings work</span>
+      </nav>
+      <h1 class="t-title">How the ratings and forecasts work</h1>
+      <p class="t-meta">The rating chart on player pages and the “If they met today” forecast on matchup pages</p>
+    </div>
+
+    <article class="wrap section doc">
+      <section aria-labelledby="doc-short">
+        <h2 id="doc-short">In short</h2>
+        <ul>
+          <li>Every player gets a <strong>rating</strong> from every game in the data, worked out with
+            <a href="http://www.glicko.net/glicko/glicko2.pdf" rel="noopener" target="_blank">Glicko-2</a>
+            and adjusted so the size of a win counts. Ratings start at 1,500.</li>
+          <li>Next to the rating is a <strong>rating deviation (RD)</strong>: how sure the system is. The ±
+            band on the rating chart is one RD on each side. It shrinks as a player plays and grows when they
+            take a break.</li>
+          <li>The <strong>forecast</strong> turns two ratings into a chance of a win, a draw and a loss
+            in one game played today. It also looks at how the two have done against each other compared
+            with what their ratings said.</li>
+          <li>The ratings and forecasts are rebuilt every day from the latest results.</li>
+        </ul>
+      </section>
+
+      <section aria-labelledby="doc-rating">
+        <h2 id="doc-rating">The rating</h2>
+        <p>Glicko-2 was made by Mark Glickman as an improvement on the Elo system used in chess. Each player
+          has three numbers:</p>
+        <dl class="doc-terms">
+          <dt>Rating</dt>
+          <dd>The estimate of playing strength. A new player starts at 1,500.</dd>
+          <dt>Rating deviation (RD)</dt>
+          <dd>The uncertainty of that estimate, in rating points. A new player starts at 350, so their first
+            results move their rating a lot. A regular player settles around 40 to 60.</dd>
+          <dt>Volatility</dt>
+          <dd>How erratic the player's results are. It decides how fast RD grows again, and it is not shown
+            on the site.</dd>
+        </dl>
+        <p>After each game both players' ratings move towards the result. The move is bigger when the result
+          was a surprise, when the player's own RD is high, and when the opponent's RD is low. A win over a
+          well-known player counts for more than a win over someone the system knows little about.</p>
+
+        <h3>What this site changes</h3>
+        <p><strong>It updates after every game.</strong> Classic Glicko-2 groups games into rating periods,
+          such as a month. Here each game updates both players straight away, in the order they were
+          played.</p>
+        <p><strong>It counts the goal difference.</strong> Instead of 1 for a win, ½ for a draw and 0 for a
+          loss, a game is worth</p>
+        <p class="doc-formula">score = 1 / (1 + e<sup>−0.4 × goal difference</sup>)</p>
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption>What a result is worth to the winner</caption>
+            <thead><tr><th scope="col">Result</th><th scope="col">Score</th></tr></thead>
+            <tbody>
+              <tr><td>Draw</td><td>0.50</td></tr>
+              <tr><td>Win by 1 (for example 3–2, or any overtime win)</td><td>0.60</td></tr>
+              <tr><td>Win by 2</td><td>0.69</td></tr>
+              <tr><td>Win by 3</td><td>0.77</td></tr>
+              <tr><td>Win by 5</td><td>0.88</td></tr>
+              <tr><td>Win by 8</td><td>0.96</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Because a narrow win is worth only a little more than a draw, ratings here spread out less than
+          in systems that count every win as a full point. The numbers can't be compared directly with
+          other rating lists or with the ITHF world ranking.</p>
+        <p><strong>RD grows with time away.</strong> Before each game a player's RD grows by their
+          volatility once for the game itself, and once more for every week since their last game. A player
+          coming back after a long break moves quickly until the system has caught up with them.</p>
+        <p><strong>Every game counts.</strong> That includes games from team events and against players
+          who don't have a page on the site. Players listed under more than one id share one rating.</p>
+
+        <h3>Settings</h3>
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <thead><tr><th scope="col">Setting</th><th scope="col">Value</th></tr></thead>
+            <tbody>
+              <tr><td>Starting rating and RD</td><td>1,500 ± 350</td></tr>
+              <tr><td>Starting volatility</td><td>0.3</td></tr>
+              <tr><td>τ (how fast volatility can change)</td><td>1.5</td></tr>
+              <tr><td>Extra RD growth</td><td>one volatility step per 7 days away</td></tr>
+              <tr><td>Goal-difference scale</td><td>0.4</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>These were not picked by hand. See “How well it works” below.</p>
+      </section>
+
+      <section aria-labelledby="doc-forecast">
+        <h2 id="doc-forecast">From ratings to a forecast</h2>
+        <p>The forecast is for one game played today. Both players' RDs are first grown up to today, so a
+          player who hasn't played for a while is less certain, and the forecast moves closer to even.</p>
+        <p>The rating gap is shrunk by how uncertain both ratings are, using Glicko's g-function:</p>
+        <p class="doc-formula">x = g(√(RD<sub>A</sub>² + RD<sub>B</sub>²)) × (rating<sub>A</sub> − rating<sub>B</sub>) / 173.7</p>
+        <p>Then the three outcomes follow an ordered logit model:</p>
+        <p class="doc-formula">P(A wins) = σ(2.14 x − 0.29)<br />P(B wins) = σ(−2.14 x − 0.29)<br />P(draw) = what's left</p>
+        <p>where σ(z) = 1 / (1 + e<sup>−z</sup>). Between two equal players this gives 43% each and a 14%
+          draw. Draws get rarer as the gap grows.</p>
+      </section>
+
+      <section aria-labelledby="doc-h2h">
+        <h2 id="doc-h2h">The head-to-head adjustment</h2>
+        <p>Some players beat a particular opponent more often than their ratings say, for example because
+          of their style or the matchup. To catch that, the build keeps track, for every pair, of how each
+          meeting went compared with what the ratings expected at that time: 1 for a win, ½ for a draw,
+          0 for a loss, minus the expected score.</p>
+        <p class="doc-formula">edge = (sum of result − expected) / (meetings + 20)<br />x = x + 1.09 × edge</p>
+        <p>The “+ 20” holds the edge back until there are plenty of meetings. A pair who have met a handful
+          of times barely move. Take two evenly rated players who have met 80 times, where one scored 8
+          points more than the ratings expected. Their edge is 0.08, which moves the forecast by about
+          4 percentage points.</p>
+        <p>The backtest shows about 60% of a long rivalry's past over- or under-performance carries over
+          into the next meeting. The effect also holds after allowing for a player simply being in good
+          or bad form.</p>
+      </section>
+
+      <section aria-labelledby="doc-test">
+        <h2 id="doc-test">How well it works</h2>
+        <p>All settings were tuned on games from 2017 to 2021, then tested on the 458,727 games played
+          from 2022 to 2026, which the tuning never saw. Each game was predicted using only results from
+          before it.</p>
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <thead>
+              <tr><th scope="col">Model</th><th scope="col">Log loss</th><th scope="col">Picks the winner</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Elo (K = 24)</td><td>0.771</td><td>74.9%</td></tr>
+              <tr><td>Elo, tuned</td><td>0.768</td><td>74.9%</td></tr>
+              <tr><td>Glicko-2, standard settings</td><td>0.767</td><td>75.0%</td></tr>
+              <tr><td>Elo with goal difference</td><td>0.762</td><td>75.3%</td></tr>
+              <tr><td>Glicko-2, tuned</td><td>0.761</td><td>75.3%</td></tr>
+              <tr><td>Glicko-2 with goal difference</td><td>0.755</td><td>75.7%</td></tr>
+              <tr><td><strong>… plus head-to-head (used here)</strong></td><td><strong>0.753</strong></td><td><strong>75.9%</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p><strong>Log loss</strong> scores the probabilities themselves, draws included: lower is better.
+          Guessing from how often wins, draws and losses happen overall scores 0.99. “Picks the winner”
+          counts how often the more likely winner won, in games that didn't end in a draw.</p>
+        <p>The biggest gains are for players with few games. When one of the two had fewer than 30
+          earlier games, the winner pick goes from 76% with Elo to 82%.</p>
+      </section>
+
+      <section aria-labelledby="doc-limits">
+        <h2 id="doc-limits">What it doesn't know</h2>
+        <ul>
+          <li>The format. A forecast is for a single game. It doesn't know if the game is a group game or
+            part of a best-of-seven playoff series.</li>
+          <li>Anything off the table, such as injuries, travel or a new table.</li>
+          <li>Games that aren't in the data sources listed below.</li>
+          <li>Results from today. The site rebuilds once a day.</li>
+        </ul>
+        <p>A 70% favourite still loses three games in ten. The forecast says how often, not who will win
+          the next one.</p>
+      </section>
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <section class="data-sources" aria-labelledby="data-sources-title">
+        <h2 id="data-sources-title" class="data-sources-title">Data sources</h2>
+        <ul id="data-sources-list" class="data-sources-list">
+          <li><a href="https://th.sportscorpion.com/" target="_blank" rel="noopener">th.sportscorpion.com</a></li>
+          <li><a href="https://resultat.bordshockey.se/" target="_blank" rel="noopener">resultat.bordshockey.se</a></li>
+          <li><a href="https://table-hockey.eu/" target="_blank" rel="noopener">table-hockey.eu</a></li>
+        </ul>
+      </section>
+      <div class="footer-meta">
+        <p id="home-stats" class="footer-stats" hidden></p>
+        <p id="data-freshness" class="data-freshness" hidden></p>
+      </div>
+    </div>
+  </footer>
+
+  <script type="module" src="js/ratings-page.js?v=20261102-ratings"></script>
+</body>
+
+</html>

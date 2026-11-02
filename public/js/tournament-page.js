@@ -1,31 +1,12 @@
 // Tournament page (tournament.html?id=…): champion, upsets, playoff brackets and
 // round-robin standings from the build's data/t/ files (see tournamentDataPath).
 import { el } from "./dom.js";
-import { setTheme, toggleTheme } from "./theme.js";
-import { safeStorageGet, STORAGE_KEYS } from "./state.js";
+import { initChrome } from "./chrome.js";
 import { pageTitle } from "./page-title.js";
 import { formatDateRange, tournamentDataPath } from "./date-range.js";
 import { decodeHtmlEntities, formatNumber, safeExternalUrl } from "./utils.js";
 
 const ID_RE = /^[1-9]\d{0,9}$/;
-
-function initChrome() {
-  const saved = safeStorageGet(STORAGE_KEYS.theme, null);
-  const preferred = saved === "dark" || saved === "light"
-    ? saved
-    : window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-  setTheme(preferred, { persist: saved === "dark" || saved === "light" });
-  document.getElementById("theme-toggle")?.addEventListener("click", toggleTheme);
-
-  const menuButton = document.getElementById("menu-toggle");
-  const menu = document.getElementById("mobile-menu");
-  menuButton?.addEventListener("click", () => {
-    const open = menu.hidden;
-    menu.hidden = !open;
-    menuButton.setAttribute("aria-expanded", open ? "true" : "false");
-    menuButton.setAttribute("aria-label", open ? "Close menu" : "Open menu");
-  });
-}
 
 function makePlayerLink(data) {
   const linked = new Set((data.linked || []).map(Number));

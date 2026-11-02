@@ -17,3 +17,5 @@
   Cache-Control: no-cache
 /tournament
   Cache-Control: no-cache
+/ratings
+  Cache-Control: no-cache

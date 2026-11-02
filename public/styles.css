@@ -4828,6 +4828,90 @@ button.rrow:hover {
   color: var(--ink-3);
 }
 
+.forecast-head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.forecast-head .forecast-title {
+  margin: 0;
+}
+
+.forecast-info-btn {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-3);
+  cursor: pointer;
+}
+
+/* A bigger tap target than the icon itself. */
+.forecast-info-btn::after {
+  content: "";
+  position: absolute;
+  inset: -12px;
+}
+
+.forecast-info-btn:hover,
+.forecast-info-btn:focus-visible,
+.forecast-info-btn[aria-expanded="true"] {
+  color: var(--ink);
+}
+
+.forecast-info-btn svg {
+  width: 15px;
+  height: 15px;
+}
+
+.forecast-info {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  z-index: 20;
+  width: min(340px, calc(100vw - 32px));
+  transform: translateX(-50%);
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  font-size: 14px;
+  line-height: 21px;
+  color: var(--ink-2);
+  text-align: left;
+}
+
+.forecast-info[hidden] {
+  display: none;
+}
+
+.forecast-info p {
+  margin: 0 0 10px;
+}
+
+.forecast-info-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.forecast-info-link svg {
+  width: 14px;
+  height: 14px;
+}
+
 .share-title {
   margin-bottom: 8px;
 }
@@ -6956,4 +7040,125 @@ body[data-comparison-mode="matchup"] .player-only {
   .t-table td {
     padding: 8px;
   }
+}
+
+/* ── Ratings explainer (ratings.html) ────────────────────────────── */
+.doc > section {
+  max-width: 720px;
+  margin-bottom: 40px;
+}
+
+.doc h2 {
+  margin: 0 0 12px;
+  font-size: 22px;
+  line-height: 28px;
+  color: var(--ink);
+}
+
+.doc h3 {
+  margin: 28px 0 8px;
+  font-size: 17px;
+  line-height: 24px;
+  color: var(--ink);
+}
+
+.doc p,
+.doc li,
+.doc dd {
+  font-size: 16px;
+  line-height: 26px;
+  color: var(--ink-2);
+}
+
+.doc p {
+  margin: 0 0 14px;
+}
+
+.doc ul {
+  margin: 0 0 14px;
+  padding-left: 20px;
+}
+
+.doc li {
+  margin-bottom: 8px;
+}
+
+.doc strong {
+  color: var(--ink);
+}
+
+.doc a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.doc-terms {
+  margin: 0 0 16px;
+}
+
+.doc-terms dt {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.doc-terms dd {
+  margin: 2px 0 12px;
+}
+
+.doc-formula {
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 14px !important;
+  line-height: 24px !important;
+  color: var(--ink) !important;
+  overflow-x: auto;
+}
+
+.doc-table-wrap {
+  margin: 0 0 16px;
+  overflow-x: auto;
+}
+
+.doc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.doc-table caption {
+  margin-bottom: 6px;
+  text-align: left;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.doc-table th,
+.doc-table td {
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  color: var(--ink-2);
+}
+
+.doc-table th {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.doc-table td:not(:first-child),
+.doc-table th:not(:first-child) {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.doc-table tr:last-child td {
+  border-bottom: none;
 }

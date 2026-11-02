@@ -265,6 +265,55 @@ function forecastFor(playerA, playerB) {
   return null;
 }
 
+// Closes the open forecast explainer on Escape or a click elsewhere. Bound once.
+let forecastInfoBound = false;
+function bindForecastInfoDismiss() {
+  if (forecastInfoBound) return;
+  forecastInfoBound = true;
+  const close = (focusButton) => {
+    document.querySelectorAll(".forecast-info-btn[aria-expanded='true']").forEach((button) => {
+      button.setAttribute("aria-expanded", "false");
+      document.getElementById(button.getAttribute("aria-controls"))?.setAttribute("hidden", "");
+      if (focusButton) button.focus();
+    });
+  };
+  document.addEventListener("click", (event) => {
+    if (!event.target.closest(".forecast-head")) close(false);
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && document.querySelector(".forecast-info-btn[aria-expanded='true']")) {
+      close(true);
+    }
+  });
+}
+
+function createForecastInfo() {
+  bindForecastInfoDismiss();
+  const id = "forecast-info";
+  const panel = el("div", { id, class: "forecast-info", hidden: true },
+    el("p", {}, "The chance of each result if the two played one game today. It comes from both players' ",
+      "ratings, which count every game and its goal difference, and how their earlier meetings went ",
+      "compared with what the ratings expected."),
+    el("a", { href: "ratings", class: "forecast-info-link" }, "How the ratings and forecast work",
+      icon(ICONS.right)));
+  const button = el("button", {
+    type: "button",
+    class: "forecast-info-btn",
+    "aria-expanded": "false",
+    "aria-controls": id,
+    "aria-label": "About this forecast",
+    onclick: () => {
+      const open = button.getAttribute("aria-expanded") !== "true";
+      button.setAttribute("aria-expanded", open ? "true" : "false");
+      panel.hidden = !open;
+    },
+  }, icon(ICONS.info));
+  return el("div", { class: "forecast-head" },
+    el("h3", { class: "forecast-title" }, "If they met today"),
+    button,
+    panel);
+}
+
 function createForecast() {
   const forecast = forecastFor(state.playerA, state.playerB);
   if (!forecast) return null;
@@ -273,7 +322,7 @@ function createForecast() {
   const nameA = lastName(state.playerA.name);
   const nameB = lastName(state.playerB.name);
   return el("div", { class: "forecast" },
-    el("h3", { class: "forecast-title" }, "If they met today"),
+    createForecastInfo(),
     el("div", {
       class: "forecast-bar",
       role: "img",
