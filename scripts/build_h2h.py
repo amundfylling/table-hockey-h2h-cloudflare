@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import html
 import json
 import hashlib
 import os
@@ -161,6 +162,28 @@ def normalize_dedupe_text(value: object) -> str:
     return re.sub(r"[\W_]+", " ", text, flags=re.UNICODE).strip()
 
 
+# Letters NFKD does not split into a base letter and a mark.
+_PLAYER_NAME_FOLDS = str.maketrans({"ø": "o", "æ": "ae", "đ": "d", "ł": "l", "ß": "ss"})
+
+
+def normalize_player_name(value: object) -> str:
+    """Key for telling whether two sources name the same player.
+
+    Case, accents and word order are ignored ("Östlund Peter" = "Peter Ostlund"), since the
+    sources write names in either order and some spell them without accents.
+    """
+    if pd.isna(value):
+        return ""
+    text = html.unescape(str(value)).casefold().translate(_PLAYER_NAME_FOLDS)
+    text = normalize_dedupe_text(text)
+    return " ".join(sorted(text.split()))
+
+
+def unescape_text(series: pd.Series) -> pd.Series:
+    """Decode HTML entities some source rows carry ("Bj&#246;rn" -> "Björn")."""
+    return series.map(lambda value: html.unescape(value) if "&" in value else value)
+
+
 def build_unique_player_name_index(players: Iterable[dict]) -> Dict[str, int]:
     """Return exact normalized names that identify one and only one player."""
     candidates: Dict[str, set[int]] = {}
@@ -275,7 +298,7 @@ def load_players(
     else:
         players_df["ranking_id"] = pd.Series([pd.NA] * len(players_df), index=players_df.index)
 
-    players_df["name"] = players_df["name"].fillna("").astype(str).str.strip()
+    players_df["name"] = unescape_text(players_df["name"].fillna("").astype(str)).str.strip()
     blank_names = players_df["name"].eq("") | players_df["name"].map(
         normalize_dedupe_text
     ).eq("")
@@ -351,7 +374,7 @@ def load_tournaments(
     ].copy()
     tourneys_df["id"] = tourneys_df["id"].astype("int64")
     tourneys_df = tourneys_df.drop_duplicates("id", keep="last")
-    tourneys_df["name"] = tourneys_df["name"].fillna("").astype(str).str.strip()
+    tourneys_df["name"] = unescape_text(tourneys_df["name"].fillna("").astype(str)).str.strip()
     tourneys_df = tourneys_df.sort_values(by="name", key=lambda s: s.str.lower())
 
     tournaments = []
@@ -554,6 +577,8 @@ def process_matches_df(matches: pd.DataFrame) -> pd.DataFrame:
     ensure_string_column(matches, "stage_type", lower=True)
     ensure_string_column(matches, "player1_name")
     ensure_string_column(matches, "player2_name")
+    for column in ["tournament_name", "stage", "player1_name", "player2_name"]:
+        matches[column] = unescape_text(matches[column])
 
     for column in [
         "source",
@@ -616,6 +641,27 @@ LOOSE_OVERLAP_DEDUPE_COLUMNS = [
     "overtime",
 ]
 MIN_LOOSE_TOURNAMENT_CROSSWALK_MATCHES = 10
+# Two more loose passes, for games the ids or dates hide. Some players have two ids (a
+# sportscorpion duplicate record, or a supplemental-source id for someone sportscorpion
+# knows), so one pass matches players by name. And one source dates a multi-day event's
+# games by the day they were played while the other puts them all on the first day, so the
+# last pass lets the dates differ by a day.
+NAME_OVERLAP_DEDUPE_COLUMNS = [
+    "name_low",
+    "name_high",
+    "date",
+    "goals_name_low",
+    "goals_name_high",
+    "overtime",
+]
+SHIFTED_DATE_OVERLAP_DEDUPE_COLUMNS = [
+    "id1",
+    "id2",
+    "shifted_date",
+    "goals_id1",
+    "goals_id2",
+    "overtime",
+]
 
 
 def infer_tournament_crosswalk(
@@ -626,6 +672,7 @@ def infer_tournament_crosswalk(
     signature_columns: list[str] = OVERLAP_DEDUPE_COLUMNS,
     min_matches: int = MIN_TOURNAMENT_CROSSWALK_MATCHES,
     use_names: bool = True,
+    known_pairs: Iterable[Tuple[int, int]] = (),
 ) -> Tuple[
     Dict[Tuple[int, int], int],
     list[Tuple[Tuple[int, int], list[int], list[int]]],
@@ -636,8 +683,8 @@ def infer_tournament_crosswalk(
 
     Cross-source tournament IDs and names are not always the same. Matching normalized
     names are direct evidence when use_names is set; otherwise, require min_matches
-    distinct matching game signatures. In both cases the inferred ID mapping must be
-    one-to-one.
+    distinct matching game signatures. Pairs in known_pairs (accepted by an earlier pass)
+    need no more evidence. In all cases the inferred ID mapping must be one-to-one.
     """
     signature_hashes = pd.util.hash_pandas_object(
         matches[signature_columns], index=False
@@ -707,10 +754,11 @@ def infer_tournament_crosswalk(
             ].itertuples(index=False, name=None)
         }
 
+    known_pairs = set(known_pairs)
     candidates = {
         pair
         for pair, count in evidence.items()
-        if count >= min_matches or pair in matching_name_pairs
+        if count >= min_matches or pair in matching_name_pairs or pair in known_pairs
     }
     primary_candidates: Dict[int, set[int]] = {}
     preferred_candidates: Dict[int, set[int]] = {}
@@ -718,11 +766,36 @@ def infer_tournament_crosswalk(
         primary_candidates.setdefault(primary_id, set()).add(preferred_id)
         preferred_candidates.setdefault(preferred_id, set()).add(primary_id)
 
+    # One preferred event may stand for several primary ones (bordshockey lists a two-day
+    # cup as one event where Sportscorpion has a qualification and a final tournament).
+    # That is accepted when each primary event has min_matches games of its own: games
+    # shared by two primary events would mean those two are copies, which stays ambiguous.
+    pair_signatures = {
+        (int(primary_id), int(preferred_id)): set(
+            pd.util.hash_pandas_object(group[signature_columns], index=False).tolist()
+        )
+        for (primary_id, preferred_id), group in unique_signatures.groupby(
+            pair_columns, sort=False
+        )
+    }
+
+    def preferred_is_unambiguous(preferred_id: int) -> bool:
+        primaries = preferred_candidates[preferred_id]
+        if len(primaries) == 1:
+            return True
+        seen: set = set()
+        for primary_id in primaries:
+            pair = (primary_id, preferred_id)
+            if evidence[pair] < min_matches or seen & pair_signatures[pair]:
+                return False
+            seen |= pair_signatures[pair]
+        return True
+
     crosswalk = {
         (primary_id, preferred_id): evidence[(primary_id, preferred_id)]
         for primary_id, preferred_id in candidates
         if len(primary_candidates[primary_id]) == 1
-        and len(preferred_candidates[preferred_id]) == 1
+        and preferred_is_unambiguous(preferred_id)
     }
     accepted_pairs = [
         (int(primary_id), int(preferred_id)) in crosswalk
@@ -749,6 +822,34 @@ def infer_tournament_crosswalk(
     return crosswalk, overlap_groups
 
 
+def with_overlap_keys(matches: pd.DataFrame) -> pd.DataFrame:
+    """Add the name-based columns of NAME_OVERLAP_DEDUPE_COLUMNS.
+
+    name_low/name_high are the two players' normalized names in sorted order, with each
+    one's goals. A row whose names are missing or the same gets a key no other row has.
+    """
+    matches = matches.copy()
+    names = {}
+    for column in ["player1_name", "player2_name"]:
+        values = matches[column] if column in matches else pd.Series("", index=matches.index)
+        keys = {value: normalize_player_name(value) for value in values.dropna().unique()}
+        names[column] = values.map(keys).fillna("")
+    first, second = names["player1_name"], names["player2_name"]
+    usable = first.ne("") & second.ne("") & first.ne(second)
+    first_low = first <= second
+    unique_keys = pd.Series(
+        [f"#row {index}" for index in matches.index], index=matches.index, dtype="object"
+    )
+    matches["name_low"] = first.where(first_low, second).where(usable, unique_keys)
+    matches["name_high"] = second.where(first_low, first).where(usable, unique_keys)
+    # Frames without the per-player columns have player 1 as id1.
+    goals1 = matches["goals_player1"] if "goals_player1" in matches else matches["goals_id1"]
+    goals2 = matches["goals_player2"] if "goals_player2" in matches else matches["goals_id2"]
+    matches["goals_name_low"] = goals1.where(first_low, goals2)
+    matches["goals_name_high"] = goals2.where(first_low, goals1)
+    return matches
+
+
 def match_source_pair(
     matches: pd.DataFrame,
     is_preferred: pd.Series,
@@ -761,15 +862,31 @@ def match_source_pair(
     """
     drop_indices: list[int] = []
     kept_indices: list[int] = []
-    # Tournament mappings accepted so far, kept one-to-one across both passes.
+    # Tournament mappings accepted so far, kept one-to-one across the passes.
     primary_to_preferred: Dict[int, int] = {}
-    preferred_to_primary: Dict[int, int] = {}
-    # The exact pass runs first; the loose pass only sees rows it left unpaired.
-    for signature_columns, min_matches, use_names in [
-        (OVERLAP_DEDUPE_COLUMNS, MIN_TOURNAMENT_CROSSWALK_MATCHES, True),
-        (LOOSE_OVERLAP_DEDUPE_COLUMNS, MIN_LOOSE_TOURNAMENT_CROSSWALK_MATCHES, False),
-    ]:
+    preferred_to_primary: Dict[int, set[int]] = {}
+    matches = with_overlap_keys(matches)
+    passes = [
+        (OVERLAP_DEDUPE_COLUMNS, MIN_TOURNAMENT_CROSSWALK_MATCHES, True, 0),
+        (LOOSE_OVERLAP_DEDUPE_COLUMNS, MIN_LOOSE_TOURNAMENT_CROSSWALK_MATCHES, False, 0),
+        (NAME_OVERLAP_DEDUPE_COLUMNS, MIN_LOOSE_TOURNAMENT_CROSSWALK_MATCHES, False, 0),
+    ]
+    if "date_dt" in matches:
+        passes += [
+            (SHIFTED_DATE_OVERLAP_DEDUPE_COLUMNS, MIN_LOOSE_TOURNAMENT_CROSSWALK_MATCHES, False,
+             shift)
+            for shift in (1, -1)
+        ]
+    # The exact pass runs first; each later pass only sees rows the earlier ones left
+    # unpaired.
+    for signature_columns, min_matches, use_names, date_shift in passes:
         remaining = matches.index.difference(drop_indices + kept_indices)
+        if date_shift:
+            # The preferred source's date moved by date_shift days, the other's as is.
+            shifted = matches["date_dt"] + pd.Timedelta(days=date_shift)
+            matches["shifted_date"] = shifted.dt.strftime("%Y-%m-%d").where(
+                is_preferred, matches["date"]
+            )
         tournament_crosswalk, overlap_groups = infer_tournament_crosswalk(
             matches.loc[remaining],
             is_preferred.loc[remaining],
@@ -778,16 +895,24 @@ def match_source_pair(
             signature_columns=signature_columns,
             min_matches=min_matches,
             use_names=use_names,
+            known_pairs=primary_to_preferred.items(),
         )
+        # A primary event keeps the one preferred event it was given. A preferred event
+        # mapped earlier can take another primary event only on that event's own
+        # min_matches games (the earlier one's games are paired already).
         tournament_crosswalk = {
             (primary_id, preferred_id)
-            for primary_id, preferred_id in tournament_crosswalk
+            for (primary_id, preferred_id), count in tournament_crosswalk.items()
             if primary_to_preferred.get(primary_id, preferred_id) == preferred_id
-            and preferred_to_primary.get(preferred_id, primary_id) == primary_id
+            and (
+                preferred_to_primary.get(preferred_id, {primary_id}) == {primary_id}
+                or primary_id in preferred_to_primary[preferred_id]
+                or count >= min_matches
+            )
         }
         for primary_id, preferred_id in tournament_crosswalk:
             primary_to_preferred[primary_id] = preferred_id
-            preferred_to_primary[preferred_id] = primary_id
+            preferred_to_primary.setdefault(preferred_id, set()).add(primary_id)
         for pair, primary_indices, preferred_indices in overlap_groups:
             if pair not in tournament_crosswalk:
                 continue

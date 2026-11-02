@@ -426,7 +426,7 @@ class TestBordshockeySourceFields(unittest.TestCase):
 
         self.assertEqual(len(deduped), 18)
 
-    def test_loose_pass_keeps_exact_tournament_mapping_one_to_one(self):
+    def exact_then_loose_rows(self, loose_games):
         rows = []
         for round_number in range(1, 4):
             shared = {
@@ -448,16 +448,87 @@ class TestBordshockeySourceFields(unittest.TestCase):
                     {**shared, "tournament_id": 200, "source": "bordshockey.net"},
                 ]
             )
-        loose_rows = self.loose_overlap_rows(10)
+        loose_rows = self.loose_overlap_rows(loose_games)
         for row in loose_rows:
             row["tournament_id"] = 101 if row["source"] == "" else 200
         rows.extend(loose_rows)
+        return rows
+
+    def test_mapped_event_takes_a_second_primary_event_on_its_own_evidence(self):
+        # Bordshockey's one event (200) is Sportscorpion's qualification (100) and final (101).
+        deduped = deduplicate_overlapping_source_matches(
+            pd.DataFrame(self.exact_then_loose_rows(10))
+        )
+
+        self.assertEqual((deduped.tournament_id == 100).sum(), 0)
+        self.assertEqual((deduped.tournament_id == 101).sum(), 0)
+        self.assertEqual((deduped.tournament_id == 200).sum(), 13)
+
+    def test_mapped_event_keeps_a_weakly_matching_primary_event(self):
+        deduped = deduplicate_overlapping_source_matches(
+            pd.DataFrame(self.exact_then_loose_rows(9))
+        )
+
+        self.assertEqual((deduped.tournament_id == 100).sum(), 0)
+        self.assertEqual((deduped.tournament_id == 101).sum(), 9)
+        self.assertEqual((deduped.tournament_id == 200).sum(), 12)
+
+    def test_same_game_under_another_player_id_is_deduped(self):
+        # Sportscorpion has the player twice (ids 7 and 70); bordshockey uses the other id.
+        rows = []
+        for game in range(10):
+            shared = {
+                "date": "2016-03-12",
+                "date_dt": pd.Timestamp("2016-03-12"),
+                "stage_sequence": 1,
+                "round_number": game + 1,
+                "playoff_game_number": None,
+                "goals_player1": 3,
+                "goals_player2": game % 3,
+                "overtime": False,
+                "tournament_level": None,
+                "player2_id": game + 100,
+                "player2_name": f"Opponent {chr(65 + game)}",
+            }
+            rows.append({**shared, "player1_id": 7, "player1_name": "Söderström Björn",
+                         "tournament_id": 100, "tournament_name": "", "source": ""})
+            rows.append({**shared, "player1_id": 70, "player1_name": "Bj&#246;rn Soderstrom",
+                         "round_number": game + 30, "tournament_id": 200,
+                         "tournament_name": "", "source": "bordshockey.net"})
+        frame = pd.DataFrame(rows)
+        frame["id1"] = frame[["player1_id", "player2_id"]].min(axis=1)
+        frame["id2"] = frame[["player1_id", "player2_id"]].max(axis=1)
+        frame["goals_id1"] = frame["goals_player1"]
+        frame["goals_id2"] = frame["goals_player2"]
+
+        deduped = deduplicate_overlapping_source_matches(frame)
+
+        self.assertEqual(len(deduped), 10)
+        self.assertTrue((deduped.source == "bordshockey.net").all())
+
+    def test_same_game_a_day_apart_is_deduped(self):
+        # One source dates a multi-day event's games on its first day.
+        rows = self.loose_overlap_rows(10)
+        for row in rows:
+            if row["source"] == "":
+                row["date"] = "2018-11-04"
+            row["date_dt"] = pd.Timestamp(row["date"])
 
         deduped = deduplicate_overlapping_source_matches(pd.DataFrame(rows))
 
-        self.assertEqual((deduped.tournament_id == 100).sum(), 0)
-        self.assertEqual((deduped.tournament_id == 101).sum(), 10)
-        self.assertEqual((deduped.tournament_id == 200).sum(), 13)
+        self.assertEqual(len(deduped), 10)
+        self.assertTrue((deduped.source == "bordshockey.net").all())
+
+    def test_same_games_two_days_apart_are_preserved(self):
+        rows = self.loose_overlap_rows(10)
+        for row in rows:
+            if row["source"] == "":
+                row["date"] = "2018-11-05"
+            row["date_dt"] = pd.Timestamp(row["date"])
+
+        deduped = deduplicate_overlapping_source_matches(pd.DataFrame(rows))
+
+        self.assertEqual(len(deduped), 20)
 
     def test_table_hockey_eu_rows_replace_overlaps_with_both_older_sources(self):
         def game(round_number, tournament_id, source):
