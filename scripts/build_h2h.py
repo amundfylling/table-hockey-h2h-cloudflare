@@ -22,6 +22,7 @@ ROOT_DIR = SCRIPT_DIR.parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
 import download as dl  # noqa: E402
+import ratings  # noqa: E402
 import tournaments as tournament_pages  # noqa: E402
 
 CACHE_DIR = ROOT_DIR / ".cache"
@@ -1002,6 +1003,8 @@ def build_player_files(
     player_names: Dict[int, str],
     h2h_dir: Path = H2H_DIR,
     og_dir: Path = OG_H2H_DIR,
+    ratings: Optional[Dict[int, dict]] = None,
+    forecasts: Optional[Dict[Tuple[int, int], list]] = None,
 ) -> Dict[int, dict]:
     if h2h_dir.exists():
         shutil.rmtree(h2h_dir)
@@ -1013,6 +1016,8 @@ def build_player_files(
     player_payloads: Dict[int, dict] = {}
     for pid, name in player_names.items():
         player_payloads[pid] = {"player": {"id": pid, "name": name}, "opponents": {}}
+        if ratings and pid in ratings:
+            player_payloads[pid]["rating"] = ratings[pid]
 
     def finish_group(
         id1_int: int,
@@ -1106,6 +1111,11 @@ def build_player_files(
             "summary": summary_id2,
             "matches": matches_id2,
         }
+        # [win, draw, loss] if they met today, from the file owner's side.
+        forecast = (forecasts or {}).get((id1_int, id2_int))
+        if forecast:
+            player_payloads[id1_int]["opponents"][str(id2_int)]["forecast"] = forecast
+            player_payloads[id2_int]["opponents"][str(id1_int)]["forecast"] = forecast[::-1]
 
     id1_values = matches["id1"].to_numpy(dtype="int64", copy=False)
     id2_values = matches["id2"].to_numpy(dtype="int64", copy=False)
@@ -1339,6 +1349,15 @@ def build_player_files(
         )
     return player_payloads
 
+
+
+def load_alias_groups(path: Path = PUBLIC_DIR / "aliases.json") -> list:
+    """Id groups from aliases.json that belong to one person."""
+    try:
+        groups = json.loads(path.read_text(encoding="utf-8")).get("groups", [])
+    except (OSError, ValueError, AttributeError):
+        return []
+    return [group["ids"] for group in groups if isinstance(group, dict) and group.get("ids")]
 
 
 def build_sitemap(
@@ -1934,12 +1953,24 @@ def main() -> int:
     players, player_names = filter_players(players, eligible_ids, matches)
     write_json(DATA_STAGING_DIR / "players.json", players)
 
+    print("Computing Glicko-2 ratings and forecasts...")
+    pairs = matches[["id1", "id2"]].drop_duplicates().itertuples(index=False, name=None)
+    player_ratings, pair_forecasts = ratings.compute_ratings_and_forecasts(
+        all_matches,
+        player_names.keys(),
+        load_alias_groups(),
+        pairs=list(pairs),
+        today=pd.Timestamp(datetime.now(timezone.utc).date()),
+    )
+
     print("Building H2H player files...")
     player_payloads = build_player_files(
         matches,
         player_names,
         DATA_STAGING_DIR / "h2h",
         DATA_STAGING_DIR / "og",
+        ratings=player_ratings,
+        forecasts=pair_forecasts,
     )
     write_json(DATA_STAGING_DIR / "rivalries.json", build_rivalries(player_payloads, players))
 

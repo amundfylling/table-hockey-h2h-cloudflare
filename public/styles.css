@@ -4530,6 +4530,7 @@ button.rrow:hover {
 .dot.b { background: var(--b); }
 .dot.d { background: var(--draw); }
 .dot.band { background: var(--b); opacity: 0.3; }
+.dot.aband { background: var(--a); opacity: 0.25; }
 .dot.faint { background: var(--draw); opacity: 0.6; }
 
 .chart {
@@ -4807,6 +4808,53 @@ button.rrow:hover {
 
 .share {
   margin-top: 28px;
+}
+
+/* "If they met today": rating forecast between the names and the record bar. */
+.forecast {
+  max-width: 520px;
+  margin: 22px auto 0;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.forecast-title {
+  margin: 0 0 6px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.share-title {
+  margin-bottom: 8px;
+}
+
+.forecast-bar {
+  display: flex;
+  height: 8px;
+  gap: 2px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.forecast-bar span {
+  display: block;
+  height: 8px;
+}
+
+.forecast-labels {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.forecast-labels b {
+  color: var(--ink);
+  font-weight: 700;
 }
 
 .share-bar {

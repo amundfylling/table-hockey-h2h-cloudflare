@@ -249,6 +249,45 @@ function createWho(player, side) {
     popover);
 }
 
+// [win, draw, loss] for player A if they met today: Glicko-2 ratings plus how the pair's
+// earlier meetings went against those ratings, worked out at build time (scripts/ratings.py).
+function forecastFor(playerA, playerB) {
+  const idsA = getAliasGroup(playerA.id);
+  const idsB = getAliasGroup(playerB.id);
+  for (const a of idsA) {
+    for (const b of idsB) {
+      const own = state.playerFileCache.get(a)?.opponents?.[String(b)]?.forecast;
+      if (Array.isArray(own) && own.length === 3) return own;
+      const other = state.playerFileCache.get(b)?.opponents?.[String(a)]?.forecast;
+      if (Array.isArray(other) && other.length === 3) return [other[2], other[1], other[0]];
+    }
+  }
+  return null;
+}
+
+function createForecast() {
+  const forecast = forecastFor(state.playerA, state.playerB);
+  if (!forecast) return null;
+  const [win, draw, loss] = forecast;
+  const pct = (value) => `${Math.round(value * 100)}%`;
+  const nameA = lastName(state.playerA.name);
+  const nameB = lastName(state.playerB.name);
+  return el("div", { class: "forecast" },
+    el("h3", { class: "forecast-title" }, "If they met today"),
+    el("div", {
+      class: "forecast-bar",
+      role: "img",
+      "aria-label": `Forecast if they met today: ${nameA} ${pct(win)}, draw ${pct(draw)}, ${nameB} ${pct(loss)}.`,
+    },
+    el("span", { style: { width: `${win * 100}%`, background: "var(--a)" } }),
+    el("span", { style: { width: `${draw * 100}%`, background: "var(--draw)" } }),
+    el("span", { style: { width: `${loss * 100}%`, background: "var(--b)" } })),
+    el("div", { class: "forecast-labels", "aria-hidden": "true" },
+      el("span", {}, el("b", {}, pct(win)), ` ${nameA}`),
+      el("span", {}, `Draw ${pct(draw)}`),
+      el("span", {}, `${nameB} `, el("b", {}, pct(loss)))));
+}
+
 function createMatchupHero(items, summary) {
   const series = isSeriesMode();
   const { winsA, winsB, draws, total } = summary;
@@ -306,7 +345,12 @@ function createMatchupHero(items, summary) {
       createWho(state.playerA, "a"),
       el("div", { class: "mid" }, score, facts),
       createWho(state.playerB, "b")),
-    el("div", { class: "share" }, bar, labels),
+    createForecast(),
+    el("div", { class: "share" },
+      el("h3", { class: "forecast-title share-title" },
+        series ? "Series record so far" : "Record so far"),
+      bar,
+      labels),
     verdict);
 }
 

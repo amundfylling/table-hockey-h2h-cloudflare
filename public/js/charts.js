@@ -1,6 +1,6 @@
 import { state, elements, isSeriesMode, isSinglePlayerMode } from "./state.js";
 import { getChronologicalItems } from "./form.js?v=20260801-generational-run-v3";
-import { escapeHtml, formatDate, formatDateRange } from "./utils.js";
+import { decodeHtmlEntities, escapeHtml, formatDate, formatDateRange } from "./utils.js";
 import { SVG_TREND, SVG_BAR_CHART } from "./constants.js";
 import { getAliasGroup, getPlayerById } from "./players.js";
 import { requestView } from "./dom.js";
@@ -569,6 +569,139 @@ function renderSeasonBars(items) {
     `Win rate by season: ${rates.map((r) => `${r.year} ${Math.round(r.rate * 100)}%`).join(", ")}.`);
 }
 
+// ── Player: rating over time ────────────────────────────────────────
+// Glicko-2 with goal difference, worked out at build time from every game (see
+// scripts/ratings.py). It covers the whole career, so the view's filters don't change it.
+function ratingOf(playerId) {
+  for (const id of getAliasGroup(playerId)) {
+    const rating = state.playerFileCache.get(id)?.rating;
+    if (rating && Array.isArray(rating.history) && rating.history.length) return rating;
+  }
+  return null;
+}
+
+function renderRatingChart() {
+  const section = document.getElementById("rating-section");
+  const container = document.getElementById("rating-chart");
+  if (!section || !container) return;
+  const rating = state.playerA ? ratingOf(state.playerA.id) : null;
+  const history = (rating?.history || []).filter((point) => point[0]);
+  if (history.length < 2) {
+    section.hidden = true;
+    container.replaceChildren();
+    return;
+  }
+  section.hidden = false;
+  const name = lastName(state.playerA.name || "");
+  const peakText = rating.peak ? ` Peak ${fmt(rating.peak.rating)} in ${monthYear(rating.peak.date)}.` : "";
+  setText("rating-sub", `Glicko-2 rating after each tournament, from every game and its goal difference. Now ${fmt(rating.rating)} ±${fmt(rating.rd)}.${peakText}`);
+  setLegend("rating-legend", [["a", "Rating"], ["aband", "± rating deviation"]]);
+
+  const time = (date) => Date.parse(`${date}T00:00:00Z`);
+  const points = history.map(([date, value, rd, tournament]) => ({ date, t: time(date), value, rd, tournament }));
+
+  const width = widthOf(container, 1150);
+  const compact = width < 560;
+  const height = compact ? 220 : 280;
+  const pl = 44;
+  const pr = 12;
+  const pt = 24;
+  const pb = 26;
+  const pw = width - pl - pr;
+  const ph = height - pt - pb;
+  const t0 = points[0].t;
+  const t1 = Math.max(points[points.length - 1].t, t0 + 86400000);
+  // Scale to the rating line; a wide early band is clipped rather than flattening the line.
+  const values = points.map((p) => p.value);
+  const settled = points.filter((p) => p.rd <= 150);
+  const lowBand = Math.min(...(settled.length ? settled : points).map((p) => p.value - p.rd));
+  const highBand = Math.max(...(settled.length ? settled : points).map((p) => p.value + p.rd));
+  const minV = Math.min(...values, lowBand);
+  const maxV = Math.max(...values, highBand);
+  const step = niceStep(Math.max(50, maxV - minV), compact ? 4 : 5);
+  const bottom = Math.floor(minV / step) * step;
+  const top = Math.ceil(maxV / step) * step;
+  const X = (t) => pl + (pw * (t - t0)) / (t1 - t0);
+  const Y = (v) => pt + (ph * (top - Math.max(bottom, Math.min(top, v)))) / (top - bottom);
+  const parts = [];
+
+  for (let v = bottom; v <= top + 1e-9; v += step) {
+    const y = Y(v);
+    parts.push(`<line x1="${pl}" x2="${width - pr}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" stroke="${LINE}"/>`);
+    parts.push(`<text x="${pl - 8}" y="${(y + 4).toFixed(1)}" ${FONT} fill="${INK3}" text-anchor="end">${fmt(v)}</text>`);
+  }
+
+  const firstYear = new Date(t0).getUTCFullYear();
+  const lastYear = new Date(t1).getUTCFullYear();
+  const yearStep = Math.max(1, Math.ceil((lastYear - firstYear + 1) / Math.max(2, Math.floor(pw / (compact ? 44 : 56)))));
+  for (let year = firstYear + 1; year <= lastYear; year += 1) {
+    const x = X(Date.UTC(year, 0, 1));
+    parts.push(`<line x1="${x.toFixed(1)}" x2="${x.toFixed(1)}" y1="${height - pb}" y2="${height - pb + 5}" stroke="${INK3}"/>`);
+    if ((year - firstYear - 1) % yearStep === 0 && x <= width - 30) {
+      parts.push(`<text x="${(x + 3).toFixed(1)}" y="${height - 6}" ${FONT} fill="${INK3}">${year}</text>`);
+    }
+  }
+
+  const xy = (p, v) => `${X(p.t).toFixed(1)},${Y(v).toFixed(1)}`;
+  const upper = points.map((p) => xy(p, p.value + p.rd));
+  const lower = points.slice().reverse().map((p) => xy(p, p.value - p.rd));
+  parts.push(`<path d="M${upper.join(" L")} L${lower.join(" L")} Z" fill="${A}" fill-opacity="0.14"/>`);
+  parts.push(`<path d="M${points.map((p) => xy(p, p.value)).join(" L")}" fill="none" stroke="${A}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`);
+
+  const last = points[points.length - 1];
+  const ex = X(last.t);
+  const ey = Y(last.value);
+  if (rating.peak) {
+    const peakPoint = points.find((p) => p.date === rating.peak.date && p.value === rating.peak.rating);
+    // A peak right next to the end would collide with the "now" label; the subtitle has it.
+    if (peakPoint && peakPoint !== last && ex - X(peakPoint.t) > (compact ? 120 : 160)) {
+      const px = X(peakPoint.t);
+      const py = Y(peakPoint.value);
+      const anchor = px > width * 0.6 ? "end" : "start";
+      parts.push(`<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="4" fill="${A}" stroke="var(--surface)" stroke-width="2"/>`);
+      parts.push(`<text x="${(px + (anchor === "end" ? -8 : 8)).toFixed(1)}" y="${Math.max(pt + 4, py - 8).toFixed(1)}" ${FONT} font-weight="600" fill="${INK}" text-anchor="${anchor}">Peak ${fmt(peakPoint.value)}</text>`);
+    }
+  }
+  parts.push(`<circle cx="${ex.toFixed(1)}" cy="${ey.toFixed(1)}" r="4" fill="${A}" stroke="var(--surface)" stroke-width="2"/>`);
+  if (!compact) parts.push(`<text x="${(ex - 8).toFixed(1)}" y="${(ey + (ey < pt + 30 ? 20 : -10)).toFixed(1)}" ${FONT} font-weight="600" fill="${INK}" text-anchor="end">${fmt(last.value)} now</text>`);
+
+  parts.push(`<line class="rating-guide" x1="0" x2="0" y1="${pt}" y2="${pt + ph}" stroke="${INK3}" stroke-dasharray="2 2" opacity="0"/>`);
+  parts.push(`<circle class="rating-cursor" r="4" fill="var(--surface)" stroke="${INK}" stroke-width="2" opacity="0"/>`);
+  parts.push(`<rect x="${pl}" y="${pt}" width="${pw}" height="${ph}" fill="transparent"/>`);
+
+  const label = `${name}'s Glicko-2 rating over time: ${fmt(last.value)} plus or minus ${fmt(last.rd)} now${rating.peak ? `, peak ${fmt(rating.peak.rating)} in ${monthYear(rating.peak.date)}` : ""}.`;
+  container.innerHTML = svgMarkup(width, height, parts.join(""), label);
+  const svg = container.querySelector("svg");
+  const guide = svg.querySelector(".rating-guide");
+  const cursor = svg.querySelector(".rating-cursor");
+  const tooltip = ensureChartTooltip(container);
+  const hide = () => {
+    guide.setAttribute("opacity", "0");
+    cursor.setAttribute("opacity", "0");
+    hideChartTooltip(tooltip);
+  };
+  bindChartTooltip(svg, (event) => {
+    const box = svg.getBoundingClientRect();
+    const scale = width / box.width;
+    const x = (event.clientX - box.left) * scale;
+    let best = points[0];
+    for (const p of points) if (Math.abs(X(p.t) - x) < Math.abs(X(best.t) - x)) best = p;
+    const gx = X(best.t);
+    const gy = Y(best.value);
+    guide.setAttribute("x1", gx);
+    guide.setAttribute("x2", gx);
+    guide.setAttribute("opacity", "1");
+    cursor.setAttribute("cx", gx);
+    cursor.setAttribute("cy", gy);
+    cursor.setAttribute("opacity", "1");
+    const tournament = best.tournament ? decodeHtmlEntities(best.tournament) : "";
+    const html = `<div class="tooltip-title">${escapeHtml(formatDate(best.date))}</div>
+      ${tournament ? `<div class="tooltip-kv">${escapeHtml(tournament)}</div>` : ""}
+      <div class="tooltip-kv">Rating after: <strong>${fmt(best.value)}</strong> ±${fmt(best.rd)}</div>`;
+    showChartTooltip(container, tooltip, html, gx / scale - 2, gx / scale + 2, gy / scale);
+  }, hide);
+}
+
 // ── Player: who they play ───────────────────────────────────────────
 function opponentButton(record, className) {
   const button = document.createElement("button");
@@ -845,6 +978,7 @@ export function renderCharts(items) {
   if (!state.playerA) return;
   if (isSinglePlayerMode()) {
     const records = opponentRecords(items, (id) => getAliasGroup(id)[0], (id) => getPlayerById(id)?.name);
+    renderRatingChart();
     renderSeasonBars(items);
     renderWhoPlays(items, records);
     renderRivalMap(items, records);
