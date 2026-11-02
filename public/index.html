@@ -20,6 +20,12 @@
   <link rel="preload" href="fonts/barlow-condensed-latin-600.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="icon" type="image/png" sizes="32x32" href="favicon.png" />
   <link rel="stylesheet" href="styles.css?v=20261102-beats" />
+  <!-- Start the small data files every page reads while the scripts load. Player and matchup
+       links also preload the player index and the player's file (functions/index.js). -->
+  <link rel="preload" href="aliases.json" as="fetch" crossorigin />
+  <link rel="preload" href="data/meta.json" as="fetch" crossorigin />
+  <link rel="preload" href="data/records.json" as="fetch" crossorigin />
+  <link rel="preload" href="data/rivalries.json" as="fetch" crossorigin />
 </head>
 
 <body data-home="pending">
@@ -671,7 +677,7 @@
     </div>
   </footer>
 
-  <script type="module" src="js/main.js?v=20261102-beats"></script>
+  <script type="module" src="js/main.js?v=20261102-preload"></script>
 </body>
 
 </html>
