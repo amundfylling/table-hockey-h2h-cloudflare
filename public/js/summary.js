@@ -224,7 +224,7 @@ function createForecastInfo(series) {
     },
   }, icon(ICONS.info));
   return el("div", { class: "forecast-head" },
-    el("h3", { class: "forecast-title" },
+    el("h2", { class: "forecast-title" },
       series ? "If they met in a best-of-7 series today" : "If they met today"),
     button,
     panel);
@@ -328,7 +328,7 @@ function createMatchupHero(items, summary) {
       createWho(state.playerB, "b")),
     createForecast(),
     el("div", { class: "share" },
-      el("h3", { class: "forecast-title share-title" },
+      el("h2", { class: "forecast-title share-title" },
         series ? "Series record so far" : "Record so far"),
       bar,
       labels),
@@ -470,7 +470,8 @@ function createPlayerHero(items, summary) {
     crumbs([{ label: "Players", nav: "players" }, { label: player.name }]),
     el("div", { class: "p-top" },
       el("div", {},
-        el("h1", { class: "p-name" }, player.name),
+        // The page heading is the hidden #headline, which already names the player.
+        el("p", { class: "p-name" }, player.name),
         meta ? el("p", { class: "p-meta" }, meta) : null),
       el("div", { class: "actions" }, compare)),
     kpis);

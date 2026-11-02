@@ -366,12 +366,25 @@ function setStageFilterCardsVisible(visible) {
   if (elements.filterCard) elements.filterCard.hidden = !visible;
 }
 
+// True when the control that opened a view has been hidden or removed by it, which
+// leaves keyboard and screen reader users back at the top of the page.
+function focusWasLost() {
+  const active = document.activeElement;
+  if (!active || active === document.body || !active.isConnected) return true;
+  return typeof active.checkVisibility === "function"
+    ? !active.checkVisibility()
+    : !active.getClientRects().length;
+}
+
 function maybeScrollToResults(options = {}) {
-  if (options.restoreUrlState || options.scrollToResults === false) return;
-  if (!window.matchMedia("(max-width: 900px)").matches) return;
+  if (options.restoreUrlState || options.pageLoad) return;
   const target = elements.summarySection;
   const heading = elements.headline;
   if (!target || target.hidden) return;
+  if (options.scrollToResults === false || !window.matchMedia("(max-width: 900px)").matches) {
+    if (heading && focusWasLost()) heading.focus({ preventScroll: true });
+    return;
+  }
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   target.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "start" });
   if (heading) heading.focus({ preventScroll: true });
@@ -1140,7 +1153,8 @@ async function showSelection(selection, fromUrl) {
       );
       await Promise.all([comparePromise, opponentsPromise]);
     } else {
-      const comparePromise = handleCompare({ scrollToResults: false });
+      // Only reached on page load (a saved selection), so focus stays where the browser put it.
+      const comparePromise = handleCompare({ scrollToResults: false, pageLoad: true });
       const opponentsPromise = loadOpponentsForPlayer(
         selection.p1,
         p1Ids,
