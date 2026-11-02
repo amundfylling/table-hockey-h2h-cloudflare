@@ -112,6 +112,7 @@ def compute_ratings_and_forecasts(
     pairs: Iterable[Tuple[int, int]] = (),
     today: Optional[pd.Timestamp] = None,
     nations: Optional[Dict[int, str]] = None,
+    pair_stats: Optional[Dict[Tuple[int, int], List[float]]] = None,
 ) -> Tuple[Dict[int, dict], Dict[Tuple[int, int], List[float]]]:
     """Rating history for each id in player_ids, one point per tournament they played, and
     a [win, draw, loss] forecast (first player's side) for each (a, b) in pairs if they met
@@ -123,6 +124,10 @@ def compute_ratings_and_forecasts(
     With `nations` (player id -> nation name), each rating also gets a `nations` list: the
     player's results against each opponent nation next to what the ratings expected before
     each game (see _nation_rows).
+
+    With a `pair_stats` dict, it is filled for each (a, b) in pairs with a's results against b
+    next to what the ratings expected: [games, points, expected points, variance], points
+    counting a win as 1 and a draw as 0.5 (the same terms as the nation rows).
     """
     canonical: Dict[int, int] = {}
     for group in alias_groups:
@@ -157,7 +162,8 @@ def compute_ratings_and_forecasts(
     games: Dict[int, int] = {}
     # Per tracked player: [event key, date, rating, rd, games] points, the last one still open.
     history: Dict[int, List[list]] = {}
-    # Per pair (low id, high id): [results minus expected for the low id, meetings].
+    # Per pair (low id, high id), for the low id: [results minus expected, meetings,
+    # expected points, variance of the points].
     pair_edge: Dict[Tuple[int, int], List[float]] = {}
     # Per tracked player and opponent nation ("" when unknown):
     # [games, wins, draws, losses, expected points, variance of the points].
@@ -189,12 +195,12 @@ def compute_ratings_and_forecasts(
         result_a = 1.0 if g1[i] > g2[i] else 0.0 if g1[i] < g2[i] else 0.5
         expected_a = win + 0.5 * draw
         surprise = result_a - expected_a
+        variance = (
+            win * (1.0 - expected_a) ** 2
+            + draw * (0.5 - expected_a) ** 2
+            + (1.0 - win - draw) * expected_a ** 2
+        )
         if nations is not None:
-            variance = (
-                win * (1.0 - expected_a) ** 2
-                + draw * (0.5 - expected_a) ** 2
-                + (1.0 - win - draw) * expected_a ** 2
-            )
             for pid, opponent, result, expected in (
                 (a, b, result_a, expected_a),
                 (b, a, 1.0 - result_a, 1.0 - expected_a),
@@ -208,9 +214,11 @@ def compute_ratings_and_forecasts(
                 row[1 if result == 1.0 else 3 if result == 0.0 else 2] += 1
                 row[4] += expected
                 row[5] += variance
-        edge = pair_edge.setdefault((a, b) if a < b else (b, a), [0.0, 0])
+        edge = pair_edge.setdefault((a, b) if a < b else (b, a), [0.0, 0, 0.0, 0.0])
         edge[0] += surprise if a < b else -surprise
         edge[1] += 1
+        edge[2] += expected_a if a < b else 1.0 - expected_a
+        edge[3] += variance
         updates = []
         for pid, mine, theirs, ph, ph_opp, score in (
             (a, mu_a, mu_b, pre[0], pre[1], score_a),
@@ -269,8 +277,16 @@ def compute_ratings_and_forecasts(
         b = canonical.get(int(pair[1]), int(pair[1]))
         if a == b or a not in mu or b not in mu:
             continue
-        total, meetings = pair_edge.get((a, b) if a < b else (b, a), [0.0, 0])
+        total, meetings, expected_low, variance = pair_edge.get(
+            (a, b) if a < b else (b, a), [0.0, 0, 0.0, 0.0]
+        )
         edge = (total if a < b else -total) / (meetings + H2H_PRIOR_GAMES)
+        if pair_stats is not None and meetings:
+            expected = expected_low if a < b else meetings - expected_low
+            pair_stats[(int(pair[0]), int(pair[1]))] = [
+                int(meetings), round(expected + (total if a < b else -total), 2),
+                round(expected, 2), round(variance, 2),
+            ]
         x = _g(math.sqrt(rd_today(a) ** 2 + rd_today(b) ** 2)) * (mu[a] - mu[b])
         win, draw, loss = _outcome_probabilities(x + H2H_WEIGHT * edge)
         forecasts[(int(pair[0]), int(pair[1]))] = [round(win, 3), round(draw, 3), round(loss, 3)]

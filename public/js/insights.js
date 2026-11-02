@@ -373,3 +373,31 @@ export function listNames(names) {
   if (names.length < 2) return names.join("");
   return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 }
+
+// Opponents a player has done most above and below what the Glicko-2 ratings expected.
+// `entries` are { id, name, games, points, expected, variance } from each opponent's
+// vs_rating in the player file. Ranked by points above (or below) expected, which weighs the
+// size of the gap by how often they met; `clear` uses the same rules as the nation rows.
+export const OPPONENT_MIN_GAMES = 10;
+
+export function opponentRatingEdges(entries, { minGames = OPPONENT_MIN_GAMES, limit = 5, z = NATION_Z, minGap = NATION_MIN_GAP } = {}) {
+  const pool = (Array.isArray(entries) ? entries : [])
+    .filter((entry) => entry && entry.games >= minGames)
+    .map((entry) => {
+      const excess = entry.points - entry.expected;
+      const diff = (excess / entry.games) * 100;
+      const zScore = excess / Math.sqrt(Math.max(entry.variance, 1e-9));
+      return {
+        ...entry,
+        excess,
+        diff,
+        z: zScore,
+        score: entry.points / entry.games,
+        expectedScore: entry.expected / entry.games,
+        clear: Math.abs(zScore) >= z && Math.abs(diff) >= minGap,
+      };
+    });
+  const over = pool.filter((row) => row.excess > 0).sort((x, y) => y.excess - x.excess).slice(0, limit);
+  const under = pool.filter((row) => row.excess < 0).sort((x, y) => x.excess - y.excess).slice(0, limit);
+  return { over, under, pool: pool.length, minGames };
+}

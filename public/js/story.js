@@ -14,6 +14,8 @@ import {
 } from "./insights.js";
 import { getChronologicalItems } from "./form.js?v=20260801-generational-run-v3";
 import { matchupStory, playerStory } from "./story-lines.js";
+import { opponentRatingEdges } from "./insights.js";
+import { ratingEdgeEntries } from "./charts.js";
 
 // [data-story value, finding key, label] in page order.
 const SECTIONS = {
@@ -31,6 +33,7 @@ const SECTIONS = {
     ["nations", "nations", "Nations"],
     ["win-rate", "seasons", "Seasons"],
     ["rivals", "rivals", "Rivals"],
+    ["beats", "beats", "Over/under"],
     ["opponents", "opponents", "Opponents"],
     ["games", "games", "Every game"],
   ],
@@ -63,6 +66,7 @@ export function storyFindings(items, names = {}) {
       series,
       rating,
       edges: nationEdges(rating?.nations),
+      beats: opponentRatingEdges(ratingEdgeEntries(state.playerA.id)),
       seasons,
       records: opponentRecords(items, (id) => getAliasGroup(id)[0], (id) => getPlayerById(id)?.name),
     });

@@ -95,3 +95,20 @@ test("nation edges name only clear gaps and keep the total", async () => {
   assert.equal(listNames(["A", "B", "C"]), "A, B and C");
   assert.equal(listNames(["A"]), "A");
 });
+
+test("opponent rating edges rank by points above or below expected", async () => {
+  const { opponentRatingEdges } = await import("../public/js/insights.js");
+  const entries = [
+    { id: 1, name: "Long Rival", games: 100, points: 70, expected: 60, variance: 20 },  // +10, clear
+    { id: 2, name: "Short Run", games: 12, points: 11, expected: 6, variance: 2.5 },    // +5, clear
+    { id: 3, name: "Close", games: 200, points: 101, expected: 100, variance: 40 },     // +1, not clear
+    { id: 4, name: "Nemesis", games: 40, points: 12, expected: 20, variance: 8 },       // −8, clear
+    { id: 5, name: "Too Few", games: 5, points: 5, expected: 1, variance: 1 },
+  ];
+  const edges = opponentRatingEdges(entries);
+  assert.deepEqual(edges.over.map((r) => r.name), ["Long Rival", "Short Run", "Close"]);
+  assert.deepEqual(edges.under.map((r) => r.name), ["Nemesis"]);
+  assert.deepEqual(edges.over.map((r) => r.clear), [true, true, false]);
+  assert.equal(edges.pool, 4);
+  assert.equal(Math.round(edges.under[0].excess), -8);
+});

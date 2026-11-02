@@ -19,7 +19,7 @@
   <link rel="preload" href="fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="fonts/barlow-condensed-latin-600.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="icon" type="image/png" sizes="32x32" href="favicon.png" />
-  <link rel="stylesheet" href="styles.css?v=20261102-share" />
+  <link rel="stylesheet" href="styles.css?v=20261102-beats" />
 </head>
 
 <body data-home="pending">
@@ -496,6 +496,21 @@
           </div>
         </div>
       </div>
+
+      <div id="beats-section" data-story="beats" class="section player-only" hidden>
+        <div class="wrap">
+          <div class="panel chart-panel">
+            <div class="chart-head">
+              <div>
+                <h2 class="chart-title">Above and below the ratings</h2>
+                <p id="beats-sub" class="chart-sub"></p>
+              </div>
+              <div id="beats-legend" class="legend"></div>
+            </div>
+            <div id="beats" class="chart beats"></div>
+          </div>
+        </div>
+      </div>
     </section>
 
     <section id="single-player-section" data-story="opponents" class="section" hidden>
@@ -656,7 +671,7 @@
     </div>
   </footer>
 
-  <script type="module" src="js/main.js?v=20261102-story"></script>
+  <script type="module" src="js/main.js?v=20261102-beats"></script>
 </body>
 
 </html>
