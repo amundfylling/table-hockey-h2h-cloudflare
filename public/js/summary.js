@@ -15,6 +15,7 @@ import { getItemSourceUrl } from "./table.js";
 import { getActiveFilterCount } from "./filters.js";
 import { el, icon, ICONS, requestView } from "./dom.js";
 import { createPlayerSwitcher, closePlayerSwitcher } from "./switcher.js";
+import { playoffGameChance, seriesWinChance } from "./forecast.js";
 import {
   buildVerdict,
   groupTournaments,
@@ -287,13 +288,17 @@ function bindForecastInfoDismiss() {
   });
 }
 
-function createForecastInfo() {
+function createForecastInfo(series) {
   bindForecastInfoDismiss();
   const id = "forecast-info";
+  const basis = "It comes from both players' ratings, which count every game and its goal "
+    + "difference, and how their earlier meetings went compared with what the ratings expected.";
+  const intro = series
+    ? "The chance of winning a best-of-7 playoff series (first to four wins) if the two met today. "
+      + "Each game's chance has no draws, since a drawn game goes to overtime. "
+    : "The chance of each result if the two played one game today. ";
   const panel = el("div", { id, class: "forecast-info", hidden: true },
-    el("p", {}, "The chance of each result if the two played one game today. It comes from both players' ",
-      "ratings, which count every game and its goal difference, and how their earlier meetings went ",
-      "compared with what the ratings expected."),
+    el("p", {}, intro, basis),
     el("a", { href: "ratings", class: "forecast-info-link" }, "How the ratings and forecast work",
       icon(ICONS.right)));
   const button = el("button", {
@@ -309,7 +314,8 @@ function createForecastInfo() {
     },
   }, icon(ICONS.info));
   return el("div", { class: "forecast-head" },
-    el("h3", { class: "forecast-title" }, "If they met today"),
+    el("h3", { class: "forecast-title" },
+      series ? "If they met in a best-of-7 series today" : "If they met today"),
     button,
     panel);
 }
@@ -317,16 +323,32 @@ function createForecastInfo() {
 function createForecast() {
   const forecast = forecastFor(state.playerA, state.playerB);
   if (!forecast) return null;
-  const [win, draw, loss] = forecast;
   const pct = (value) => `${Math.round(value * 100)}%`;
   const nameA = lastName(state.playerA.name);
   const nameB = lastName(state.playerB.name);
+  if (isSeriesMode()) {
+    const win = seriesWinChance(playoffGameChance(forecast), 4);
+    const loss = 1 - win;
+    return el("div", { class: "forecast" },
+      createForecastInfo(true),
+      el("div", {
+        class: "forecast-bar",
+        role: "img",
+        "aria-label": `Chance of winning a best-of-7 series if they met today: ${nameA} ${pct(win)}, ${nameB} ${pct(loss)}.`,
+      },
+      el("span", { style: { width: `${win * 100}%`, background: "var(--a)" } }),
+      el("span", { style: { width: `${loss * 100}%`, background: "var(--b)" } })),
+      el("div", { class: "forecast-labels", "aria-hidden": "true" },
+        el("span", {}, el("b", {}, pct(win)), ` ${nameA} wins the series`),
+        el("span", {}, `${nameB} wins the series `, el("b", {}, pct(loss)))));
+  }
+  const [win, draw, loss] = forecast;
   return el("div", { class: "forecast" },
-    createForecastInfo(),
+    createForecastInfo(false),
     el("div", {
       class: "forecast-bar",
       role: "img",
-      "aria-label": `Forecast if they met today: ${nameA} ${pct(win)}, draw ${pct(draw)}, ${nameB} ${pct(loss)}.`,
+      "aria-label": `Forecast for one game if they met today: ${nameA} ${pct(win)}, draw ${pct(draw)}, ${nameB} ${pct(loss)}.`,
     },
     el("span", { style: { width: `${win * 100}%`, background: "var(--a)" } }),
     el("span", { style: { width: `${draw * 100}%`, background: "var(--draw)" } }),
