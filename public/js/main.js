@@ -813,7 +813,8 @@ export async function loadPlayers() {
 
 // Picking the first player readies the opponent box rather than opening the
 // career page, so a head-to-head takes two picks. The career page is one
-// click on "View player", or Enter in the empty opponent box.
+// tap on the career row at the top of the opponent list (Enter in the empty
+// opponent box picks it), or "View player" once that list is closed.
 async function onPlayerASelected(player) {
   if (!player || !player.id) return;
   clearInputPlayer(elements.playerB, elements.listB);
@@ -837,6 +838,11 @@ async function onPlayerAViewed(player) {
     activeCompareController?.signal
   );
   await Promise.all([comparePromise, opponentsPromise]);
+}
+
+function viewPlayerA() {
+  const player = getPlayerById(resolvePlayerId(elements.playerA));
+  if (player) onPlayerAViewed({ ...player, ids: getSelectionIds(elements.playerA) });
 }
 
 async function onPlayerASubmitted() {
@@ -929,6 +935,7 @@ export async function init() {
   setupTypeahead(elements.playerB, elements.listB, {
     forPlayerB: true,
     onCompare: handleCompare,
+    onViewPlayer: viewPlayerA,
     onReset: () => {
       const idA = resolvePlayerId(elements.playerA);
       const idsA = getSelectionIds(elements.playerA);
@@ -974,11 +981,7 @@ export async function init() {
     });
   });
 
-  document.getElementById("view-player-btn")?.addEventListener("click", () => {
-    const playerId = resolvePlayerId(elements.playerA);
-    const player = getPlayerById(playerId);
-    if (player) onPlayerAViewed({ ...player, ids: getSelectionIds(elements.playerA) });
-  });
+  document.getElementById("view-player-btn")?.addEventListener("click", viewPlayerA);
   if (elements.swapBtn) elements.swapBtn.addEventListener("click", handleSwap);
   if (elements.copyLinkBtn) elements.copyLinkBtn.addEventListener("click", handleCopyLink);
   if (elements.shareImageBtn) elements.shareImageBtn.addEventListener("click", handleShareImage);

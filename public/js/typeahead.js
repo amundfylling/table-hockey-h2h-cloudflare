@@ -13,6 +13,7 @@ import {
   formatRankingTitle,
   formatPlayerMeta,
   getWorldRank,
+  getSelectionPlayer,
   updatePrimaryActionLabel,
 } from "./players.js";
 
@@ -133,6 +134,41 @@ export function createSuggestionIdentity(player) {
   return identity;
 }
 
+// The opponent list opens with the first player's career as its top option,
+// so the single-player page is visible right where the eye already is.
+function careerOptionFor(inputEl) {
+  if (inputEl.value.trim()) return null;
+  const idA = resolvePlayerId(elements.playerA);
+  if (!idA) return null;
+  const player = getSelectionPlayer(elements.playerA, idA);
+  if (!player?.name) return null;
+  return { isCareer: true, id: idA, name: player.name };
+}
+
+function createCareerOption(option) {
+  const firstName = option.name.trim().split(/\s+/)[0];
+  const wrap = document.createElement("span");
+  wrap.className = "typeahead-career";
+  wrap.innerHTML = `<span class="typeahead-career-icon" aria-hidden="true"><svg viewBox="0 0 24 24"
+    fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="8" r="4"></circle><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"></path></svg></span>`;
+  const text = document.createElement("span");
+  text.className = "typeahead-career-text";
+  const title = document.createElement("span");
+  title.className = "typeahead-career-title";
+  title.textContent = `${firstName}’s career`;
+  const sub = document.createElement("span");
+  sub.className = "typeahead-career-sub";
+  sub.textContent = "All games, every opponent";
+  text.append(title, sub);
+  const arrow = document.createElement("span");
+  arrow.className = "typeahead-career-go";
+  arrow.setAttribute("aria-hidden", "true");
+  arrow.textContent = "→";
+  wrap.append(text, arrow);
+  return wrap;
+}
+
 export function setupTypeahead(inputEl, listEl, options = {}) {
   let activeIndex = -1;
   let currentItems = [];
@@ -159,6 +195,8 @@ export function setupTypeahead(inputEl, listEl, options = {}) {
 
   const renderList = (items) => {
     listEl.innerHTML = "";
+    const career = isPlayerB && options.onViewPlayer ? careerOptionFor(inputEl) : null;
+    if (career) items = items.filter((item) => !item.isCareer);
     if (isPlayerB && !state.opponentsOfA.size && !state.opponentsLoading) {
       if (!resolvePlayerId(elements.playerA)) {
         const msg = document.createElement("div");
@@ -172,7 +210,7 @@ export function setupTypeahead(inputEl, listEl, options = {}) {
         return;
       }
     }
-    if (!items.length) {
+    if (!items.length && !career) {
       if (isPlayerB && resolvePlayerId(elements.playerA)) {
         const msg = document.createElement("div");
         msg.className = "empty-message";
@@ -192,17 +230,32 @@ export function setupTypeahead(inputEl, listEl, options = {}) {
       return;
     }
     currentItems = items.some((item) => item.isGroup) ? items : withGroupedDuplicateSuggestions(items);
+    if (career) currentItems = [career, ...currentItems];
     const fragment = document.createDocumentFragment();
     currentItems.forEach((player, idx) => {
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.dataset.id = player.id;
-      if (player.ids?.length > 1) btn.dataset.ids = player.ids.join(",");
-      btn.dataset.index = idx;
       btn.id = `${listEl.id}-option-${idx}`;
+      btn.dataset.index = idx;
       btn.setAttribute("role", "option");
       btn.setAttribute("aria-selected", idx === activeIndex ? "true" : "false");
       btn.tabIndex = -1;
+      if (idx === activeIndex) btn.classList.add("is-active");
+      if (player.isCareer) {
+        btn.classList.add("typeahead-career-option");
+        btn.appendChild(createCareerOption(player));
+        fragment.appendChild(btn);
+        const heading = document.createElement("div");
+        heading.className = "typeahead-heading";
+        heading.setAttribute("role", "presentation");
+        heading.textContent = state.opponentsLoading
+          ? "Loading opponents…"
+          : currentItems.length > 1 ? "Or compare with" : "No recorded opponents";
+        fragment.appendChild(heading);
+        return;
+      }
+      btn.dataset.id = player.id;
+      if (player.ids?.length > 1) btn.dataset.ids = player.ids.join(",");
       btn.appendChild(createSuggestionIdentity(player));
       if (player.isGroup) {
         const groupMeta = document.createElement("span");
@@ -228,9 +281,6 @@ export function setupTypeahead(inputEl, listEl, options = {}) {
           meta.title = formatRankingTitle(player);
           btn.appendChild(meta);
         }
-      }
-      if (idx === activeIndex) {
-        btn.classList.add("is-active");
       }
       fragment.appendChild(btn);
     });
@@ -303,6 +353,11 @@ export function setupTypeahead(inputEl, listEl, options = {}) {
     } else if (event.key === "Enter") {
       event.preventDefault();
       const selected = items[activeIndex] || items[0];
+      if (selected?.isCareer) {
+        closeList();
+        options.onViewPlayer();
+        return;
+      }
       if (selected) {
         setInputPlayer(inputEl, selected);
         closeList();
@@ -326,6 +381,11 @@ export function setupTypeahead(inputEl, listEl, options = {}) {
     const button = event.target.closest("button");
     if (!button) return;
     const player = currentItems[Number(button.dataset.index)] || getPlayerById(Number(button.dataset.id));
+    if (player?.isCareer) {
+      closeList();
+      options.onViewPlayer();
+      return;
+    }
     if (player) {
       setInputPlayer(inputEl, player);
       closeList();

@@ -317,7 +317,7 @@ button:disabled {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  max-height: 260px;
+  max-height: 320px;
   overflow: auto;
   display: none;
   z-index: 10;
@@ -399,6 +399,71 @@ button:disabled {
   text-align: center;
   color: var(--muted);
   font-size: var(--fs-sm);
+}
+
+/* The first player's career, pinned above the opponent suggestions. */
+.typeahead button.typeahead-career-option {
+  align-items: center;
+  padding: 10px 12px;
+}
+
+.typeahead-career {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+}
+
+.typeahead-career-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+}
+
+.typeahead-career-icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.typeahead-career-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.typeahead-career-title {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.typeahead-career-sub {
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+
+.typeahead-career-go {
+  margin-left: auto;
+  color: var(--accent-dark);
+  font-weight: 600;
+}
+
+.typeahead-heading {
+  margin-top: 4px;
+  padding: 10px 12px 4px;
+  border-top: 1px solid var(--border);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 .input-loader {
