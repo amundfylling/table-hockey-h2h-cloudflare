@@ -22,6 +22,7 @@ ROOT_DIR = SCRIPT_DIR.parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
 import download as dl  # noqa: E402
+import ratings  # noqa: E402
 import tournaments as tournament_pages  # noqa: E402
 
 CACHE_DIR = ROOT_DIR / ".cache"
@@ -1002,6 +1003,7 @@ def build_player_files(
     player_names: Dict[int, str],
     h2h_dir: Path = H2H_DIR,
     og_dir: Path = OG_H2H_DIR,
+    ratings: Optional[Dict[int, dict]] = None,
 ) -> Dict[int, dict]:
     if h2h_dir.exists():
         shutil.rmtree(h2h_dir)
@@ -1013,6 +1015,8 @@ def build_player_files(
     player_payloads: Dict[int, dict] = {}
     for pid, name in player_names.items():
         player_payloads[pid] = {"player": {"id": pid, "name": name}, "opponents": {}}
+        if ratings and pid in ratings:
+            player_payloads[pid]["rating"] = ratings[pid]
 
     def finish_group(
         id1_int: int,
@@ -1339,6 +1343,15 @@ def build_player_files(
         )
     return player_payloads
 
+
+
+def load_alias_groups(path: Path = PUBLIC_DIR / "aliases.json") -> list:
+    """Id groups from aliases.json that belong to one person."""
+    try:
+        groups = json.loads(path.read_text(encoding="utf-8")).get("groups", [])
+    except (OSError, ValueError, AttributeError):
+        return []
+    return [group["ids"] for group in groups if isinstance(group, dict) and group.get("ids")]
 
 
 def build_sitemap(
@@ -1934,12 +1947,18 @@ def main() -> int:
     players, player_names = filter_players(players, eligible_ids, matches)
     write_json(DATA_STAGING_DIR / "players.json", players)
 
+    print("Computing Glicko-2 ratings...")
+    player_ratings = ratings.compute_ratings(
+        all_matches, player_names.keys(), load_alias_groups()
+    )
+
     print("Building H2H player files...")
     player_payloads = build_player_files(
         matches,
         player_names,
         DATA_STAGING_DIR / "h2h",
         DATA_STAGING_DIR / "og",
+        ratings=player_ratings,
     )
     write_json(DATA_STAGING_DIR / "rivalries.json", build_rivalries(player_payloads, players))
 

@@ -21,6 +21,8 @@ exploration interface with zero runtime database queries.
 * `scripts/` - Ingestion, caching, and processing Python scripts used to build the static dataset.
   `tournaments.py` builds the per-tournament files (standings, brackets, champion, upsets by a
   pre-game Elo rating).
+  `ratings.py` computes each player's Glicko-2 rating (with goal difference) game by game;
+  the history is stored as `rating` in `data/h2h/{id}.json` and drawn on player pages.
 * `tests/` - Automated Python integration and validation tests verifying match counts and data sanity.
 
 ## Build & Development Commands

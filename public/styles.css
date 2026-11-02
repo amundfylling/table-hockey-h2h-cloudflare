@@ -4465,6 +4465,7 @@ button.rrow:hover {
 .dot.b { background: var(--b); }
 .dot.d { background: var(--draw); }
 .dot.band { background: var(--b); opacity: 0.3; }
+.dot.aband { background: var(--a); opacity: 0.25; }
 .dot.faint { background: var(--draw); opacity: 0.6; }
 
 .chart {
