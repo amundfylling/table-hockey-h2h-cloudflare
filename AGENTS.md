@@ -130,7 +130,8 @@ The frontend is vanilla ES modules under `public/js/`, loaded from `index.html` 
 * `game-context.js` - Pure helpers for the expanded game row (series, H2H record after the game, previous meeting).
 * `form.js` - Recent-form chips strip.
 * `series.js` - Playoff series aggregation.
-* `share.js` - Share-image generation.
+* `share.js` - Share image: preview dialog (bottom sheet on phones) with share sheet, copy and
+  download, and the data the card shows. `share-card.js` draws the 1080×1350 card from that data.
 * `theme.js` - Dark/light theme + info popovers.
 
 ## Frontend Conventions
