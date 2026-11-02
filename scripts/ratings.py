@@ -15,7 +15,7 @@ and plain Glicko-2, most of all for newer players and players coming back after 
 from __future__ import annotations
 
 import math
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional, Tuple
 
 import pandas as pd
 
@@ -26,6 +26,16 @@ START_VOLATILITY = 0.3
 TAU = 1.5
 PERIOD_DAYS = 7.0
 GOAL_SCALE = 0.4
+# Forecast for one game: win = sigmoid(FORECAST_BETA * x - FORECAST_CUT), loss mirrored, draw the
+# rest, where x = g(combined RD) * rating gap + H2H_WEIGHT * pair edge. The pair edge is the
+# pair's past results minus what the ratings expected, divided by (meetings + H2H_PRIOR_GAMES),
+# so a long rivalry where one player keeps beating their rating shifts the forecast.
+# Fitted on 2017-2021 games; on 2022-2026 the head-to-head term lowered log loss from 0.7549
+# to 0.7534 (and from 0.8144 to 0.8119 for pairs with 10+ earlier meetings).
+FORECAST_BETA = 2.1396
+FORECAST_CUT = 0.2933
+H2H_WEIGHT = 1.0947
+H2H_PRIOR_GAMES = 20.0
 _PHI_MAX = START_RD / SCALE
 _EPSILON = 1e-6
 _PI2 = math.pi ** 2
@@ -80,12 +90,31 @@ def _playing_order(matches: pd.DataFrame) -> pd.Index:
     ).index
 
 
+def _outcome_probabilities(x: float) -> Tuple[float, float, float]:
+    win = 1.0 / (1.0 + math.exp(-(FORECAST_BETA * x - FORECAST_CUT)))
+    loss = 1.0 / (1.0 + math.exp(-(-FORECAST_BETA * x - FORECAST_CUT)))
+    return win, 1.0 - win - loss, loss
+
+
 def compute_ratings(
     matches: pd.DataFrame,
     player_ids: Iterable[int],
     alias_groups: Iterable[Iterable[int]] = (),
 ) -> Dict[int, dict]:
-    """Rating history for each id in player_ids, one point per tournament they played.
+    """Rating history for each id in player_ids (see compute_ratings_and_forecasts)."""
+    return compute_ratings_and_forecasts(matches, player_ids, alias_groups)[0]
+
+
+def compute_ratings_and_forecasts(
+    matches: pd.DataFrame,
+    player_ids: Iterable[int],
+    alias_groups: Iterable[Iterable[int]] = (),
+    pairs: Iterable[Tuple[int, int]] = (),
+    today: Optional[pd.Timestamp] = None,
+) -> Tuple[Dict[int, dict], Dict[Tuple[int, int], List[float]]]:
+    """Rating history for each id in player_ids, one point per tournament they played, and
+    a [win, draw, loss] forecast (first player's side) for each (a, b) in pairs if they met
+    on `today` (default: the day after the last game).
 
     Every game counts, including games against players who get no page. Ids in one alias
     group share a single rating, stored under each of the group's ids.
@@ -119,6 +148,8 @@ def compute_ratings(
     games: Dict[int, int] = {}
     # Per tracked player: [event key, date, rating, rd, games] points, the last one still open.
     history: Dict[int, List[list]] = {}
+    # Per pair (low id, high id): [results minus expected for the low id, meetings].
+    pair_edge: Dict[Tuple[int, int], List[float]] = {}
 
     for i in range(len(p1)):
         a = canonical.get(p1[i], p1[i])
@@ -140,6 +171,14 @@ def compute_ratings(
             pre.append(ph)
         mu_a, mu_b = mu.get(a, 0.0), mu.get(b, 0.0)
         score_a = 1.0 / (1.0 + math.exp(-GOAL_SCALE * (g1[i] - g2[i])))
+        win, draw, _ = _outcome_probabilities(
+            _g(math.sqrt(pre[0] * pre[0] + pre[1] * pre[1])) * (mu_a - mu_b)
+        )
+        result_a = 1.0 if g1[i] > g2[i] else 0.0 if g1[i] < g2[i] else 0.5
+        surprise = result_a - (win + 0.5 * draw)
+        edge = pair_edge.setdefault((a, b) if a < b else (b, a), [0.0, 0])
+        edge[0] += surprise if a < b else -surprise
+        edge[1] += 1
         updates = []
         for pid, mine, theirs, ph, ph_opp, score in (
             (a, mu_a, mu_b, pre[0], pre[1], score_a),
@@ -175,7 +214,32 @@ def compute_ratings(
         if not points:
             continue
         result[pid] = _payload(points)
-    return result
+
+    if today is None:
+        valid_days = [day for day in days if day == day]
+        today_day = (max(valid_days) + 1) if valid_days else 0
+    else:
+        today_day = (pd.Timestamp(today) - pd.Timestamp("1970-01-01")).days
+
+    def rd_today(pid: int) -> float:
+        ph = phi.get(pid, _PHI_MAX)
+        if last_day.get(pid) is None:
+            return ph
+        elapsed = max(0, today_day - last_day[pid])
+        return min(_PHI_MAX, math.sqrt(ph * ph + sigma[pid] ** 2 * (1.0 + elapsed / PERIOD_DAYS)))
+
+    forecasts: Dict[Tuple[int, int], List[float]] = {}
+    for pair in pairs:
+        a = canonical.get(int(pair[0]), int(pair[0]))
+        b = canonical.get(int(pair[1]), int(pair[1]))
+        if a == b or a not in mu or b not in mu:
+            continue
+        total, meetings = pair_edge.get((a, b) if a < b else (b, a), [0.0, 0])
+        edge = (total if a < b else -total) / (meetings + H2H_PRIOR_GAMES)
+        x = _g(math.sqrt(rd_today(a) ** 2 + rd_today(b) ** 2)) * (mu[a] - mu[b])
+        win, draw, loss = _outcome_probabilities(x + H2H_WEIGHT * edge)
+        forecasts[(int(pair[0]), int(pair[1]))] = [round(win, 3), round(draw, 3), round(loss, 3)]
+    return result, forecasts
 
 
 def _payload(points: List[list]) -> dict:

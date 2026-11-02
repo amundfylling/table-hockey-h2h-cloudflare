@@ -1004,6 +1004,7 @@ def build_player_files(
     h2h_dir: Path = H2H_DIR,
     og_dir: Path = OG_H2H_DIR,
     ratings: Optional[Dict[int, dict]] = None,
+    forecasts: Optional[Dict[Tuple[int, int], list]] = None,
 ) -> Dict[int, dict]:
     if h2h_dir.exists():
         shutil.rmtree(h2h_dir)
@@ -1110,6 +1111,11 @@ def build_player_files(
             "summary": summary_id2,
             "matches": matches_id2,
         }
+        # [win, draw, loss] if they met today, from the file owner's side.
+        forecast = (forecasts or {}).get((id1_int, id2_int))
+        if forecast:
+            player_payloads[id1_int]["opponents"][str(id2_int)]["forecast"] = forecast
+            player_payloads[id2_int]["opponents"][str(id1_int)]["forecast"] = forecast[::-1]
 
     id1_values = matches["id1"].to_numpy(dtype="int64", copy=False)
     id2_values = matches["id2"].to_numpy(dtype="int64", copy=False)
@@ -1947,9 +1953,14 @@ def main() -> int:
     players, player_names = filter_players(players, eligible_ids, matches)
     write_json(DATA_STAGING_DIR / "players.json", players)
 
-    print("Computing Glicko-2 ratings...")
-    player_ratings = ratings.compute_ratings(
-        all_matches, player_names.keys(), load_alias_groups()
+    print("Computing Glicko-2 ratings and forecasts...")
+    pairs = matches[["id1", "id2"]].drop_duplicates().itertuples(index=False, name=None)
+    player_ratings, pair_forecasts = ratings.compute_ratings_and_forecasts(
+        all_matches,
+        player_names.keys(),
+        load_alias_groups(),
+        pairs=list(pairs),
+        today=pd.Timestamp(datetime.now(timezone.utc).date()),
     )
 
     print("Building H2H player files...")
@@ -1959,6 +1970,7 @@ def main() -> int:
         DATA_STAGING_DIR / "h2h",
         DATA_STAGING_DIR / "og",
         ratings=player_ratings,
+        forecasts=pair_forecasts,
     )
     write_json(DATA_STAGING_DIR / "rivalries.json", build_rivalries(player_payloads, players))
 
