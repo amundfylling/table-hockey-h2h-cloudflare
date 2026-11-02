@@ -35,6 +35,8 @@ jobs:
       MIN_TOURNAMENT_LEVELS: "1000"
       MAX_MAIN_REJECTION_RATE: "0.01"
       MAX_EXTRA_REJECTION_RATE: "0.40"
+      # Print build progress as it happens, so the log timestamps show which phase is slow.
+      PYTHONUNBUFFERED: "1"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -85,7 +87,8 @@ jobs:
         if: steps.build.outputs.changed == 'true'
         run: |
           npm ci
-          npx playwright install --with-deps chromium
+          # The check runs headless, so only the headless shell is needed, not full Chrome.
+          npx playwright install --with-deps --only-shell chromium
 
       - name: Check accessibility
         if: steps.build.outputs.changed == 'true'

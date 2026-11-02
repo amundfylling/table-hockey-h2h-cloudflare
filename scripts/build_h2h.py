@@ -1577,6 +1577,11 @@ def build_records(matches: pd.DataFrame, player_names: Dict[int, str]) -> dict:
         "gf": games["goals_player1"].to_numpy(),
         "ga": games["goals_player2"].to_numpy(),
         "date": games["date"].to_numpy(),
+        # Pair date ranges aggregate this instead of the "YYYY-MM-DD" strings: pandas
+        # has no fast groupby min/max for strings and falls back to a Python loop over
+        # every pair (most of the records time). "date" is formatted from date_dt, so
+        # the earliest day formats to the same string.
+        "day": games["date_dt"].to_numpy(),
         "row": games["row"].to_numpy(),
     })
     side2 = side1.rename(columns={"pid": "oid", "oid": "pid", "gf": "ga", "ga": "gf"})
@@ -1614,10 +1619,12 @@ def build_records(matches: pd.DataFrame, player_names: Dict[int, str]) -> dict:
         games=("win", "size"),
         wins=("win", "sum"),
         losses=("loss", "sum"),
-        first_date=("date", "min"),
-        last_date=("date", "max"),
+        first_day=("day", "min"),
+        last_day=("day", "max"),
         first_row=("row", "min"),
     ).reset_index()
+    pairs["first_date"] = pairs.pop("first_day").dt.strftime("%Y-%m-%d")
+    pairs["last_date"] = pairs.pop("last_day").dt.strftime("%Y-%m-%d")
 
     perfect = pairs[
         (pairs["wins"] == pairs["games"]) & (pairs["games"] >= MIN_PERFECT_RECORD_GAMES)
