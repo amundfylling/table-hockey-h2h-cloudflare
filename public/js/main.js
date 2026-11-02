@@ -40,6 +40,7 @@ import {
 } from "./filters.js";
 import { setupTypeahead } from "./typeahead.js";
 import { renderSummary, initScoreBug } from "./summary.js";
+import { clearStory, prepareStory, renderStory } from "./story.js";
 import { initOpponents, renderSinglePlayerPanels } from "./opponents.js";
 import {
   updateUrl,
@@ -93,6 +94,7 @@ export function setStatus(message) {
 
 function setHomeVisible(visible) {
   document.body.dataset.home = visible ? "true" : "false";
+  if (visible) clearStory();
   if (visible) setFinderOpen(false, null);
   updateNav();
   updateFinderPrompt();
@@ -126,6 +128,7 @@ export function setLoading(isLoading) {
 
 function setResultsSectionsVisible(visible) {
   if (visible) setHomeVisible(false);
+  if (!visible) clearStory();
   if (!visible && elements.matchupResult) elements.matchupResult.hidden = true;
   if (elements.summarySection) elements.summarySection.hidden = !visible;
   if (elements.visualizationsSection) elements.visualizationsSection.hidden = !visible;
@@ -206,6 +209,7 @@ export function updateView() {
     updateModeControls();
     updateFilterCount();
     if (elements.singlePlayerSection) elements.singlePlayerSection.hidden = true;
+    clearStory();
     return;
   }
 
@@ -238,6 +242,7 @@ export function updateView() {
     if (elements.clearFiltersBtn) {
       elements.clearFiltersBtn.textContent = stageHasNoData ? "Show all stages" : "Clear filters";
     }
+    clearStory();
     updateFilterCount();
     updateUrl();
     return;
@@ -245,6 +250,8 @@ export function updateView() {
 
   if (elements.filterEmptyState) elements.filterEmptyState.hidden = true;
   setResultsSectionsVisible(true);
+  // Make room for the rail before the charts measure their width.
+  prepareStory();
 
   renderSummary(state.filteredMatches);
   renderForm(state.filteredMatches, state.stageMatches);
@@ -258,6 +265,7 @@ export function updateView() {
   } else {
     if (elements.singlePlayerSection) elements.singlePlayerSection.hidden = true;
   }
+  renderStory(state.filteredMatches);
 
   updateFilterCount();
   updateUrl();
