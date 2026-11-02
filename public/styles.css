@@ -7803,7 +7803,7 @@ body.share-open {
   border-radius: 6px;
   background: transparent;
   color: var(--ink-2);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-md);
   font-weight: 500;
   cursor: pointer;
 }
