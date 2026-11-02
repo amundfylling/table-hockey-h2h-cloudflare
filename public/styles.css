@@ -7162,3 +7162,211 @@ body[data-comparison-mode="matchup"] .player-only {
 .doc-table tr:last-child td {
   border-bottom: none;
 }
+
+/* Player: results against each nation */
+.nation-rows {
+  display: grid;
+  font-size: 14px;
+}
+
+.nation-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) 52px 52px minmax(120px, 3fr) 40px;
+  align-items: center;
+  gap: 12px;
+  min-height: 34px;
+  padding: 0 6px;
+  border-radius: 6px;
+}
+
+.nation-row[data-index].is-active {
+  background: var(--sunk);
+}
+
+.nation-head {
+  min-height: 28px;
+  font-size: 12px;
+  color: var(--ink-3);
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  margin-bottom: 4px;
+}
+
+.nation-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.nation-head .nation-name {
+  color: var(--ink-3);
+  font-weight: 400;
+}
+
+.nation-nm {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nation-flag {
+  flex: none;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.nation-home {
+  flex: none;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-3);
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  padding: 0 5px;
+  line-height: 16px;
+}
+
+.nation-games,
+.nation-score,
+.nation-value {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.nation-total {
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  margin-top: 4px;
+}
+
+.nation-total .nation-name {
+  font-weight: 400;
+  color: var(--ink-2);
+}
+
+.nation-games,
+.nation-score {
+  color: var(--ink-2);
+}
+
+.nation-head .nation-games,
+.nation-head .nation-score,
+.nation-head .nation-value {
+  color: var(--ink-3);
+}
+
+.nation-value {
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.nation-value.a { color: var(--a); }
+.nation-value.b { color: var(--b-text); }
+
+.nation-track {
+  position: relative;
+  height: 14px;
+}
+
+.nation-zero {
+  position: absolute;
+  left: 50%;
+  top: -10px;
+  bottom: -10px;
+  width: 1px;
+  background: var(--line-2);
+}
+
+.nation-bar {
+  position: absolute;
+  top: 0;
+  height: 14px;
+  border-radius: 2px;
+}
+
+.nation-bar.a { background: var(--a); }
+.nation-bar.b { background: var(--b); }
+.nation-bar.faint { opacity: 0.35; }
+
+.nation-scale {
+  height: auto;
+  display: flex;
+  justify-content: space-between;
+  font-variant-numeric: tabular-nums;
+}
+
+.nation-scale i {
+  font-style: normal;
+}
+
+.nations-callout .nation-extremes {
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+.nation-pick + .nation-pick {
+  margin-top: 12px;
+}
+
+.nation-pick .xn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  margin-top: 6px;
+}
+
+.nation-pick .xs {
+  font-size: 13px;
+  color: var(--ink-2);
+  margin-top: 2px;
+}
+
+.nation-pick .xs .a { color: var(--a); font-weight: 600; }
+.nation-pick .xs .b { color: var(--b-text); font-weight: 600; }
+
+.callout .big .b {
+  color: var(--b-text);
+}
+
+.callout .big .a {
+  color: var(--a);
+}
+
+.nation-note {
+  font-size: 14px;
+  color: var(--ink-2);
+  margin-top: 16px;
+}
+
+.nations-callout .xfoot a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+@media (max-width: 900px) and (min-width: 601px) {
+  .nations-callout .nation-extremes {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .nation-row {
+    grid-template-columns: minmax(0, 1.7fr) 40px minmax(80px, 1.6fr) 30px;
+    gap: 8px;
+    padding: 0 4px;
+  }
+
+  .nation-score {
+    display: none;
+  }
+
+  .nation-home {
+    display: none;
+  }
+}

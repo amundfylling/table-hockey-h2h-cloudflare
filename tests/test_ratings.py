@@ -92,5 +92,30 @@ class RatingsTest(unittest.TestCase):
         self.assertLess(result[1]["rating"], START_RATING)
 
 
+    def test_results_by_opponent_nation(self):
+        games = [
+            (1, 2, 3, 1, "2024-01-01", 10),
+            (1, 2, 2, 2, "2024-01-01", 10),
+            (3, 1, 4, 0, "2024-01-02", 11),
+            (1, 4, 1, 0, "2024-01-03", 12),
+        ]
+        result = compute_ratings_and_forecasts(
+            _frame(games), [1, 2], nations={1: "Norway", 2: "Sweden", 3: "Sweden"}
+        )[0]
+        self.assertEqual(result[1]["nation"], "Norway")
+        rows = {row[0]: row for row in result[1]["nations"]}
+        # Sweden: a win, a draw and a loss; player 4 has no nation.
+        self.assertEqual(rows["Sweden"][1:5], [3, 1, 1, 1])
+        self.assertEqual(rows[""][1:5], [1, 1, 0, 0])
+        self.assertEqual(result[1]["nations"][0][0], "Sweden")
+        # Equal starting ratings: the first game expects half a point.
+        first = compute_ratings_and_forecasts(
+            _frame(games[:1]), [1], nations={1: "Norway", 2: "Sweden"}
+        )[0]
+        self.assertAlmostEqual(first[1]["nations"][0][5], 0.5, places=2)
+        self.assertGreater(first[1]["nations"][0][6], 0)
+        self.assertNotIn("nations", compute_ratings(_frame(games), [1])[1])
+
+
 if __name__ == "__main__":
     unittest.main()

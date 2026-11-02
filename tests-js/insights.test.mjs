@@ -72,3 +72,26 @@ test("scoreline grid caps high scores into the last bucket", () => {
   assert.equal(grid.cells.get(`${grid.cap}:1`).count, 1);
   assert.equal(grid.best.count, 2);
 });
+
+test("nation edges name only clear gaps and keep the total", async () => {
+  const { nationEdges, listNames } = await import("../public/js/insights.js");
+  const rows = [
+    // nation, games, wins, draws, losses, expected points, variance
+    ["Sweden", 100, 80, 0, 20, 60, 20],   // +20 pts, z ≈ 4.5
+    ["Latvia", 80, 30, 0, 50, 45, 18],    // −19 pts, z ≈ −3.5
+    ["Norway", 40, 21, 0, 19, 20, 9],     // +2.5 pts, chance
+    ["Finland", 6, 6, 0, 0, 3, 1.5],      // big gap but too few games
+    ["", 12, 6, 0, 6, 6, 3],
+  ];
+  const edges = nationEdges(rows);
+  assert.deepEqual(edges.rows.map((r) => r.nation), ["Sweden", "Latvia", "Norway"]);
+  assert.deepEqual(edges.over.map((r) => r.nation), ["Sweden"]);
+  assert.deepEqual(edges.under.map((r) => r.nation), ["Latvia"]);
+  assert.equal(edges.threshold, 10);
+  assert.equal(edges.otherNations, 1);
+  assert.equal(edges.unknownGames, 12);
+  assert.equal(edges.overall.games, 238);
+  assert.equal(Math.round(edges.rows[0].diff), 20);
+  assert.equal(listNames(["A", "B", "C"]), "A, B and C");
+  assert.equal(listNames(["A"]), "A");
+});
