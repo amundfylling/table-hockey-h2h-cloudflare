@@ -4763,6 +4763,10 @@ button.rrow:hover {
   color: var(--ink-3);
 }
 
+.share-title {
+  margin-bottom: 8px;
+}
+
 .forecast-bar {
   display: flex;
   height: 8px;

@@ -346,7 +346,11 @@ function createMatchupHero(items, summary) {
       el("div", { class: "mid" }, score, facts),
       createWho(state.playerB, "b")),
     createForecast(),
-    el("div", { class: "share" }, bar, labels),
+    el("div", { class: "share" },
+      el("h3", { class: "forecast-title share-title" },
+        series ? "Series record so far" : "Record so far"),
+      bar,
+      labels),
     verdict);
 }
 
