@@ -1057,6 +1057,15 @@ export async function init() {
 
   // Decide early whether the home screen shows, so a restored matchup never flashes it.
   // A "#records", "#rivalries" or "#players" link opens on that home section, not the last matchup.
+  // Links home from the ratings and tournament pages carry "?home", so they open the home
+  // screen instead of resuming the last matchup; the flag is dropped from the address.
+  const startUrl = new URL(window.location.href);
+  const wantsHome = startUrl.searchParams.has("home");
+  if (wantsHome) {
+    startUrl.searchParams.delete("home");
+    window.history.replaceState({}, "", startUrl);
+    safeStorageRemove(STORAGE_KEYS.last);
+  }
   const linkedSection = homeSectionFromHash();
   const hasInitialSelection = new URLSearchParams(window.location.search).has("p1")
     || (!linkedSection && Boolean(safeStorageGet(STORAGE_KEYS.last, null)?.p1));

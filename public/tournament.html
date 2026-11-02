@@ -19,24 +19,24 @@
   <link rel="preload" href="fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="fonts/barlow-condensed-latin-600.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="icon" type="image/png" sizes="32x32" href="favicon.png" />
-  <link rel="stylesheet" href="styles.css?v=20261102-uxaudit" />
+  <link rel="stylesheet" href="styles.css?v=20261102-uxaudit2" />
 </head>
 
 <body data-home="false" class="tournament-page">
   <a class="skip-link" href="#main">Skip to content</a>
   <header class="topbar">
     <div class="wrap topbar-inner">
-      <a class="brand" href="./" data-nav="home" aria-label="Table Hockey H2H, home">
+      <a class="brand" href="./?home" data-nav="home" aria-label="Table Hockey H2H, home">
         <img class="mark" src="nbhf-logo.png" alt="" width="24" height="36" />
         <span class="brand-name">Table Hockey H2H</span>
       </a>
       <nav class="nav" aria-label="Main">
-        <a href="./" data-nav="home">Head-to-head</a>
+        <a href="./?home" data-nav="home">Head-to-head</a>
         <a href="./#records" data-nav="records">Records</a>
         <a href="./#rivalries" data-nav="rivalries">Rivalries</a>
         <a href="./#players" data-nav="players">Players</a>
       </nav>
-      <a id="header-search" class="header-search" href="./">
+      <a id="header-search" class="header-search" href="./?home">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
           stroke-linejoin="round" aria-hidden="true">
           <circle cx="11" cy="11" r="7"></circle>
@@ -45,7 +45,7 @@
         <span class="header-search-label">Search players</span>
         </a>
       <div class="topbar-actions">
-        <a id="mobile-search" class="icon-button only-m" href="./" aria-label="Search players">
+        <a id="mobile-search" class="icon-button only-m" href="./?home" aria-label="Search players">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
             stroke-linejoin="round" aria-hidden="true">
             <circle cx="11" cy="11" r="7"></circle>
@@ -73,7 +73,7 @@
     </div>
     <nav id="mobile-menu" class="mobile-menu" aria-label="Main" hidden>
       <div class="wrap">
-        <a href="./" data-nav="home">Head-to-head</a>
+        <a href="./?home" data-nav="home">Head-to-head</a>
         <a href="./#records" data-nav="records">Records</a>
         <a href="./#rivalries" data-nav="rivalries">Rivalries</a>
         <a href="./#players" data-nav="players">Players</a>
@@ -84,7 +84,7 @@
   <main id="main" class="tournament-main" aria-busy="true">
     <div class="wrap view-hero">
       <nav class="crumbs" aria-label="Breadcrumb">
-        <a href="./">Head-to-head</a><span class="sep" aria-hidden="true">/</span><span>Tournament</span>
+        <a href="./?home">Head-to-head</a><span class="sep" aria-hidden="true">/</span><span>Tournament</span>
       </nav>
       <h1 id="t-title" class="t-title">Loading tournament…</h1>
       <p id="t-meta" class="t-meta"></p>
@@ -93,7 +93,7 @@
     <div id="t-error" class="wrap section" hidden>
       <div class="panel t-empty">
         <p id="t-error-text">This tournament could not be found.</p>
-        <p><a href="./">Back to head-to-head</a></p>
+        <p><a href="./?home">Back to head-to-head</a></p>
       </div>
     </div>
     <div id="t-content" hidden>
