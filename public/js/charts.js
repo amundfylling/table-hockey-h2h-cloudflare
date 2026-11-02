@@ -480,7 +480,7 @@ function renderScorelines(items) {
   caption.append(
     strong,
     ` ${best.tone === "d" ? "are" : "is"} the most common ${series ? "series score" : "result"} (${fmt(best.count)} ${unit}).`,
-    series ? "" : ` ${fmt(oneGoal)} of ${fmt(items.length)} games were decided by one goal.`,
+    series ? "" : ` ${fmt(oneGoal)} of ${fmt(items.length)} games ${oneGoal === 1 ? "was" : "were"} decided by one goal.`,
     ` Above the dotted line ${a} won, below it ${b} won.`
   );
 }

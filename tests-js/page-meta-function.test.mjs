@@ -36,7 +36,7 @@ function run(path, options = {}) {
         fetch: async (url) => {
           requestedAssets.push(String(url));
           if (options.assetStatus) return new Response("", { status: options.assetStatus });
-          return Response.json(payload);
+          return Response.json(options.payload || payload);
         },
       },
     },
@@ -57,6 +57,17 @@ test("matchup URLs get an escaped title, description and canonical URL", async (
   assert.doesNotMatch(html, /<Alice & Co>/);
   assert.equal(res.headers.get("content-security-policy"), "default-src 'self'");
   assert.equal(res.headers.get("etag"), null);
+});
+
+test("a matchup's canonical URL puts the lower id first; the preview keeps the shared order", async () => {
+  const reversed = {
+    player: { id: 5, name: "Eve" },
+    opponents: { 2: { player: { id: 2, name: "Bob" }, summary: { wins_player: 1, total_matches: 1 } } },
+  };
+  const html = await (await run("/?p1=5&p2=2", { payload: reversed }).response).text();
+  assert.match(html, /<link rel="canonical" href="https:\/\/stats.example\/\?p1=2&amp;p2=5" \/>/);
+  assert.match(html, /<meta property="og:url" content="https:\/\/stats.example\/\?p1=5&amp;p2=2" \/>/);
+  assert.match(html, /<title>Eve vs Bob · Table Hockey H2H<\/title>/);
 });
 
 test("player URLs sum the record across opponents", async () => {

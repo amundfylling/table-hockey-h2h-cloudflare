@@ -231,7 +231,7 @@ export function updateView() {
     const stageHasNoData = state.stageMatches.length === 0 && state.stageTab !== "overall";
     if (elements.filterEmptyTitle) {
       elements.filterEmptyTitle.textContent = stageHasNoData
-        ? "No matches in this stage"
+        ? "No games in this stage"
         : "No results in this view";
     }
     if (elements.filterEmptyCopy) {
@@ -325,7 +325,7 @@ export function renderIdleState() {
   if (elements.recordChart) elements.recordChart.replaceChildren();
   if (elements.goalsChart) elements.goalsChart.replaceChildren();
   if (elements.matchesBody) elements.matchesBody.replaceChildren();
-  if (elements.matchCount) elements.matchCount.textContent = "0 matches";
+  if (elements.matchCount) elements.matchCount.textContent = "0 games";
   [elements.prevPage, elements.nextPage, elements.prevPageBottom, elements.nextPageBottom]
     .filter(Boolean)
     .forEach((button) => { button.disabled = true; });
@@ -463,12 +463,12 @@ export async function handleCompare(options = {}) {
       if (elements.emptyState) elements.emptyState.hidden = false;
       if (elements.emptyStateTitle) {
         elements.emptyStateTitle.textContent = isSingle
-          ? "No recorded matches"
-          : "No matches yet";
+          ? "No recorded games"
+          : "No games yet";
       }
       if (elements.emptyStateCopy) {
         elements.emptyStateCopy.textContent = isSingle
-          ? "No eligible opponent matches are available for this player."
+          ? "No games against eligible opponents are recorded for this player."
           : "These players have not faced each other in the dataset.";
       }
       state.baseMatches = [];
@@ -478,7 +478,7 @@ export async function handleCompare(options = {}) {
       setStageFilterCardsVisible(false);
       setResultsSectionsVisible(false);
       setLoading(false);
-      setStatus("No matches found.");
+      setStatus("No games found.");
       updateSelectionControls();
       return;
     }
@@ -652,7 +652,7 @@ export async function renderDataFreshness() {
   el.hidden = false;
   const stats = document.getElementById("home-stats");
   if (stats && Number(meta.players) && Number(meta.matches)) {
-    stats.textContent = `${formatNumber(meta.players)} players · ${formatNumber(meta.matches)} matches`;
+    stats.textContent = `${formatNumber(meta.players)} players · ${formatNumber(meta.matches)} games`;
     stats.hidden = false;
     const title = document.getElementById("home-title");
     if (title) title.textContent = `${formatNumber(meta.matches)} games. Every rivalry, settled.`;
