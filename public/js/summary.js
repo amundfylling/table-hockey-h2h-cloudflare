@@ -251,7 +251,7 @@ function createWho(player, side) {
 
 // [win, draw, loss] for player A if they met today: Glicko-2 ratings plus how the pair's
 // earlier meetings went against those ratings, worked out at build time (scripts/ratings.py).
-function forecastFor(playerA, playerB) {
+export function forecastFor(playerA, playerB) {
   const idsA = getAliasGroup(playerA.id);
   const idsB = getAliasGroup(playerB.id);
   for (const a of idsA) {

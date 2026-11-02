@@ -51,7 +51,8 @@ function ratingOf(playerId) {
   return null;
 }
 
-function findings(items) {
+// `names` lets the share image pass shorter names when both players share a surname.
+export function storyFindings(items, names = {}) {
   const ordered = getChronologicalItems(items);
   const series = isSeriesMode();
   const seasons = seasonsOf(items);
@@ -68,8 +69,8 @@ function findings(items) {
   }
   return matchupStory({
     ordered,
-    nameA: state.playerA.name,
-    nameB: state.playerB.name,
+    nameA: names.nameA || state.playerA.name,
+    nameB: names.nameB || state.playerB.name,
     series,
     // Tournaments are always grouped from games, as in the Tournaments section.
     tournaments: groupTournaments(series ? items.flatMap((item) => item.games || []) : items),
@@ -166,7 +167,7 @@ export function renderStory(items) {
     return;
   }
   if (!ensureElements()) return;
-  const story = findings(items);
+  const story = storyFindings(items);
   const config = SECTIONS[isSinglePlayerMode() ? "player" : "matchup"];
   entries = config
     .map(([key, finding, label]) => ({
