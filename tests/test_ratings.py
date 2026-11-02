@@ -117,5 +117,23 @@ class RatingsTest(unittest.TestCase):
         self.assertNotIn("nations", compute_ratings(_frame(games), [1])[1])
 
 
+    def test_pair_stats_compare_results_with_expectations(self):
+        games = [
+            (1, 2, 3, 1, "2024-01-01", 10),
+            (2, 1, 2, 2, "2024-01-02", 11),
+            (1, 2, 0, 1, "2024-01-03", 12),
+        ]
+        stats = {}
+        compute_ratings_and_forecasts(_frame(games), [1, 2], pairs=[(1, 2), (2, 1)],
+                                      pair_stats=stats)
+        played, points, expected, variance = stats[(1, 2)]
+        self.assertEqual(played, 3)
+        self.assertAlmostEqual(points, 1.5, places=2)  # a win, a draw and a loss
+        # The first game expects half a point; the sides' expectations add up to the games.
+        self.assertAlmostEqual(expected + stats[(2, 1)][2], 3.0, places=1)
+        self.assertAlmostEqual(stats[(2, 1)][1], 1.5, places=2)
+        self.assertGreater(variance, 0)
+
+
 if __name__ == "__main__":
     unittest.main()

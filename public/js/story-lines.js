@@ -129,7 +129,7 @@ export function matchupStory({ ordered, nameA, nameB, series = false, tournament
   return story;
 }
 
-export function playerStory({ ordered, series = false, rating = null, edges = null, seasons = [], records = [] }) {
+export function playerStory({ ordered, series = false, rating = null, edges = null, beats = null, seasons = [], records = [] }) {
   const n = ordered.length;
   if (!n) return {};
   const unit = series ? "series" : n === 1 ? "game" : "games";
@@ -169,6 +169,20 @@ export function playerStory({ ordered, series = false, rating = null, edges = nu
   if (extremes && extremes.best !== extremes.worst) {
     // Same numbers as the "Best record" and "Toughest opponent" lines on the page.
     story.rivals = `Best against ${lastName(extremes.best.name)} (${pct(winRate(extremes.best))}), toughest ${lastName(extremes.worst.name)} (${pct(winRate(extremes.worst))})`;
+  }
+
+  if (beats && (beats.over.length || beats.under.length)) {
+    // Same order as the "Above and below the ratings" section: most points above or below.
+    const top = beats.over[0];
+    const bottom = beats.under[0];
+    const signed = (row) => `${row.excess >= 0 ? "+" : "−"}${Math.abs(row.excess).toFixed(1)}`;
+    if (top && bottom) {
+      story.beats = `Most above the ratings vs ${lastName(top.name)} (${signed(top)}), most below vs ${lastName(bottom.name)} (${signed(bottom)})`;
+    } else if (top) {
+      story.beats = `Most above the ratings vs ${lastName(top.name)} (${signed(top)})`;
+    } else {
+      story.beats = `Most below the ratings vs ${lastName(bottom.name)} (${signed(bottom)})`;
+    }
   }
 
   if (records.length) {

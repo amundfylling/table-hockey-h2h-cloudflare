@@ -108,3 +108,13 @@ test("player story summarises rating, nations and opponents", () => {
   const peakNow = playerStory({ ordered, rating: { rating: 1950, peak: { rating: 1950, date: "2026-01-01" } } });
   assert.equal(peakNow.rating, "At a career high of 1,950");
 });
+
+test("player story names the opponents most above and below the ratings", () => {
+  const beats = {
+    over: [{ name: "Ann Lee", excess: 10.3 }],
+    under: [{ name: "Bo Ek", excess: -7 }],
+  };
+  const story = playerStory({ ordered: games("AAB"), beats });
+  assert.equal(story.beats, "Most above the ratings vs Lee (+10.3), most below vs Ek (−7.0)");
+  assert.equal(playerStory({ ordered: games("AAB"), beats: { over: [], under: [] } }).beats, undefined);
+});

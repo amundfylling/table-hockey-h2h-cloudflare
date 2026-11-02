@@ -16,6 +16,7 @@ import {
   NATION_MIN_GAP,
   nationEdges,
   opponentExtremes,
+  opponentRatingEdges,
   opponentRecords,
   scorelineGrid,
   seasonsOf,
@@ -1006,6 +1007,152 @@ function renderNationCallout(container, edges, name) {
   container.append(foot);
 }
 
+// ── Player: opponents above and below the ratings ───────────────────
+// Each opponent's vs_rating in the player file: [games, points, expected points, variance]
+// against the Glicko-2 forecast before each game (scripts/ratings.py). Whole career.
+export function ratingEdgeEntries(playerId) {
+  const seen = new Set();
+  const own = new Set(getAliasGroup(playerId));
+  const entries = [];
+  for (const id of getAliasGroup(playerId)) {
+    const opponents = state.playerFileCache.get(id)?.opponents || {};
+    Object.entries(opponents).forEach(([opponentId, opponent]) => {
+      const stats = opponent?.vs_rating;
+      const key = getAliasGroup(Number(opponentId))[0];
+      if (!Array.isArray(stats) || own.has(Number(opponentId)) || seen.has(key)) return;
+      seen.add(key);
+      const [games, points, expected, variance] = stats;
+      entries.push({
+        id: Number(opponentId),
+        name: getPlayerById(Number(opponentId))?.name || opponent.player?.name || "",
+        games,
+        points,
+        expected,
+        variance,
+      });
+    });
+  }
+  return entries;
+}
+
+function renderBeats() {
+  const section = document.getElementById("beats-section");
+  const container = document.getElementById("beats");
+  if (!section || !container) return;
+  const edges = opponentRatingEdges(state.playerA ? ratingEdgeEntries(state.playerA.id) : []);
+  if (!edges.over.length && !edges.under.length) {
+    section.hidden = true;
+    container.replaceChildren();
+    return;
+  }
+  section.hidden = false;
+  const name = lastName(state.playerA.name || "");
+  setText("beats-sub", `Points (win 1, draw ½) scored against each opponent minus what the Glicko-2 ratings expected before each game. Whole career, opponents with ${edges.minGames}+ games.`);
+  setLegend("beats-legend", [
+    ["a", "Better than expected"],
+    ["b", "Worse than expected"],
+    ["faint", "Faded: small or could be chance"],
+  ]);
+  const widest = Math.max(...[...edges.over, ...edges.under].map((row) => Math.abs(row.excess)));
+  const signedExcess = (value) => `${value >= 0 ? "+" : "−"}${Math.abs(value).toFixed(1)}`;
+  const rows = [];
+  const column = (title, list, tone, empty) => {
+    const col = document.createElement("div");
+    col.className = "beats-col";
+    const label = document.createElement("h3");
+    label.className = "eyebrow";
+    label.textContent = title;
+    col.append(label);
+    if (!list.length) {
+      const p = document.createElement("p");
+      p.className = "beats-empty";
+      p.textContent = empty;
+      col.append(p);
+      return col;
+    }
+    const head = document.createElement("div");
+    head.className = "beats-row beats-head";
+    head.setAttribute("aria-hidden", "true");
+    head.innerHTML = "<span>Opponent</span><span class=\"beats-games\">Games</span><span></span><span class=\"beats-value\">Pts</span>";
+    col.append(head);
+    const ol = document.createElement("ol");
+    ol.className = "beats-list";
+    list.forEach((row) => {
+      const li = document.createElement("li");
+      li.className = "beats-row";
+      li.dataset.index = String(rows.length);
+      rows.push(row);
+      const who = opponentButton(row, "beats-name");
+      const games = document.createElement("span");
+      games.className = "beats-games";
+      games.textContent = fmt(row.games);
+      const track = document.createElement("span");
+      track.className = "beats-track";
+      track.setAttribute("aria-hidden", "true");
+      const bar = document.createElement("i");
+      bar.className = `beats-bar ${tone}${row.clear ? "" : " faint"}`;
+      bar.style.width = `${Math.max(2, (100 * Math.abs(row.excess)) / widest)}%`;
+      track.append(bar);
+      const value = document.createElement("span");
+      value.className = `beats-value${row.clear ? ` ${tone}` : ""}`;
+      value.textContent = signedExcess(row.excess);
+      const sr = document.createElement("span");
+      sr.className = "sr-only";
+      sr.textContent = ` points vs expected: scored ${pct(row.score)}, ratings expected ${pct(row.expectedScore)} in ${fmt(row.games)} games${row.clear ? "" : ", small or could be chance"}`;
+      value.append(sr);
+      li.append(who, games, track, value);
+      ol.append(li);
+    });
+    col.append(ol);
+    return col;
+  };
+  const cols = document.createElement("div");
+  cols.className = "beats-cols";
+  cols.append(
+    column("Overperforms most against", edges.over, "a", `${name} hasn't scored above the ratings against anyone with ${edges.minGames}+ games.`),
+    column("Underperforms most against", edges.under, "b", `${name} hasn't scored below the ratings against anyone with ${edges.minGames}+ games.`),
+  );
+  const foot = document.createElement("p");
+  foot.className = "xfoot";
+  foot.append(`Ranked by points above or below expected, so a long rivalry can outrank a short streak. Faded rows are under ${NATION_MIN_GAP} percentage points per game or could be chance. `);
+  const link = document.createElement("a");
+  link.href = "ratings#nations";
+  link.textContent = "How this works";
+  foot.append(link);
+  container.replaceChildren(cols, foot);
+
+  const tooltip = ensureChartTooltip(container);
+  let activeRow = null;
+  const hide = () => {
+    if (activeRow) activeRow.classList.remove("is-active");
+    activeRow = null;
+    hideChartTooltip(tooltip);
+  };
+  bindChartTooltip(cols, (event) => {
+    const line = event.target.closest?.(".beats-row");
+    if (!line) {
+      hide();
+      return;
+    }
+    const row = rows[Number(line.dataset.index)];
+    if (activeRow !== line) {
+      if (activeRow) activeRow.classList.remove("is-active");
+      line.classList.add("is-active");
+      activeRow = line;
+    }
+    const html = `<div class="tooltip-title">${escapeHtml(row.name)}</div>
+      <div class="tooltip-kv"><strong>${fmt(row.games)}</strong> games · scored <strong>${pct(row.score)}</strong></div>
+      <div class="tooltip-kv">Ratings expected ${pct(row.expectedScore)}</div>
+      <div class="tooltip-kv">${signedExcess(row.excess)} points vs the ratings${row.clear ? "" : " (small or could be chance)"}</div>
+      <div class="tooltip-kv">Click the name to compare</div>`;
+    const box = container.getBoundingClientRect();
+    const trackBox = line.querySelector(".beats-track").getBoundingClientRect();
+    const lineBox = line.getBoundingClientRect();
+    showChartTooltip(container, tooltip, html, trackBox.left - box.left, trackBox.right - box.left,
+      lineBox.top - box.top + lineBox.height / 2);
+  }, hide);
+}
+
 // ── Player: who they play ───────────────────────────────────────────
 function opponentButton(record, className) {
   const button = document.createElement("button");
@@ -1287,6 +1434,7 @@ export function renderCharts(items) {
     renderSeasonBars(items);
     renderWhoPlays(items, records);
     renderRivalMap(items, records);
+    renderBeats();
     return;
   }
   renderLeadChart(items);

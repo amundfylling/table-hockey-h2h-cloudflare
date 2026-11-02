@@ -1040,6 +1040,7 @@ def build_player_files(
     og_dir: Path = OG_H2H_DIR,
     ratings: Optional[Dict[int, dict]] = None,
     forecasts: Optional[Dict[Tuple[int, int], list]] = None,
+    pair_stats: Optional[Dict[Tuple[int, int], list]] = None,
 ) -> Dict[int, dict]:
     if h2h_dir.exists():
         shutil.rmtree(h2h_dir)
@@ -1151,6 +1152,15 @@ def build_player_files(
         if forecast:
             player_payloads[id1_int]["opponents"][str(id2_int)]["forecast"] = forecast
             player_payloads[id2_int]["opponents"][str(id1_int)]["forecast"] = forecast[::-1]
+        # [games, points, expected points, variance] from the file owner's side, against the
+        # ratings before each game (all games, both players' aliases merged).
+        stats = (pair_stats or {}).get((id1_int, id2_int))
+        if stats:
+            games, points, expected, variance = stats
+            player_payloads[id1_int]["opponents"][str(id2_int)]["vs_rating"] = stats
+            player_payloads[id2_int]["opponents"][str(id1_int)]["vs_rating"] = [
+                games, round(games - points, 2), round(games - expected, 2), variance
+            ]
 
     id1_values = matches["id1"].to_numpy(dtype="int64", copy=False)
     id2_values = matches["id2"].to_numpy(dtype="int64", copy=False)
@@ -1998,6 +2008,7 @@ def main() -> int:
 
     print("Computing Glicko-2 ratings and forecasts...")
     pairs = matches[["id1", "id2"]].drop_duplicates().itertuples(index=False, name=None)
+    pair_stats: Dict[Tuple[int, int], list] = {}
     player_ratings, pair_forecasts = ratings.compute_ratings_and_forecasts(
         all_matches,
         player_names.keys(),
@@ -2005,6 +2016,7 @@ def main() -> int:
         pairs=list(pairs),
         today=pd.Timestamp(datetime.now(timezone.utc).date()),
         nations=nations,
+        pair_stats=pair_stats,
     )
 
     print("Building H2H player files...")
@@ -2015,6 +2027,7 @@ def main() -> int:
         DATA_STAGING_DIR / "og",
         ratings=player_ratings,
         forecasts=pair_forecasts,
+        pair_stats=pair_stats,
     )
     write_json(DATA_STAGING_DIR / "rivalries.json", build_rivalries(player_payloads, players))
 
