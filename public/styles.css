@@ -2274,11 +2274,6 @@ body[data-comparison-mode="single"][data-stats-mode="series"] #matches-table {
     min-width: 0;
   }
 
-  .period-popover {
-    left: auto;
-    right: 0;
-  }
-
   .series-detail-players {
     grid-template-columns: 1fr;
     justify-items: center;
@@ -3971,7 +3966,8 @@ body.finder-open:not([data-home="true"]) .finder {
 
 .records {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  /* One column per small record card (set by home.js), so a missing record leaves no gap. */
+  grid-template-columns: repeat(var(--record-cols, 4), minmax(0, 1fr));
   gap: 16px;
 }
 
@@ -4250,6 +4246,11 @@ button.record:hover,
 @media (max-width: 900px) {
   .records {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* An odd number of small cards: the last one takes the whole row. */
+  .records > .record:not(.record--streaks):last-child:nth-child(even) {
+    grid-column: 1 / -1;
   }
 }
 
@@ -6044,6 +6045,22 @@ button.tfoot:hover {
   color: var(--ink-2);
 }
 
+.empty-state-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.empty-state-actions .btn {
+  text-decoration: none;
+}
+
+.empty-state-actions[hidden] {
+  display: none;
+}
+
 .results-skeleton {
   display: none;
   padding-top: 40px;
@@ -7097,6 +7114,7 @@ body[data-comparison-mode="matchup"] .player-only {
 }
 
 .t-source a,
+.t-empty a,
 .t-player:is(a),
 .t-podium-name:is(a) {
   color: inherit;
@@ -7106,6 +7124,7 @@ body[data-comparison-mode="matchup"] .player-only {
 }
 
 .t-source a:hover,
+.t-empty a:hover,
 .t-player:is(a):hover,
 .t-podium-name:is(a):hover {
   text-decoration-color: currentColor;
@@ -7999,5 +8018,13 @@ body.share-open {
     grid-template-columns: minmax(0, 1.8fr) 40px minmax(50px, 1fr) 44px;
     gap: 8px;
     padding: 0 4px;
+  }
+}
+
+/* The narrowest phones (320px, such as an iPhone SE with Display Zoom) cannot fit the
+   wordmark and three header buttons, so the crest stands alone; the link keeps its label. */
+@media (max-width: 359px) {
+  .brand-name {
+    display: none;
   }
 }

@@ -377,6 +377,23 @@ function maybeScrollToResults(options = {}) {
   if (heading) heading.focus({ preventScroll: true });
 }
 
+// A matchup with no games links to each player's own page, so the view is not a dead end.
+function renderEmptyStateActions(players) {
+  const host = document.getElementById("empty-state-actions");
+  if (!host) return;
+  const links = players
+    .filter((player) => Number.isInteger(Number(player?.id)) && Number(player.id) > 0)
+    .map((player) => {
+      const link = document.createElement("a");
+      link.className = "btn";
+      link.href = `./?p1=${Number(player.id)}`;
+      link.textContent = `${player.name}’s games`;
+      return link;
+    });
+  host.replaceChildren(...links);
+  host.hidden = links.length === 0;
+}
+
 export async function handleCompare(options = {}) {
   const idA = resolvePlayerId(elements.playerA);
   const idB = resolvePlayerId(elements.playerB);
@@ -469,8 +486,9 @@ export async function handleCompare(options = {}) {
       if (elements.emptyStateCopy) {
         elements.emptyStateCopy.textContent = isSingle
           ? "No eligible opponent matches are available for this player."
-          : "These players have not faced each other in the dataset.";
+          : `${state.playerA.name} and ${state.playerB.name} have not faced each other in the dataset.`;
       }
+      renderEmptyStateActions(isSingle ? [] : [state.playerA, state.playerB]);
       state.baseMatches = [];
       state.filteredMatches = [];
       setStageCounts();
