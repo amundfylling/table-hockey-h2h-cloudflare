@@ -17,6 +17,9 @@ class PlayerNationTest(unittest.TestCase):
     def test_two_countries_or_none_is_unknown(self):
         self.assertEqual(player_nation({"country": "Sweden / Portugal"}), "")
         self.assertEqual(player_nation({"country": "Portugal - Sverige"}), "")
+        self.assertEqual(
+            player_nation({"country": "Sweden / Portugal", "ranking_nation": "SWE"}), ""
+        )
         self.assertEqual(player_nation({"country": "test"}), "")
         self.assertEqual(player_nation({}), "")
 

@@ -240,7 +240,9 @@ def player_nation(player: dict) -> str:
     key = country.casefold()
     if key in NATION_ALIASES:
         return NATION_ALIASES[key]
-    if key not in NATION_IGNORED and "/" not in country and " - " not in country:
+    if "/" in country or " - " in country:
+        return ""  # Two countries: don't guess which one, not even from the ranking.
+    if key not in NATION_IGNORED:
         return country
     return RANKING_NATIONS.get(str(player.get("ranking_nation") or "").strip().upper(), "")
 
