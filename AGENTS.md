@@ -24,7 +24,9 @@ exploration interface with zero runtime database queries.
   `ratings.py` computes each player's Glicko-2 rating (with goal difference) game by game;
   the history is stored as `rating` in `data/h2h/{id}.json` and drawn on player pages, and each
   opponent entry gets a `forecast` ([win, draw, loss] if they met today, ratings plus how the
-  pair has done against them) shown on matchup pages.
+  pair has done against them) shown on matchup pages. The rating also carries `nations`: the
+  player's results against each opponent nation next to the ratings' pre-game expectation, drawn
+  as "Against each nation" on player pages (`nationEdges` in `insights.js` names the clear gaps).
 * `tests/` - Automated Python integration and validation tests verifying match counts and data sanity.
 
 ## Build & Development Commands

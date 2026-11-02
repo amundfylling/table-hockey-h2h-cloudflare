@@ -290,3 +290,86 @@ export function opponentExtremes(records, minGames = 40) {
   const worst = pool.reduce((m, r) => (score(r) < score(m) ? r : m));
   return { best, worst, threshold };
 }
+
+// Results against each opponent nation next to what the Glicko-2 ratings expected.
+// `rows` is rating.nations from the player file: [nation, games, wins, draws, losses,
+// expected points, variance], where points count a win as 1 and a draw as 0.5.
+// A nation is named as over- or underperformed when it has at least NATION_MIN_GAMES games
+// and the gap is unlikely to be chance (|z| >= NATION_Z, about 90% two-sided) and big enough
+// to matter (NATION_MIN_GAP percentage points; thousands of games make a 1-point gap "real").
+export const NATION_MIN_GAMES = 10;
+export const NATION_Z = 1.645;
+export const NATION_MIN_GAP = 3;
+
+export function nationEdges(rows, { minGames = NATION_MIN_GAMES, maxRows = 12, z = NATION_Z, minGap = NATION_MIN_GAP } = {}) {
+  const all = (Array.isArray(rows) ? rows : []).map(([nation, games, wins, draws, losses, expected, variance]) => {
+    const points = wins + draws / 2;
+    const spread = Math.sqrt(Math.max(variance, 1e-9));
+    return {
+      nation,
+      games,
+      wins,
+      draws,
+      losses,
+      points,
+      expected,
+      score: games ? points / games : 0,
+      expectedScore: games ? expected / games : 0,
+      // Percentage points of score above (or below) what the ratings expected.
+      diff: games ? ((points - expected) / games) * 100 : 0,
+      z: (points - expected) / spread,
+    };
+  });
+  const unknownGames = all.filter((row) => !row.nation).reduce((sum, row) => sum + row.games, 0);
+  const known = all.filter((row) => row.nation && row.games > 0).sort((x, y) => y.games - x.games);
+  let threshold = minGames;
+  let pool = known.filter((row) => row.games >= threshold);
+  if (pool.length < 3) {
+    threshold = Math.min(threshold, 3);
+    pool = known.filter((row) => row.games >= threshold);
+  }
+  const clear = (row) => row.games >= minGames && Math.abs(row.z) >= z && Math.abs(row.diff) >= minGap;
+  pool.forEach((row) => { row.clear = clear(row); });
+  const shown = pool.slice(0, maxRows);
+  // A nation named in the text always gets a row.
+  pool.slice(maxRows).filter((row) => row.clear).forEach((row) => shown.push(row));
+  const strongest = (sign) => pool
+    .filter((row) => row.clear && Math.sign(row.z) === sign)
+    .sort((x, y) => sign * (y.z - x.z));
+  const hidden = known.filter((row) => !shown.includes(row));
+  // Every game together. A rising player beats the pre-game ratings against almost everyone,
+  // so the page can say so instead of reading it as a pattern by nation.
+  const sum = (key) => all.reduce((total, row) => total + row[key], 0);
+  const games = sum("games");
+  const overallPoints = sum("points");
+  const overallExpected = sum("expected");
+  const overallSpread = Math.sqrt(Math.max(
+    (Array.isArray(rows) ? rows : []).reduce((total, row) => total + row[6], 0), 1e-9));
+  const overall = {
+    games,
+    points: overallPoints,
+    expected: overallExpected,
+    score: games ? overallPoints / games : 0,
+    expectedScore: games ? overallExpected / games : 0,
+    diff: games ? ((overallPoints - overallExpected) / games) * 100 : 0,
+    z: (overallPoints - overallExpected) / overallSpread,
+  };
+  overall.clear = games >= minGames && Math.abs(overall.z) >= z && Math.abs(overall.diff) >= minGap;
+  return {
+    overall,
+    rows: shown,
+    over: strongest(1),
+    under: strongest(-1),
+    threshold,
+    otherNations: hidden.length,
+    otherGames: hidden.reduce((sum, row) => sum + row.games, 0),
+    unknownGames,
+    totalGames: games,
+  };
+}
+
+// "Sweden", "Sweden and Latvia", "Sweden, Latvia and Finland".
+export function listNames(names) {
+  if (names.length < 2) return names.join("");
+  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+}

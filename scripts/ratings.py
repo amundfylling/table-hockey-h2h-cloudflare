@@ -111,6 +111,7 @@ def compute_ratings_and_forecasts(
     alias_groups: Iterable[Iterable[int]] = (),
     pairs: Iterable[Tuple[int, int]] = (),
     today: Optional[pd.Timestamp] = None,
+    nations: Optional[Dict[int, str]] = None,
 ) -> Tuple[Dict[int, dict], Dict[Tuple[int, int], List[float]]]:
     """Rating history for each id in player_ids, one point per tournament they played, and
     a [win, draw, loss] forecast (first player's side) for each (a, b) in pairs if they met
@@ -118,12 +119,20 @@ def compute_ratings_and_forecasts(
 
     Every game counts, including games against players who get no page. Ids in one alias
     group share a single rating, stored under each of the group's ids.
+
+    With `nations` (player id -> nation name), each rating also gets a `nations` list: the
+    player's results against each opponent nation next to what the ratings expected before
+    each game (see _nation_rows).
     """
     canonical: Dict[int, int] = {}
     for group in alias_groups:
         ids = [int(pid) for pid in group]
         for pid in ids:
             canonical[pid] = ids[0]
+    nation_of: Dict[int, str] = {}
+    for pid, nation in (nations or {}).items():
+        if nation:
+            nation_of.setdefault(canonical.get(int(pid), int(pid)), nation)
 
     order = _playing_order(matches)
     rows = matches.loc[order]
@@ -150,6 +159,9 @@ def compute_ratings_and_forecasts(
     history: Dict[int, List[list]] = {}
     # Per pair (low id, high id): [results minus expected for the low id, meetings].
     pair_edge: Dict[Tuple[int, int], List[float]] = {}
+    # Per tracked player and opponent nation ("" when unknown):
+    # [games, wins, draws, losses, expected points, variance of the points].
+    by_nation: Dict[int, Dict[str, List[float]]] = {}
 
     for i in range(len(p1)):
         a = canonical.get(p1[i], p1[i])
@@ -175,7 +187,27 @@ def compute_ratings_and_forecasts(
             _g(math.sqrt(pre[0] * pre[0] + pre[1] * pre[1])) * (mu_a - mu_b)
         )
         result_a = 1.0 if g1[i] > g2[i] else 0.0 if g1[i] < g2[i] else 0.5
-        surprise = result_a - (win + 0.5 * draw)
+        expected_a = win + 0.5 * draw
+        surprise = result_a - expected_a
+        if nations is not None:
+            variance = (
+                win * (1.0 - expected_a) ** 2
+                + draw * (0.5 - expected_a) ** 2
+                + (1.0 - win - draw) * expected_a ** 2
+            )
+            for pid, opponent, result, expected in (
+                (a, b, result_a, expected_a),
+                (b, a, 1.0 - result_a, 1.0 - expected_a),
+            ):
+                if pid not in tracked:
+                    continue
+                row = by_nation.setdefault(pid, {}).setdefault(
+                    nation_of.get(opponent, ""), [0, 0, 0, 0, 0.0, 0.0]
+                )
+                row[0] += 1
+                row[1 if result == 1.0 else 3 if result == 0.0 else 2] += 1
+                row[4] += expected
+                row[5] += variance
         edge = pair_edge.setdefault((a, b) if a < b else (b, a), [0.0, 0])
         edge[0] += surprise if a < b else -surprise
         edge[1] += 1
@@ -214,6 +246,9 @@ def compute_ratings_and_forecasts(
         if not points:
             continue
         result[pid] = _payload(points)
+        if nations is not None:
+            result[pid]["nation"] = nation_of.get(canonical.get(pid, pid), "")
+            result[pid]["nations"] = _nation_rows(by_nation.get(canonical.get(pid, pid), {}))
 
     if today is None:
         valid_days = [day for day in days if day == day]
@@ -240,6 +275,23 @@ def compute_ratings_and_forecasts(
         win, draw, loss = _outcome_probabilities(x + H2H_WEIGHT * edge)
         forecasts[(int(pair[0]), int(pair[1]))] = [round(win, 3), round(draw, 3), round(loss, 3)]
     return result, forecasts
+
+
+def _nation_rows(rows: Dict[str, List[float]]) -> List[list]:
+    """[nation, games, wins, draws, losses, expected points, variance], most games first.
+
+    Points count a win as 1 and a draw as 0.5. Expected points add up win + draw / 2 from the
+    forecast before each game (ratings only, no head-to-head term), so a player who keeps
+    scoring more than that against one nation does better against it than their rating says.
+    The variance of the points lets the page tell a real pattern from chance. Opponents with
+    no known nation are grouped under "".
+    """
+    ordered = sorted(rows.items(), key=lambda item: (-item[1][0], item[0]))
+    return [
+        [nation, int(row[0]), int(row[1]), int(row[2]), int(row[3]), round(row[4], 2),
+         round(row[5], 2)]
+        for nation, row in ordered
+    ]
 
 
 def _payload(points: List[list]) -> dict:

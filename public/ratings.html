@@ -19,7 +19,7 @@
   <link rel="preload" href="fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="fonts/barlow-condensed-latin-600.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="icon" type="image/png" sizes="32x32" href="favicon.png" />
-  <link rel="stylesheet" href="styles.css?v=20261102-ratings-doc" />
+  <link rel="stylesheet" href="styles.css?v=20261102-nations" />
 </head>
 
 <body data-home="false" class="doc-page">
@@ -197,6 +197,24 @@
         <p>The backtest shows about 60% of a long rivalry's past over- or under-performance carries over
           into the next meeting. The effect also holds after allowing for a player simply being in good
           or bad form.</p>
+      </section>
+
+      <section id="nations" aria-labelledby="doc-nations">
+        <h2 id="doc-nations">Against each nation</h2>
+        <p>Player pages compare a player's results against each opponent nation with what the ratings
+          expected. Before every game the forecast gives an expected score (win chance plus half the draw
+          chance, without the head-to-head adjustment). Adding these up over all games against one
+          nation's players and comparing with the real score (1 for a win, ½ for a draw) shows where a
+          player does better or worse than their rating says.</p>
+        <p class="doc-formula">gap = (score − expected score) / games</p>
+        <p>The gap is shown in percentage points: +6 means the player scored 6% more of the available
+          points than expected. A small sample can show a big gap by chance, so a nation is only named as
+          over- or underperformed when there are at least 10 games, the gap is at least 3 points, and it is
+          at least 1.645 standard deviations from zero (a 1 in 10 chance or less if the player were really
+          as good against that nation as anywhere else). Faded bars are gaps that are smaller or could be
+          chance.</p>
+        <p>A player's nation comes from their profile, or their ITHF ranking entry when the profile has
+          none. Games against players with no nation listed are left out.</p>
       </section>
 
       <section aria-labelledby="doc-test">

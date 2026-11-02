@@ -212,6 +212,41 @@ def load_rankings(ranking_path: Path) -> Dict[int, dict]:
     return rankings
 
 
+# Player country spellings in the source data mapped to one name per nation. Entries that name
+# two countries or no country at all are left out (no known nation).
+NATION_ALIASES = {
+    "россия": "Russia",
+    "росиия": "Russia",
+    "казакстан": "Kazakhstan",
+    "kazakistan": "Kazakhstan",
+    "republic of lithuania": "Lithuania",
+}
+NATION_IGNORED = {"", "-", "test"}
+# ITHF ranking nation codes, used when a player has no country in the player data.
+RANKING_NATIONS = {
+    "BLR": "Belarus", "CAN": "Canada", "CZE": "Czech Republic", "DEN": "Denmark",
+    "ESP": "Spain", "EST": "Estonia", "FIN": "Finland", "FRA": "France", "GER": "Germany",
+    "HUN": "Hungary", "IRL": "Ireland", "ISR": "Israel", "ITA": "Italy", "KAZ": "Kazakhstan",
+    "LAT": "Latvia", "LTU": "Lithuania", "NED": "Netherlands", "NOR": "Norway",
+    "POL": "Poland", "PRT": "Portugal", "POR": "Portugal", "RUS": "Russia", "SLO": "Slovenia",
+    "SRB": "Serbia", "SUI": "Switzerland", "SVK": "Slovakia", "SWE": "Sweden",
+    "UKR": "Ukraine", "USA": "United States of America",
+}
+
+
+def player_nation(player: dict) -> str:
+    """One nation name for a player record, or "" when the data doesn't say."""
+    country = str(player.get("country") or "").strip()
+    key = country.casefold()
+    if key in NATION_ALIASES:
+        return NATION_ALIASES[key]
+    if "/" in country or " - " in country:
+        return ""  # Two countries: don't guess which one, not even from the ranking.
+    if key not in NATION_IGNORED:
+        return country
+    return RANKING_NATIONS.get(str(player.get("ranking_nation") or "").strip().upper(), "")
+
+
 def load_players(
     players_path: Path, rankings: Optional[Dict[int, dict]] = None
 ) -> Tuple[Iterable[dict], Dict[int, str]]:
@@ -1872,6 +1907,7 @@ def main() -> int:
                 f"{max_ranking_age_days}."
             )
     players, player_names = load_players(players_path, rankings)
+    nations = {int(player["id"]): player_nation(player) for player in players}
 
     print("Loading tournaments...")
     tournament_levels = load_tournament_levels(tournament_metadata_path)
@@ -1961,6 +1997,7 @@ def main() -> int:
         load_alias_groups(),
         pairs=list(pairs),
         today=pd.Timestamp(datetime.now(timezone.utc).date()),
+        nations=nations,
     )
 
     print("Building H2H player files...")

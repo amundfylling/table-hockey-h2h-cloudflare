@@ -2,7 +2,7 @@ import { state, elements, isSeriesMode, isSinglePlayerMode } from "./state.js";
 import { getChronologicalItems } from "./form.js?v=20260801-generational-run-v3";
 import { decodeHtmlEntities, escapeHtml, formatDate, formatDateRange } from "./utils.js";
 import { SVG_TREND, SVG_BAR_CHART } from "./constants.js";
-import { getAliasGroup, getPlayerById } from "./players.js";
+import { getAliasGroup, getCountryFlag, getPlayerById } from "./players.js";
 import { requestView } from "./dom.js";
 import {
   findComeback,
@@ -10,7 +10,11 @@ import {
   groupTournaments,
   lastName,
   leadSeries,
+  listNames,
   monthYear,
+  NATION_MIN_GAMES,
+  NATION_MIN_GAP,
+  nationEdges,
   opponentExtremes,
   opponentRecords,
   scorelineGrid,
@@ -702,6 +706,306 @@ function renderRatingChart() {
   }, hide);
 }
 
+// ── Player: results against each nation ─────────────────────────────
+// Score (win 1, draw ½) against each opponent nation next to what the Glicko-2 ratings
+// expected before each game, worked out at build time (scripts/ratings.py). Whole career,
+// like the rating chart, so the view's filters don't change it.
+function pct(value) {
+  return `${Math.round(value * 100)}%`;
+}
+
+function signedPoints(value) {
+  const rounded = Math.round(value);
+  if (rounded > 0) return `+${rounded}`;
+  if (rounded < 0) return `−${Math.abs(rounded)}`;
+  return "0";
+}
+
+function nationLabel(nation) {
+  const flag = getCountryFlag(nation);
+  const frag = document.createDocumentFragment();
+  if (flag) {
+    const span = document.createElement("span");
+    span.className = "nation-flag";
+    span.setAttribute("aria-hidden", "true");
+    span.textContent = flag;
+    frag.append(span);
+  }
+  const name = document.createElement("span");
+  name.className = "nation-nm";
+  name.textContent = nation;
+  frag.append(name);
+  return frag;
+}
+
+function nationTone(row) {
+  return row.diff >= 0 ? "a" : "b";
+}
+
+function renderNations() {
+  const section = document.getElementById("nations-section");
+  const chart = document.getElementById("nation-chart");
+  const callout = document.getElementById("nations-callout");
+  if (!section || !chart || !callout) return;
+  const rating = state.playerA ? ratingOf(state.playerA.id) : null;
+  const edges = nationEdges(rating?.nations);
+  // One nation says nothing about nations; skip players who only met their own country.
+  if (edges.rows.length < 2) {
+    section.hidden = true;
+    chart.replaceChildren();
+    callout.replaceChildren();
+    return;
+  }
+  section.hidden = false;
+  const name = lastName(state.playerA.name || "");
+  const home = rating.nation || "";
+  const extra = [];
+  if (edges.otherNations) extra.push(`${fmt(edges.otherNations)} more nation${edges.otherNations === 1 ? "" : "s"} with fewer games`);
+  if (edges.unknownGames) extra.push(`${fmt(edges.unknownGames)} games against players with no nation listed`);
+  setText("nations-sub", `Score against each nation's players (win 1, draw ½) minus what the Glicko-2 ratings expected before each game. Whole career, nations with ${edges.threshold}+ games.${extra.length ? ` Not shown: ${extra.join("; ")}.` : ""}`);
+  setLegend("nations-legend", [
+    ["a", "Better than expected"],
+    ["b", "Worse than expected"],
+    ["faint", "Faded: small or could be chance"],
+  ]);
+
+  // Symmetric scale in percentage points, at least ±10.
+  const widest = Math.max(...edges.rows.map((row) => Math.abs(row.diff)));
+  const limit = Math.max(10, Math.ceil(widest / 5) * 5);
+  const list = document.createElement("div");
+  list.className = "nation-rows";
+  list.setAttribute("role", "table");
+  list.setAttribute("aria-label", `${name}'s score against each nation compared with what the ratings expected`);
+  const head = document.createElement("div");
+  head.className = "nation-row nation-head";
+  head.setAttribute("role", "row");
+  const scaleCell = document.createElement("span");
+  scaleCell.className = "nation-track nation-scale";
+  scaleCell.setAttribute("role", "columnheader");
+  scaleCell.innerHTML = `<span class="sr-only">Score minus expected, percentage points</span><i aria-hidden="true">−${limit}</i><i aria-hidden="true">0</i><i aria-hidden="true">+${limit}</i>`;
+  const headCell = (text, className) => {
+    const span = document.createElement("span");
+    span.className = className;
+    span.setAttribute("role", "columnheader");
+    span.textContent = text;
+    return span;
+  };
+  head.append(
+    headCell("Nation", "nation-name"),
+    headCell("Games", "nation-games"),
+    headCell("Scored", "nation-score"),
+    scaleCell,
+    headCell("Gap", "nation-value"),
+  );
+  const body = document.createElement("div");
+  body.setAttribute("role", "rowgroup");
+  edges.rows.forEach((row, index) => {
+    const line = document.createElement("div");
+    line.className = "nation-row";
+    line.dataset.index = String(index);
+    line.setAttribute("role", "row");
+    const cell = (className, content) => {
+      const span = document.createElement("span");
+      span.className = className;
+      span.setAttribute("role", "cell");
+      if (typeof content === "string") span.textContent = content;
+      else if (content) span.append(content);
+      return span;
+    };
+    const nameCell = cell("nation-name", nationLabel(row.nation));
+    if (row.nation === home) {
+      const tag = document.createElement("small");
+      tag.className = "nation-home";
+      tag.textContent = "home";
+      nameCell.append(tag);
+    }
+    const track = cell("nation-track");
+    const zero = document.createElement("i");
+    zero.className = "nation-zero";
+    zero.setAttribute("aria-hidden", "true");
+    const bar = document.createElement("i");
+    const clipped = Math.max(-limit, Math.min(limit, row.diff));
+    const half = 50 * Math.abs(clipped) / limit;
+    bar.className = `nation-bar ${nationTone(row)}${row.clear ? "" : " faint"}`;
+    bar.setAttribute("aria-hidden", "true");
+    bar.style.left = `${clipped >= 0 ? 50 : 50 - half}%`;
+    bar.style.width = `${Math.max(half, 0.6)}%`;
+    const sr = document.createElement("span");
+    sr.className = "sr-only";
+    sr.textContent = `Scored ${pct(row.score)}, ratings expected ${pct(row.expectedScore)}${row.clear ? "" : ", small or could be chance"}`;
+    track.append(zero, bar, sr);
+    const value = cell(`nation-value${row.clear ? ` ${nationTone(row)}` : ""}`, signedPoints(row.diff));
+    line.append(nameCell, cell("nation-games", fmt(row.games)), cell("nation-score", pct(row.score)), track, value);
+    body.append(line);
+  });
+  // Every game, the unlisted nations included, as a reference under the nations.
+  const o = edges.overall;
+  const total = document.createElement("div");
+  total.className = "nation-row nation-total";
+  total.setAttribute("role", "row");
+  const totalCell = (className, text) => {
+    const span = document.createElement("span");
+    span.className = className;
+    span.setAttribute("role", "cell");
+    span.textContent = text;
+    return span;
+  };
+  const totalTrack = totalCell("nation-track", "");
+  const totalZero = document.createElement("i");
+  totalZero.className = "nation-zero";
+  totalZero.setAttribute("aria-hidden", "true");
+  const totalBar = document.createElement("i");
+  const totalClipped = Math.max(-limit, Math.min(limit, o.diff));
+  const totalHalf = 50 * Math.abs(totalClipped) / limit;
+  totalBar.className = `nation-bar ${o.diff >= 0 ? "a" : "b"}${o.clear ? "" : " faint"}`;
+  totalBar.setAttribute("aria-hidden", "true");
+  totalBar.style.left = `${totalClipped >= 0 ? 50 : 50 - totalHalf}%`;
+  totalBar.style.width = `${Math.max(totalHalf, 0.6)}%`;
+  const totalSr = document.createElement("span");
+  totalSr.className = "sr-only";
+  totalSr.textContent = `Scored ${pct(o.score)}, ratings expected ${pct(o.expectedScore)}`;
+  totalTrack.append(totalZero, totalBar, totalSr);
+  total.append(
+    totalCell("nation-name", "All games"),
+    totalCell("nation-games", fmt(o.games)),
+    totalCell("nation-score", pct(o.score)),
+    totalTrack,
+    totalCell(`nation-value${o.clear ? ` ${o.diff >= 0 ? "a" : "b"}` : ""}`, signedPoints(o.diff)),
+  );
+  body.append(total);
+  list.append(head, body);
+  chart.replaceChildren(list);
+
+  const tooltip = ensureChartTooltip(chart);
+  let activeRow = null;
+  const hide = () => {
+    if (activeRow) activeRow.classList.remove("is-active");
+    activeRow = null;
+    hideChartTooltip(tooltip);
+  };
+  bindChartTooltip(list, (event) => {
+    const line = event.target.closest?.(".nation-row[data-index]");
+    if (!line) {
+      hide();
+      return;
+    }
+    const row = edges.rows[Number(line.dataset.index)];
+    if (activeRow !== line) {
+      if (activeRow) activeRow.classList.remove("is-active");
+      line.classList.add("is-active");
+      activeRow = line;
+    }
+    const gap = row.points - row.expected;
+    const html = `<div class="tooltip-title">${escapeHtml(row.nation)}</div>
+      <div class="tooltip-kv"><strong>${row.wins}–${row.draws}–${row.losses}</strong> in ${fmt(row.games)} games</div>
+      <div class="tooltip-kv">Scored <strong>${pct(row.score)}</strong> · expected ${pct(row.expectedScore)}</div>
+      <div class="tooltip-kv">${gap >= 0 ? "+" : "−"}${Math.abs(gap).toFixed(1)} points vs the ratings${row.clear ? "" : " (small or could be chance)"}</div>`;
+    const box = chart.getBoundingClientRect();
+    const trackBox = line.querySelector(".nation-track").getBoundingClientRect();
+    const lineBox = line.getBoundingClientRect();
+    showChartTooltip(chart, tooltip, html, trackBox.left - box.left, trackBox.right - box.left,
+      lineBox.top - box.top + lineBox.height / 2);
+  }, hide);
+
+  renderNationCallout(callout, edges, name);
+}
+
+function renderNationCallout(container, edges, name) {
+  container.replaceChildren();
+  const eyebrow = document.createElement("div");
+  eyebrow.className = "eyebrow";
+  eyebrow.textContent = `${name} against the ratings`;
+  const big = document.createElement("p");
+  big.className = "big";
+  const names = (rows, tone) => {
+    const out = [];
+    const list = rows.slice(0, 3).map((row) => row.nation);
+    const more = rows.length - list.length;
+    const text = more ? `${list.join(", ")} and ${more} more` : listNames(list);
+    // Colour each nation, keep the joining words plain.
+    let rest = text;
+    list.forEach((nation) => {
+      const at = rest.indexOf(nation);
+      if (at > 0) out.push(rest.slice(0, at));
+      const span = document.createElement("span");
+      span.className = tone;
+      span.textContent = nation;
+      out.push(span);
+      rest = rest.slice(at + nation.length);
+    });
+    if (rest) out.push(rest);
+    return out;
+  };
+  if (edges.over.length && edges.under.length) {
+    big.append("Overperforms against ", ...names(edges.over, "a"), ", underperforms against ", ...names(edges.under, "b"), ".");
+  } else if (edges.over.length) {
+    big.append("Overperforms against ", ...names(edges.over, "a"), ".");
+  } else if (edges.under.length) {
+    big.append("Underperforms against ", ...names(edges.under, "b"), ".");
+  } else {
+    big.append("No nation stands out: results match the ratings everywhere.");
+  }
+  container.append(eyebrow, big);
+
+  const detail = (title, rows, tone) => {
+    const div = document.createElement("div");
+    const label = document.createElement("div");
+    label.className = "eyebrow";
+    label.textContent = title;
+    div.append(label);
+    rows.slice(0, 3).forEach((row) => {
+      const item = document.createElement("div");
+      item.className = "nation-pick";
+      const nm = document.createElement("div");
+      nm.className = "xn";
+      nm.append(nationLabel(row.nation));
+      const meta = document.createElement("div");
+      meta.className = "xs";
+      const strong = document.createElement("span");
+      strong.className = tone;
+      strong.textContent = `${signedPoints(row.diff)} pts`;
+      meta.append(strong, ` · ${pct(row.score)} vs ${pct(row.expectedScore)} expected in ${fmt(row.games)} games`);
+      item.append(nm, meta);
+      div.append(item);
+    });
+    return div;
+  };
+  // Ahead of (or behind) the ratings against nearly everyone: the rating is catching up.
+  const o = edges.overall;
+  const sameWay = o.diff >= 0 ? edges.over.length : edges.under.length;
+  if (o.clear && sameWay >= 3) {
+    const p = document.createElement("p");
+    p.className = "nation-note";
+    p.textContent = o.diff >= 0
+      ? `${name} scores above the ratings in general (${signedPoints(o.diff)} pts over all games), a sign the rating is still catching up with better results, so most nations show a plus.`
+      : `${name} scores below the ratings in general (${signedPoints(o.diff)} pts over all games), a sign the rating is still catching up with weaker results, so most nations show a minus.`;
+    container.append(p);
+  }
+  if (edges.over.length || edges.under.length) {
+    const block = document.createElement("div");
+    block.className = "extremes nation-extremes";
+    if (edges.over.length) block.append(detail("Overperforms", edges.over, "a"));
+    if (edges.under.length) block.append(detail("Underperforms", edges.under, "b"));
+    container.append(block);
+  } else {
+    const nearest = [...edges.rows].sort((x, y) => Math.abs(y.z) - Math.abs(x.z))[0];
+    if (nearest) {
+      const p = document.createElement("p");
+      p.className = "nation-note";
+      p.textContent = `The widest gap, ${signedPoints(nearest.diff)} points against ${nearest.nation} in ${fmt(nearest.games)} games, is too small or too likely to be chance to call.`;
+      container.append(p);
+    }
+  }
+  const foot = document.createElement("p");
+  foot.className = "xfoot";
+  foot.append(`Pts is percentage points of score (win 1, draw ½) above or below the Glicko-2 forecast before each game. A nation is named when it has ${NATION_MIN_GAMES}+ games and a gap of ${NATION_MIN_GAP}+ pts that is unlikely to be chance. `);
+  const link = document.createElement("a");
+  link.href = "ratings#nations";
+  link.textContent = "How this works";
+  foot.append(link);
+  container.append(foot);
+}
+
 // ── Player: who they play ───────────────────────────────────────────
 function opponentButton(record, className) {
   const button = document.createElement("button");
@@ -979,6 +1283,7 @@ export function renderCharts(items) {
   if (isSinglePlayerMode()) {
     const records = opponentRecords(items, (id) => getAliasGroup(id)[0], (id) => getPlayerById(id)?.name);
     renderRatingChart();
+    renderNations();
     renderSeasonBars(items);
     renderWhoPlays(items, records);
     renderRivalMap(items, records);

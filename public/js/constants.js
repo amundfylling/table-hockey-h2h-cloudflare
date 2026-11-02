@@ -63,7 +63,7 @@ export const SVG_BAR_CHART = `
 export const COUNTRY_FLAGS = new Map(Object.entries({
   "belarus": "🇧🇾", "canada": "🇨🇦", "chile": "🇨🇱", "czech republic": "🇨🇿", "denmark": "🇩🇰", "estonia": "🇪🇪",
   "finland": "🇫🇮", "france": "🇫🇷", "germany": "🇩🇪", "hungary": "🇭🇺", "iceland": "🇮🇸", "ireland": "🇮🇪",
-  "israel": "🇮🇱", "italy": "🇮🇹", "kazakhstan": "🇰🇿", "kazakistan": "🇰🇿", "kyrgyzstan": "🇰🇬", "latvia": "🇱🇻",
+  "israel": "🇮🇱", "italy": "🇮🇹", "kazakhstan": "🇰🇿", "kazakistan": "🇰🇿", "kyrgyzstan": "🇰🇬", "latvia": "🇱🇻", "lithuania": "🇱🇹", "poland": "🇵🇱", "austria": "🇦🇹",
   "netherlands": "🇳🇱", "norway": "🇳🇴", "pakistan": "🇵🇰", "portugal": "🇵🇹", "republic of lithuania": "🇱🇹",
   "russia": "🇷🇺", "россия": "🇷🇺", "serbia": "🇷🇸", "slovakia": "🇸🇰", "slovenia": "🇸🇮", "spain": "🇪🇸",
   "sri lanka": "🇱🇰", "sweden": "🇸🇪", "sweden / portugal": "🇸🇪/🇵🇹", "switzerland": "🇨🇭", "syria": "🇸🇾",
