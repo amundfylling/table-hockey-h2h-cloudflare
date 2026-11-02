@@ -19,7 +19,7 @@
   <link rel="preload" href="fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="fonts/barlow-condensed-latin-600.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="icon" type="image/png" sizes="32x32" href="favicon.png" />
-  <link rel="stylesheet" href="styles.css?v=20261102-nations" />
+  <link rel="stylesheet" href="styles.css?v=20261102-story" />
 </head>
 
 <body data-home="pending">
@@ -224,7 +224,7 @@
 
     <div id="score-bug" class="score-bug" aria-hidden="true"></div>
 
-    <section id="summary-section" class="view-hero" aria-labelledby="headline" aria-busy="false" hidden>
+    <section id="summary-section" data-story="summary" class="view-hero" aria-labelledby="headline" aria-busy="false" hidden>
       <div class="wrap">
         <h2 id="headline" class="sr-only" tabindex="-1">Pick two players</h2>
         <p id="summary-scope" class="sr-only"></p>
@@ -373,7 +373,7 @@
 
     <section id="visualizations-section" class="results-body" aria-busy="false" hidden>
       <!-- Matchup -->
-      <div class="section matchup-only">
+      <div class="section matchup-only" data-story="lead">
         <div class="wrap">
           <div class="panel chart-panel">
             <div class="chart-head">
@@ -392,7 +392,7 @@
         </div>
       </div>
 
-      <div class="section matchup-only">
+      <div class="section matchup-only" data-story="tape">
         <div class="wrap cols c-7-5">
           <div>
             <div class="sec-head">
@@ -414,7 +414,7 @@
         </div>
       </div>
 
-      <div class="section matchup-only">
+      <div class="section matchup-only" data-story="seasons">
         <div class="wrap">
           <div class="sec-head">
             <h2 class="sec-title">Season by season</h2>
@@ -424,7 +424,7 @@
         </div>
       </div>
 
-      <div class="section matchup-only">
+      <div class="section matchup-only" data-story="tournaments">
         <div class="wrap">
           <div class="sec-head">
             <h2 class="sec-title">Tournaments</h2>
@@ -436,7 +436,7 @@
       </div>
 
       <!-- Player -->
-      <div id="rating-section" class="section player-only" hidden>
+      <div id="rating-section" data-story="rating" class="section player-only" hidden>
         <div class="wrap">
           <div class="panel chart-panel">
             <div class="chart-head">
@@ -451,7 +451,7 @@
         </div>
       </div>
 
-      <div id="nations-section" class="section player-only" hidden>
+      <div id="nations-section" data-story="nations" class="section player-only" hidden>
         <div class="wrap cols c-7-5">
           <div class="panel chart-panel">
             <div class="chart-head">
@@ -467,7 +467,7 @@
         </div>
       </div>
 
-      <div class="section player-only">
+      <div class="section player-only" data-story="win-rate">
         <div class="wrap cols c-7-5">
           <div class="panel chart-panel">
             <div class="chart-head">
@@ -482,7 +482,7 @@
         </div>
       </div>
 
-      <div class="section player-only">
+      <div class="section player-only" data-story="rivals">
         <div class="wrap">
           <div class="panel chart-panel">
             <div class="chart-head">
@@ -498,7 +498,7 @@
       </div>
     </section>
 
-    <section id="single-player-section" class="section" hidden>
+    <section id="single-player-section" data-story="opponents" class="section" hidden>
       <div class="wrap">
         <div class="sec-head">
           <h2 class="sec-title">Opponents</h2>
@@ -545,7 +545,7 @@
       </div>
     </section>
 
-    <section id="matches-section" class="section matches-card" aria-busy="false" hidden>
+    <section id="matches-section" data-story="games" class="section matches-card" aria-busy="false" hidden>
       <div class="wrap">
         <div class="matches-header">
           <div class="sec-head">
@@ -656,7 +656,7 @@
     </div>
   </footer>
 
-  <script type="module" src="js/main.js?v=20261102-nations"></script>
+  <script type="module" src="js/main.js?v=20261102-story"></script>
 </body>
 
 </html>

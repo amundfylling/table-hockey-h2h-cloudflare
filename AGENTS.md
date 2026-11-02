@@ -122,6 +122,10 @@ The frontend is vanilla ES modules under `public/js/`, loaded from `index.html` 
 * `switcher.js` - Matchup hero name popover: swap one player for another opponent, or open their career.
 * `opponents.js` - Single-player opponents table (sortable, min-games slider).
 * `charts.js` - SVG charts + the chart tooltip system.
+* `story.js` - Story rail on player and matchup pages: a sticky section tracker beside the
+  results from 1360px up, a slim top bar with a tap-to-open list below that (it stands in for
+  the phone score bug). Sections are marked with `data-story` in `index.html`.
+* `story-lines.js` - Pure helpers that write the rail's one-line finding for each section.
 * `table.js` - Match table (sorting, pagination, expandable rows, series detail panels).
 * `game-context.js` - Pure helpers for the expanded game row (series, H2H record after the game, previous meeting).
 * `form.js` - Recent-form chips strip.
