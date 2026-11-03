@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ratings leaderboard · Table Hockey H2H</title>
+  <meta name="description" content="Every table hockey player ranked by rating, with nation filter, recent climbers and career peaks." />
+  <meta name="theme-color" content="#F4F3EF" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Table Hockey H2H" />
+  <meta property="og:title" content="Ratings leaderboard · Table Hockey H2H" />
+  <meta property="og:description" content="Every table hockey player ranked by rating, with nation filter, recent climbers and career peaks." />
+  <meta property="og:url" content="https://h2h.puck.no/leaderboard" />
+  <meta property="og:image" content="https://h2h.puck.no/og-default.png" />
+  <link rel="canonical" href="https://h2h.puck.no/leaderboard" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="preload" href="fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="fonts/barlow-condensed-latin-600.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon.png" />
+  <link rel="stylesheet" href="styles.css?v=20261103-browse" />
+</head>
+
+<body data-home="false" class="browse-page">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <a class="brand" href="./?home" data-nav="home" aria-label="Table Hockey H2H, home">
+        <img class="mark" src="nbhf-logo.png" alt="" width="24" height="36" />
+        <span class="brand-name">Table Hockey H2H</span>
+      </a>
+      <nav class="nav" aria-label="Main">
+        <a href="./?home" data-nav="home">Head-to-head</a>
+        <a href="leaderboard" aria-current="page">Leaderboard</a>
+        <a href="tournaments">Tournaments</a>
+        <a href="./#records" data-nav="records">Records</a>
+        <a href="./#rivalries" data-nav="rivalries">Rivalries</a>
+        <a href="./#players" data-nav="players">Players</a>
+      </nav>
+      <a id="header-search" class="header-search" href="./?home">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
+          stroke-linejoin="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="7"></circle>
+          <path d="M20 20l-3.5-3.5"></path>
+        </svg>
+        <span class="header-search-label">Search players</span>
+        </a>
+      <div class="topbar-actions">
+        <a id="mobile-search" class="icon-button only-m" href="./?home" aria-label="Search players">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="7"></circle>
+            <path d="M20 20l-3.5-3.5"></path>
+          </svg>
+        </a>
+        <button id="theme-toggle" class="icon-button theme-toggle" type="button" aria-pressed="false"
+          aria-label="Switch to dark mode">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 3a6 6 0 0 0 9 7.4A9 9 0 1 1 12 3z"></path>
+          </svg>
+          <span class="sr-only">Dark mode</span>
+        </button>
+        <button id="menu-toggle" class="icon-button only-m" type="button" aria-label="Open menu"
+          aria-controls="mobile-menu" aria-expanded="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 7h16"></path>
+            <path d="M4 12h16"></path>
+            <path d="M4 17h16"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <nav id="mobile-menu" class="mobile-menu" aria-label="Main" hidden>
+      <div class="wrap">
+        <a href="./?home" data-nav="home">Head-to-head</a>
+        <a href="leaderboard" aria-current="page">Leaderboard</a>
+        <a href="tournaments">Tournaments</a>
+        <a href="./#records" data-nav="records">Records</a>
+        <a href="./#rivalries" data-nav="rivalries">Rivalries</a>
+        <a href="./#players" data-nav="players">Players</a>
+      </div>
+    </nav>
+  </header>
+
+  <main id="main" class="browse-main" aria-busy="true">
+    <div class="wrap view-hero">
+      <nav class="crumbs" aria-label="Breadcrumb">
+        <a href="./?home">Head-to-head</a><span class="sep" aria-hidden="true">/</span><span aria-current="page">Leaderboard</span>
+      </nav>
+      <h1 class="t-title">Ratings leaderboard</h1>
+      <p id="b-meta" class="t-meta">Every player ranked by their rating from all recorded games.
+        <a href="ratings">How the ratings work</a></p>
+    </div>
+
+    <div class="wrap section">
+      <div class="b-controls" role="search" aria-label="Filter players">
+        <div class="b-field b-search">
+          <label for="b-query">Player</label>
+          <input id="b-query" type="search" autocomplete="off" placeholder="Search by name" />
+        </div>
+        <div class="b-field">
+          <label for="b-nation">Nation</label>
+          <select id="b-nation"><option value="">All nations</option></select>
+        </div>
+        <div class="b-field">
+          <span class="b-label" id="b-active-label">Players</span>
+          <div class="b-chips" role="group" aria-labelledby="b-active-label">
+            <button type="button" data-active="1" aria-pressed="true">Active</button>
+            <button type="button" data-active="0" aria-pressed="false">All time</button>
+          </div>
+        </div>
+        <div class="b-field b-phone-only">
+          <label for="b-sort">Sort by</label>
+          <select id="b-sort">
+            <option value="rating">Rating</option>
+            <option value="change">90-day change</option>
+            <option value="gap">Rated above world rank</option>
+            <option value="gap-asc">Rated below world rank</option>
+            <option value="wr">World rank</option>
+            <option value="peak">Peak</option>
+            <option value="games">Games</option>
+            <option value="last">Last played</option>
+          </select>
+        </div>
+      </div>
+      <p id="b-status" class="b-status" role="status" aria-live="polite"></p>
+      <div id="b-error" class="panel t-empty" hidden>
+        <p>The leaderboard could not be loaded. Please refresh to try again.</p>
+      </div>
+      <div id="b-table-wrap" class="panel b-table-wrap" hidden>
+        <table class="b-table b-leaderboard">
+          <caption class="sr-only">Players by rating</caption>
+          <thead>
+            <tr>
+              <th scope="col" class="num b-rank">#</th>
+              <th scope="col">Player</th>
+              <th scope="col" class="num" aria-sort="descending"><button type="button" data-sort="rating">Rating</button></th>
+              <th scope="col" class="num"><button type="button" data-sort="change"><span id="b-change-head">90 days</span></button></th>
+              <th scope="col" class="num b-wide"><button type="button" data-sort="wr"
+                  title="ITHF world rank"><abbr title="ITHF world rank">WR</abbr></button></th>
+              <th scope="col" class="num b-wide"><button type="button" data-sort="gap"
+                  title="Places the rating ranks the player above (+) or below (−) their world rank">vs WR</button></th>
+              <th scope="col" class="num b-wide"><button type="button" data-sort="peak">Peak</button></th>
+              <th scope="col" class="num b-wide"><button type="button" data-sort="games">Games</button></th>
+              <th scope="col" class="num b-wide"><button type="button" data-sort="last">Last played</button></th>
+            </tr>
+          </thead>
+          <tbody id="b-rows"></tbody>
+        </table>
+        <button id="b-more" class="tfoot" type="button" hidden>Show more</button>
+      </div>
+      <p class="b-note">Active means a game in the last 12 months. The rating is shown with its
+        uncertainty (±): it grows while a player is away and shrinks as they play.
+        WR is the ITHF world rank. <strong>vs WR</strong> sets it against the player's place by
+        rating among all world-ranked players: +20 means the rating puts them 20 places higher
+        than the world ranking does, −20 means 20 places lower.</p>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <section class="data-sources" aria-labelledby="data-sources-title">
+        <h2 id="data-sources-title" class="data-sources-title">Data sources</h2>
+        <ul id="data-sources-list" class="data-sources-list">
+          <li><a href="https://th.sportscorpion.com/" target="_blank" rel="noopener">th.sportscorpion.com</a></li>
+          <li><a href="https://resultat.bordshockey.se/" target="_blank" rel="noopener">resultat.bordshockey.se</a></li>
+          <li><a href="https://table-hockey.eu/" target="_blank" rel="noopener">table-hockey.eu</a></li>
+        </ul>
+      </section>
+      <div class="footer-meta">
+        <p class="footer-links"><a href="changelog">Changelog</a></p>
+        <p id="home-stats" class="footer-stats" hidden></p>
+        <p id="data-freshness" class="data-freshness" hidden></p>
+      </div>
+    </div>
+  </footer>
+
+  <script type="module" src="js/leaderboard-page.js?v=20261103-browse"></script>
+</body>
+
+</html>

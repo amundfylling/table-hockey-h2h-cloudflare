@@ -40,6 +40,8 @@ Raw URLs (overridable via env vars):
   - `meta.json` (counts, validation metrics, and source hashes; powers the freshness footer)
   - `h2h/{playerId}.json` (one file per player; opponents nested)
   - `og/{playerId}.json` (compact share metadata for the Pages Function)
+  - `leaderboard.json` (every rated player, best first, for the leaderboard page)
+  - `tournament-list.json` (every tournament with its winner and runner-up, for the tournaments page)
 
 The build writes a complete sibling staging tree and swaps it into `public/data/` only after every
 artifact succeeds, so an interrupted local build leaves the previous complete dataset available.

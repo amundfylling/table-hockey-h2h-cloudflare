@@ -8,7 +8,7 @@ import sys
 import shutil
 import unicodedata
 from collections import deque
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Dict, Iterable, Optional, Tuple
 from urllib.parse import urlparse
@@ -1549,6 +1549,98 @@ def load_alias_groups(path: Path = PUBLIC_DIR / "aliases.json") -> list:
     return [group["ids"] for group in groups if isinstance(group, dict) and group.get("ids")]
 
 
+LEADERBOARD_CHANGE_DAYS = 90
+
+
+def build_leaderboard(
+    players: Iterable[dict],
+    player_ratings: Dict[int, dict],
+    today: str,
+    alias_groups: Iterable[dict] = (),
+    change_days: int = LEADERBOARD_CHANGE_DAYS,
+) -> dict:
+    """data/leaderboard.json: every player with a page and a rating, best rating first.
+
+    Each row is a list in `fields` order. `change` is the rating now minus the rating
+    `change_days` before `today` (null when the player had no rating yet), so the page can show
+    who is climbing, and `world_rank` is the player's ITHF world rank (null when unranked) so the
+    page can set the two rankings side by side. Ids in one alias group share a rating and are
+    listed once, under the first of the group's ids that has a page, with the group's name and
+    the group's best world rank.
+    """
+    players = list(players)
+    page_ids = {int(player["id"]) for player in players}
+    listed_as: Dict[int, int] = {}
+    group_names: Dict[int, str] = {}
+    for group in alias_groups:
+        ids = [int(pid) for pid in group.get("ids") or []]
+        keep = next((pid for pid in ids if pid in page_ids), None)
+        if keep is None:
+            continue
+        for pid in ids:
+            listed_as[pid] = keep
+        if group.get("name"):
+            group_names[keep] = str(group["name"])
+    cutoff = (
+        datetime.strptime(today, "%Y-%m-%d").date() - timedelta(days=change_days)
+    ).isoformat()
+
+    # The best ITHF world rank among the ids listed as one player.
+    world_rank: Dict[int, int] = {}
+    for player in players:
+        rank = player.get("world_rank")
+        if rank is None or rank != rank:
+            continue
+        keep = listed_as.get(int(player["id"]), int(player["id"]))
+        world_rank[keep] = min(int(rank), world_rank.get(keep, int(rank)))
+
+    rows = []
+    for player in players:
+        pid = int(player["id"])
+        if listed_as.get(pid, pid) != pid:
+            continue
+        rating = player_ratings.get(pid)
+        history = (rating or {}).get("history") or []
+        if not rating or not history:
+            continue
+        before = [point for point in history if point[0] and point[0] <= cutoff]
+        change = rating["rating"] - before[-1][1] if before else None
+        dated = [point[0] for point in history if point[0]]
+        peak = rating.get("peak") or {}
+        rows.append([
+            pid,
+            group_names.get(pid) or player.get("name") or f"Player {pid}",
+            player_nation(player),
+            rating["rating"],
+            rating["rd"],
+            rating["games"],
+            peak.get("rating"),
+            peak.get("date"),
+            max(dated) if dated else None,
+            change,
+            world_rank.get(pid),
+        ])
+    rows.sort(key=lambda row: (-row[3], row[4], row[1]))
+    return {
+        "as_of": today,
+        "change_days": change_days,
+        "fields": [
+            "id", "name", "nation", "rating", "rd", "games", "peak", "peak_date", "last_played",
+            "change", "world_rank",
+        ],
+        "players": rows,
+    }
+
+
+def load_alias_group_records(path: Path = PUBLIC_DIR / "aliases.json") -> list:
+    """The groups in aliases.json with their names ({"name", "ids"})."""
+    try:
+        groups = json.loads(path.read_text(encoding="utf-8")).get("groups", [])
+    except (OSError, ValueError, AttributeError):
+        return []
+    return [group for group in groups if isinstance(group, dict) and group.get("ids")]
+
+
 def build_sitemap(
     player_payloads: Dict[int, dict],
     generated_on: str,
@@ -1558,7 +1650,7 @@ def build_sitemap(
     tournament_ids: Iterable[int] = (),
     tournament_dates: Optional[Dict[int, str]] = None,
 ) -> str:
-    """sitemap.xml text: the home, ratings and changelog pages, every player and tournament, then the most played
+    """sitemap.xml text: the home, ratings, changelog, leaderboard and tournaments pages, every player and tournament, then the most played
     matchups.
 
     Matchups are listed once, lower id first, most games first, until the file is full. Each page's
@@ -1590,6 +1682,8 @@ def build_sitemap(
         (f"{base}/", generated_on),
         (f"{base}/ratings", generated_on),
         (f"{base}/changelog", generated_on),
+        (f"{base}/leaderboard", generated_on),
+        (f"{base}/tournaments", generated_on),
     ]
     urls.extend(
         (f"{base}/?p1={pid}", last_game[pid]) for pid in sorted(int(pid) for pid in player_payloads)
@@ -2210,6 +2304,15 @@ def main() -> int:
         pair_stats=pair_stats,
     )
     write_json(DATA_STAGING_DIR / "rivalries.json", build_rivalries(player_payloads, players))
+    write_json(
+        DATA_STAGING_DIR / "leaderboard.json",
+        build_leaderboard(
+            players,
+            player_ratings,
+            datetime.now(timezone.utc).date().isoformat(),
+            load_alias_group_records(),
+        ),
+    )
 
     print("Building tournament files...")
     tournament_index = tournament_pages.build_tournament_files(
@@ -2222,6 +2325,12 @@ def main() -> int:
         merged_into=merged_into,
     )
     print(f"Wrote {len(tournament_index)} tournament files.")
+    write_json(
+        DATA_STAGING_DIR / "tournament-list.json",
+        tournament_pages.build_tournament_list(
+            tournament_index, all_names, {int(player["id"]) for player in players}
+        ),
+    )
     write_json(DATA_STAGING_DIR / "records.json", records)
 
     write_json(
