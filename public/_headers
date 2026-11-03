@@ -20,3 +20,5 @@
   Cache-Control: no-cache
 /ratings
   Cache-Control: no-cache
+/changelog
+  Cache-Control: no-cache

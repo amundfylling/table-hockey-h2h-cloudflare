@@ -28,6 +28,7 @@ class SitemapTest(unittest.TestCase):
             [
                 "https://h2h.example/",
                 "https://h2h.example/ratings",
+                "https://h2h.example/changelog",
                 "https://h2h.example/?p1=1",
                 "https://h2h.example/?p1=2",
                 "https://h2h.example/?p1=3",
@@ -42,7 +43,7 @@ class SitemapTest(unittest.TestCase):
         payloads = _payloads({(1, 2): 9})
         locs = _locs(build_sitemap(payloads, "2026-11-01", "https://h2h.example",
                                    tournament_ids=[30, 4]))
-        self.assertEqual(locs[4:6], ["https://h2h.example/tournament?id=4",
+        self.assertEqual(locs[5:7], ["https://h2h.example/tournament?id=4",
                                      "https://h2h.example/tournament?id=30"])
 
     def test_lastmod_follows_the_latest_game_not_the_build(self):
@@ -72,8 +73,8 @@ class SitemapTest(unittest.TestCase):
 
     def test_respects_url_cap(self):
         payloads = _payloads({(1, 2): 9, (1, 3): 40, (2, 3): 20})
-        locs = _locs(build_sitemap(payloads, "2026-11-01", "https://h2h.example", max_urls=6))
-        self.assertEqual(len(locs), 6)
+        locs = _locs(build_sitemap(payloads, "2026-11-01", "https://h2h.example", max_urls=7))
+        self.assertEqual(len(locs), 7)
         self.assertEqual(locs[-1], "https://h2h.example/?p1=1&p2=3")
 
 

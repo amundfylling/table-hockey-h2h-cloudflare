@@ -1558,7 +1558,7 @@ def build_sitemap(
     tournament_ids: Iterable[int] = (),
     tournament_dates: Optional[Dict[int, str]] = None,
 ) -> str:
-    """sitemap.xml text: the home and ratings pages, every player and tournament, then the most played
+    """sitemap.xml text: the home, ratings and changelog pages, every player and tournament, then the most played
     matchups.
 
     Matchups are listed once, lower id first, most games first, until the file is full. Each page's
@@ -1586,7 +1586,11 @@ def build_sitemap(
             dates.append(str(history[-1][0] or "")[:10])
         last_game[int(pid)] = day(max(dates, default=""))
 
-    urls = [(f"{base}/", generated_on), (f"{base}/ratings", generated_on)]
+    urls = [
+        (f"{base}/", generated_on),
+        (f"{base}/ratings", generated_on),
+        (f"{base}/changelog", generated_on),
+    ]
     urls.extend(
         (f"{base}/?p1={pid}", last_game[pid]) for pid in sorted(int(pid) for pid in player_payloads)
     )
