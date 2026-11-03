@@ -59,12 +59,12 @@ export function withWorldRankGap(players) {
 }
 
 // The players that pass the filters, each with its rank by rating among them, in the
-// chosen order.
+// chosen order. The vs WR place counts every world-ranked player in the Active or All time
+// view, whatever the nation and name filters, so it matches the world ranking's scope.
 export function visiblePlayers(players, { query, nation, active, cutoff, sort, ascending }) {
-  const ranked = players
-    .filter((p) => (!nation || p.nation === nation)
-      && (!active || (p.last_played && p.last_played >= cutoff))
-      && matchesQuery(p.name, query))
+  const inView = players.filter((p) => !active || (p.last_played && p.last_played >= cutoff));
+  const ranked = withWorldRankGap(inView)
+    .filter((p) => (!nation || p.nation === nation) && matchesQuery(p.name, query))
     .map((p, index) => ({ ...p, rank: index + 1 }));
   if (sort === "rating" && !ascending) return ranked;
   const key = SORTS[sort] || SORTS.rating;
@@ -214,9 +214,9 @@ async function init() {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
     state.asOf = data.as_of || "";
-    state.players = withWorldRankGap(rowsFromTable(data, "players").map((p) => ({
+    state.players = rowsFromTable(data, "players").map((p) => ({
       ...p, name: decodeHtmlEntities(p.name),
-    })));
+    }));
     const days = Number(data.change_days) || 90;
     $("b-change-head").textContent = `${days} days`;
     $("b-change-head").parentElement.title = `Rating change over the last ${days} days`;
