@@ -1563,8 +1563,10 @@ def build_leaderboard(
 
     Each row is a list in `fields` order. `change` is the rating now minus the rating
     `change_days` before `today` (null when the player had no rating yet), so the page can show
-    who is climbing. Ids in one alias group share a rating and are listed once, under the first
-    of the group's ids that has a page, with the group's name.
+    who is climbing, and `world_rank` is the player's ITHF world rank (null when unranked) so the
+    page can set the two rankings side by side. Ids in one alias group share a rating and are
+    listed once, under the first of the group's ids that has a page, with the group's name and
+    the group's best world rank.
     """
     players = list(players)
     page_ids = {int(player["id"]) for player in players}
@@ -1582,6 +1584,15 @@ def build_leaderboard(
     cutoff = (
         datetime.strptime(today, "%Y-%m-%d").date() - timedelta(days=change_days)
     ).isoformat()
+
+    # The best ITHF world rank among the ids listed as one player.
+    world_rank: Dict[int, int] = {}
+    for player in players:
+        rank = player.get("world_rank")
+        if rank is None or rank != rank:
+            continue
+        keep = listed_as.get(int(player["id"]), int(player["id"]))
+        world_rank[keep] = min(int(rank), world_rank.get(keep, int(rank)))
 
     rows = []
     for player in players:
@@ -1607,6 +1618,7 @@ def build_leaderboard(
             peak.get("date"),
             max(dated) if dated else None,
             change,
+            world_rank.get(pid),
         ])
     rows.sort(key=lambda row: (-row[3], row[4], row[1]))
     return {
@@ -1614,7 +1626,7 @@ def build_leaderboard(
         "change_days": change_days,
         "fields": [
             "id", "name", "nation", "rating", "rd", "games", "peak", "peak_date", "last_played",
-            "change",
+            "change", "world_rank",
         ],
         "players": rows,
     }

@@ -8590,8 +8590,13 @@ body.share-open {
   color: var(--ink-2);
 }
 
-.b-narrow {
+.b-narrow,
+.b-phone-only {
   display: none;
+}
+
+.b-table abbr {
+  text-decoration: none;
 }
 
 .b-note {
@@ -8613,6 +8618,14 @@ body.share-open {
 
   span.b-narrow {
     display: inline;
+  }
+
+  .b-field.b-phone-only {
+    display: flex;
+  }
+
+  .b-phone-only select {
+    max-width: none;
   }
 
   .b-search {

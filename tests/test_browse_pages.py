@@ -17,8 +17,8 @@ def _rating(value, history, rd=60, games=100, peak=None):
 class LeaderboardTest(unittest.TestCase):
     def setUp(self):
         self.players = [
-            {"id": 1, "name": "Ann", "country": "Norway"},
-            {"id": 2, "name": "Bo", "country": "Sweden"},
+            {"id": 1, "name": "Ann", "country": "Norway", "world_rank": 12},
+            {"id": 2, "name": "Bo", "country": "Sweden", "world_rank": None},
             {"id": 3, "name": "Cy", "country": "Latvia"},
             {"id": 4, "name": "Unrated", "country": "Finland"},
         ]
@@ -49,6 +49,8 @@ class LeaderboardTest(unittest.TestCase):
         self.assertEqual(row["nation"], "Norway")
         self.assertEqual((row["peak"], row["peak_date"]), (1720, "2026-05-01"))
         self.assertEqual(row["last_played"], "2026-10-01")
+        self.assertEqual(row["world_rank"], 12)
+        self.assertIsNone({row["id"]: row for row in self._rows()}[2]["world_rank"])
 
     def test_alias_group_listed_once_under_its_name(self):
         self.ratings[4] = self.ratings[1]
@@ -57,6 +59,8 @@ class LeaderboardTest(unittest.TestCase):
         self.assertEqual(len(listed), 1)
         # Id 9 has no page, so the first id in the group with one (4) is kept.
         self.assertEqual((listed[0]["id"], listed[0]["name"]), (4, "Ann Alias"))
+        # The group keeps its best world rank, even when another id holds it.
+        self.assertEqual(listed[0]["world_rank"], 12)
 
 
 class TournamentListTest(unittest.TestCase):

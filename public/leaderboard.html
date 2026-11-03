@@ -113,6 +113,19 @@
             <button type="button" data-active="0" aria-pressed="false">All time</button>
           </div>
         </div>
+        <div class="b-field b-phone-only">
+          <label for="b-sort">Sort by</label>
+          <select id="b-sort">
+            <option value="rating">Rating</option>
+            <option value="change">90-day change</option>
+            <option value="gap">Rated above world rank</option>
+            <option value="gap-asc">Rated below world rank</option>
+            <option value="wr">World rank</option>
+            <option value="peak">Peak</option>
+            <option value="games">Games</option>
+            <option value="last">Last played</option>
+          </select>
+        </div>
       </div>
       <p id="b-status" class="b-status" role="status" aria-live="polite"></p>
       <div id="b-error" class="panel t-empty" hidden>
@@ -127,6 +140,10 @@
               <th scope="col">Player</th>
               <th scope="col" class="num" aria-sort="descending"><button type="button" data-sort="rating">Rating</button></th>
               <th scope="col" class="num"><button type="button" data-sort="change"><span id="b-change-head">90 days</span></button></th>
+              <th scope="col" class="num b-wide"><button type="button" data-sort="wr"
+                  title="ITHF world rank"><abbr title="ITHF world rank">WR</abbr></button></th>
+              <th scope="col" class="num b-wide"><button type="button" data-sort="gap"
+                  title="Places the rating ranks the player above (+) or below (−) their world rank">vs WR</button></th>
               <th scope="col" class="num b-wide"><button type="button" data-sort="peak">Peak</button></th>
               <th scope="col" class="num b-wide"><button type="button" data-sort="games">Games</button></th>
               <th scope="col" class="num b-wide"><button type="button" data-sort="last">Last played</button></th>
@@ -137,7 +154,10 @@
         <button id="b-more" class="tfoot" type="button" hidden>Show more</button>
       </div>
       <p class="b-note">Active means a game in the last 12 months. The rating is shown with its
-        uncertainty (±): it grows while a player is away and shrinks as they play.</p>
+        uncertainty (±): it grows while a player is away and shrinks as they play.
+        WR is the ITHF world rank. <strong>vs WR</strong> sets it against the player's place by
+        rating among all world-ranked players: +20 means the rating puts them 20 places higher
+        than the world ranking does, −20 means 20 places lower.</p>
     </div>
   </main>
 

@@ -15,7 +15,7 @@ globalThis.window = {
 };
 
 const { rowsFromTable, matchesQuery } = await import("../public/js/browse.js");
-const { visiblePlayers } = await import("../public/js/leaderboard-page.js");
+const { visiblePlayers, withWorldRankGap } = await import("../public/js/leaderboard-page.js");
 const { visibleTournaments } = await import("../public/js/tournaments-page.js");
 
 const players = rowsFromTable({
@@ -75,4 +75,17 @@ test("tournaments filter by year, country, level and search text", () => {
   assert.deepEqual(run({ year: "2026" }), [1, 3]);
   assert.deepEqual(run({ country: "Norway", level: "5" }), [2]);
   assert.deepEqual(run({ query: "ann" }), [1]);
+});
+
+test("vs WR compares the world rank with the place by rating among world-ranked players", () => {
+  const ranked = withWorldRankGap([
+    { id: 1, rating: 2000, world_rank: 5 },
+    { id: 2, rating: 1990, world_rank: null },
+    { id: 3, rating: 1980, world_rank: 1 },
+  ]);
+  assert.deepEqual(ranked.map((p) => p.wr_gap), [4, null, -1]);
+  const byGap = visiblePlayers(ranked, { ...defaults, sort: "gap" });
+  assert.deepEqual(byGap.map((p) => p.id), [1, 3, 2]);
+  const byWr = visiblePlayers(ranked, { ...defaults, sort: "wr" });
+  assert.deepEqual(byWr.map((p) => p.id), [3, 1, 2]);
 });

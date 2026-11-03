@@ -16,6 +16,9 @@ const SORTS = {
   peak: (p) => p.peak,
   games: (p) => p.games,
   last: (p) => (p.last_played ? Date.parse(p.last_played) : null),
+  // World rank 1 is the best, so it sorts first.
+  wr: (p) => (p.world_rank == null ? null : -p.world_rank),
+  gap: (p) => p.wr_gap,
 };
 
 const state = {
@@ -41,6 +44,18 @@ function activeCutoff() {
   const base = Date.parse(`${state.asOf}T00:00:00Z`);
   const from = Number.isNaN(base) ? Date.now() : base;
   return new Date(from - ACTIVE_DAYS * 86400000).toISOString().slice(0, 10);
+}
+
+// Each world-ranked player's place by rating among the world-ranked players, and the
+// world rank minus that place (wr_gap): positive when the rating ranks them higher than the
+// world ranking does. Players are in rating order, best first.
+export function withWorldRankGap(players) {
+  let place = 0;
+  return players.map((p) => {
+    if (p.world_rank == null) return { ...p, wr_gap: null };
+    place += 1;
+    return { ...p, wr_place: place, wr_gap: p.world_rank - place };
+  });
 }
 
 // The players that pass the filters, each with its rank by rating among them, in the
@@ -69,9 +84,13 @@ function playerRow(p) {
     el("td", { class: "num b-rank" }, String(p.rank)),
     el("td", { class: "b-player" },
       el("a", { href: `./?p1=${p.id}` }, p.name),
-      p.nation
+      p.nation || p.world_rank != null
         ? el("span", { class: "b-sub" },
-          flag ? el("span", { "aria-hidden": "true" }, `${flag} `) : null, p.nation)
+          flag ? el("span", { "aria-hidden": "true" }, `${flag} `) : null, p.nation,
+          p.world_rank != null
+            ? el("span", { class: "b-narrow" },
+              `${p.nation ? " · " : ""}WR ${formatNumber(p.world_rank)} (${signed(p.wr_gap)})`)
+            : null)
         : null),
     el("td", { class: "num b-rating" },
       formatNumber(p.rating),
@@ -80,6 +99,13 @@ function playerRow(p) {
     el("td", {
       class: `num b-change${change > 0 ? " is-up" : change < 0 ? " is-down" : ""}`,
     }, signed(change)),
+    el("td", { class: "num b-wide b-wr" }, p.world_rank == null ? "–" : formatNumber(p.world_rank)),
+    el("td", {
+      class: `num b-wide b-change${p.wr_gap > 0 ? " is-up" : p.wr_gap < 0 ? " is-down" : ""}`,
+      title: p.wr_gap == null
+        ? null
+        : `#${formatNumber(p.wr_place)} by rating among world-ranked players, #${formatNumber(p.world_rank)} in the world ranking`,
+    }, signed(p.wr_gap)),
     el("td", { class: "num b-wide" }, p.peak == null ? "–" : formatNumber(p.peak)),
     el("td", { class: "num b-wide" }, formatNumber(p.games)),
     el("td", { class: "num b-wide b-date" }, p.last_played ? formatDate(p.last_played) : "–"));
@@ -101,7 +127,7 @@ function render() {
   const shown = list.slice(0, state.shown);
   $("b-rows").replaceChildren(...shown.map(playerRow));
   if (!list.length) {
-    $("b-rows").append(el("tr", {}, el("td", { colspan: 7, class: "b-empty" },
+    $("b-rows").append(el("tr", {}, el("td", { colspan: 9, class: "b-empty" },
       "No players match these filters.")));
   }
   const more = $("b-more");
@@ -119,6 +145,10 @@ function render() {
   document.querySelectorAll("[data-active]").forEach((button) => {
     button.setAttribute("aria-pressed", String((button.dataset.active === "1") === state.active));
   });
+  const sortValue = `${state.sort}${state.ascending ? "-asc" : ""}`;
+  const sortSelect = $("b-sort");
+  // A sort the phone list doesn't offer (from a shared desktop link) leaves it blank.
+  if (sortSelect) sortSelect.value = sortValue;
 }
 
 function update() {
@@ -162,6 +192,12 @@ function bind() {
       update();
     });
   });
+  $("b-sort")?.addEventListener("change", (event) => {
+    const [key, dir] = event.target.value.split("-");
+    state.sort = SORTS[key] ? key : "rating";
+    state.ascending = dir === "asc";
+    update();
+  });
   $("b-more").addEventListener("click", () => {
     state.shown += PAGE_SIZE;
     render();
@@ -178,9 +214,9 @@ async function init() {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
     state.asOf = data.as_of || "";
-    state.players = rowsFromTable(data, "players").map((p) => ({
+    state.players = withWorldRankGap(rowsFromTable(data, "players").map((p) => ({
       ...p, name: decodeHtmlEntities(p.name),
-    }));
+    })));
     const days = Number(data.change_days) || 90;
     $("b-change-head").textContent = `${days} days`;
     $("b-change-head").parentElement.title = `Rating change over the last ${days} days`;
