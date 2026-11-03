@@ -137,6 +137,11 @@ The frontend is vanilla ES modules under `public/js/`, loaded from `index.html` 
 ## Frontend Conventions
 
 * **Cache busting**: bump the `styles.css?v=` query in `index.html` whenever CSS ships.
+* **Formulas** (ratings page): write each one as TeX in `data-tex` on a `.math` span or a
+  `.doc-formula` div (`data-display`), with `<!--math--><!--/math-->` inside, then run
+  `node scripts/render-math.mjs`. It typesets them with KaTeX at authoring time, so the page ships
+  no maths JS; the stylesheet and woff2 fonts are vendored to `public/katex/` and
+  `public/fonts/katex/`. `npm test` fails when the page is out of date.
 * **Changelog**: `public/changelog.html` (served at `/changelog`, linked from every footer) lists
   releases for players and fans in plain words, newest first. When a change people will notice
   ships, add it to a new release or the newest one if it shipped the same day. A big change takes the
