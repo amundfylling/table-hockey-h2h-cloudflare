@@ -8416,6 +8416,26 @@ body.share-open {
   text-overflow: ellipsis;
 }
 
+.b-slider {
+  min-width: 160px;
+}
+
+.b-slider label {
+  white-space: nowrap;
+}
+
+.b-slider label span {
+  color: var(--ink);
+}
+
+.b-slider input[type="range"] {
+  width: 100%;
+  height: 40px;
+  margin: 0;
+  accent-color: var(--a);
+  cursor: pointer;
+}
+
 .b-chips {
   display: flex;
   gap: 6px;
