@@ -78,6 +78,11 @@ jobs:
         if: steps.build.outputs.changed == 'true'
         run: find public functions -type f -name '*.js' -print0 | xargs -0 -n1 node --check
 
+      - name: Install Node dev tools
+        if: steps.build.outputs.changed == 'true'
+        # KaTeX (the ratings page formula test), axe-core and Playwright.
+        run: npm ci
+
       - name: Run frontend and Pages Function tests
         if: steps.build.outputs.changed == 'true'
         run: node --test tests-js/*.test.mjs
@@ -86,12 +91,10 @@ jobs:
         if: steps.build.outputs.changed == 'true'
         run: python -m unittest discover -s tests -v
 
-      - name: Install accessibility check tools
+      - name: Install the accessibility check browser
         if: steps.build.outputs.changed == 'true'
-        run: |
-          npm ci
-          # The check runs headless, so only the headless shell is needed, not full Chrome.
-          npx playwright install --with-deps --only-shell chromium
+        # The check runs headless, so only the headless shell is needed, not full Chrome.
+        run: npx playwright install --with-deps --only-shell chromium
 
       - name: Check accessibility
         if: steps.build.outputs.changed == 'true'
