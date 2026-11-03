@@ -89,3 +89,18 @@ test("vs WR compares the world rank with the place by rating among world-ranked 
   const byWr = visiblePlayers(ranked, { ...defaults, sort: "wr" });
   assert.deepEqual(byWr.map((p) => p.id), [3, 1, 2]);
 });
+
+test("vs WR counts only the players in the Active or All time view", () => {
+  const list = [
+    { id: 1, rating: 2100, world_rank: 5, last_played: "2020-01-01" },
+    { id: 2, rating: 2090, world_rank: 1, last_played: "2026-10-10" },
+    { id: 3, rating: 2080, world_rank: 2, last_played: "2026-10-01", nation: "Norway" },
+  ];
+  const active = visiblePlayers(list, { ...defaults, active: true });
+  assert.deepEqual(active.map((p) => [p.id, p.wr_gap]), [[2, 0], [3, 0]]);
+  const all = visiblePlayers(list, { ...defaults });
+  assert.deepEqual(all.map((p) => [p.id, p.wr_gap]), [[1, 4], [2, -1], [3, -1]]);
+  // A nation filter does not change the place.
+  const norway = visiblePlayers(list, { ...defaults, active: true, nation: "Norway" });
+  assert.deepEqual(norway.map((p) => [p.id, p.wr_gap]), [[3, 0]]);
+});
