@@ -15,7 +15,7 @@ globalThis.window = {
 };
 
 const { rowsFromTable, matchesQuery } = await import("../public/js/browse.js");
-const { visiblePlayers, withWorldRankGap } = await import("../public/js/leaderboard-page.js");
+const { visiblePlayers, withWorldRankGap, worldRankVerdict } = await import("../public/js/leaderboard-page.js");
 const { visibleTournaments } = await import("../public/js/tournaments-page.js");
 
 const players = rowsFromTable({
@@ -103,4 +103,19 @@ test("vs WR counts only the players in the Active or All time view", () => {
   // A nation filter does not change the place.
   const norway = visiblePlayers(list, { ...defaults, active: true, nation: "Norway" });
   assert.deepEqual(norway.map((p) => [p.id, p.wr_gap]), [[3, 0]]);
+});
+
+test("a player is under- or overranked only for a clear gap", () => {
+  assert.equal(worldRankVerdict(20, 10), "under");
+  assert.equal(worldRankVerdict(10, 20), "over");
+  assert.equal(worldRankVerdict(2, 1), null); // twice as high, but one place apart
+  assert.equal(worldRankVerdict(100, 90), null); // ten places, but close in proportion
+  assert.equal(worldRankVerdict(null, 5), null);
+  const list = withWorldRankGap([
+    { id: 1, rating: 2000, world_rank: 30 },
+    { id: 2, rating: 1990, world_rank: 2 },
+    { id: 3, rating: 1980, world_rank: 40 },
+  ]);
+  const under = visiblePlayers(list, { ...defaults, verdict: "under" });
+  assert.deepEqual(under.map((p) => p.id), [1, 3]);
 });

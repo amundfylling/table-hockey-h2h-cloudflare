@@ -8590,6 +8590,27 @@ body.share-open {
   color: var(--ink-2);
 }
 
+.b-verdict {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 0 7px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+  vertical-align: 1px;
+}
+
+.b-verdict.is-under {
+  background: var(--a-tint);
+  color: var(--a);
+}
+
+.b-verdict.is-over {
+  background: var(--b-tint);
+  color: var(--b-text);
+}
+
 .b-narrow,
 .b-phone-only {
   display: none;

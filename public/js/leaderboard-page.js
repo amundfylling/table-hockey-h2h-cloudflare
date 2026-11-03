@@ -1,6 +1,7 @@
 // Ratings leaderboard (leaderboard.html): every player with a page, ranked by the rating from
 // data/leaderboard.json, with name search, a nation filter, active or all-time players and
-// sortable columns. The filters live in the URL (?q=, ?nation=, ?all=1, ?sort=) for sharing.
+// sortable columns. The filters live in the URL (?q=, ?nation=, ?wr=, ?all=1, ?sort=) for
+// sharing.
 import { el } from "./dom.js";
 import { initChrome } from "./chrome.js";
 import { getCountryFlag } from "./players.js";
@@ -26,6 +27,7 @@ const state = {
   asOf: "",
   query: "",
   nation: "",
+  verdict: "",
   active: true,
   sort: "rating",
   ascending: false,
@@ -54,17 +56,38 @@ export function withWorldRankGap(players) {
   return players.map((p) => {
     if (p.world_rank == null) return { ...p, wr_gap: null };
     place += 1;
-    return { ...p, wr_place: place, wr_gap: p.world_rank - place };
+    const gap = p.world_rank - place;
+    return { ...p, wr_place: place, wr_gap: gap, wr_verdict: worldRankVerdict(p.world_rank, place) };
   });
 }
+
+// A gap counts as a clear mis-ranking when one place is at least 1.5 times the other and
+// they are at least 5 places apart: WR 20 rated #10 is underranked, WR 100 rated #90 or
+// WR 2 rated #1 is fair.
+export const VERDICT_RATIO = 1.5;
+export const VERDICT_MIN_GAP = 5;
+
+export function worldRankVerdict(worldRank, place) {
+  if (worldRank == null || place == null) return null;
+  const gap = worldRank - place;
+  if (Math.abs(gap) < VERDICT_MIN_GAP) return null;
+  if (worldRank >= place * VERDICT_RATIO) return "under";
+  if (place >= worldRank * VERDICT_RATIO) return "over";
+  return null;
+}
+
+const VERDICT_LABELS = { under: "Underranked", over: "Overranked" };
 
 // The players that pass the filters, each with its rank by rating among them, in the
 // chosen order. The vs WR place counts every world-ranked player in the Active or All time
 // view, whatever the nation and name filters, so it matches the world ranking's scope.
-export function visiblePlayers(players, { query, nation, active, cutoff, sort, ascending }) {
+export function visiblePlayers(players, {
+  query, nation, active, cutoff, sort, ascending, verdict = "",
+}) {
   const inView = players.filter((p) => !active || (p.last_played && p.last_played >= cutoff));
   const ranked = withWorldRankGap(inView)
-    .filter((p) => (!nation || p.nation === nation) && matchesQuery(p.name, query))
+    .filter((p) => (!nation || p.nation === nation) && matchesQuery(p.name, query)
+      && (!verdict || p.wr_verdict === verdict))
     .map((p, index) => ({ ...p, rank: index + 1 }));
   if (sort === "rating" && !ascending) return ranked;
   const key = SORTS[sort] || SORTS.rating;
@@ -90,6 +113,12 @@ function playerRow(p) {
           p.world_rank != null
             ? el("span", { class: "b-narrow" },
               `${p.nation ? " · " : ""}WR ${formatNumber(p.world_rank)} (${signed(p.wr_gap)})`)
+            : null,
+          p.wr_verdict
+            ? el("span", {
+              class: `b-verdict is-${p.wr_verdict}`,
+              title: `${formatNumber(p.world_rank)} in the world ranking, #${formatNumber(p.wr_place)} by rating`,
+            }, VERDICT_LABELS[p.wr_verdict])
             : null)
         : null),
     el("td", { class: "num b-rating" },
@@ -115,6 +144,7 @@ function syncUrl() {
   writeParams({
     q: state.query.trim(),
     nation: state.nation,
+    wr: state.verdict,
     all: state.active ? "" : "1",
     sort: state.sort === "rating" && !state.ascending
       ? ""
@@ -161,6 +191,7 @@ function readState() {
   const params = readParams();
   state.query = params.get("q") || "";
   state.nation = params.get("nation") || "";
+  state.verdict = ["under", "over"].includes(params.get("wr")) ? params.get("wr") : "";
   state.active = params.get("all") !== "1";
   const [sort, dir] = String(params.get("sort") || "").split("-");
   state.sort = SORTS[sort] ? sort : "rating";
@@ -174,6 +205,12 @@ function bind() {
     state.query = query.value;
     update();
   }, 150));
+  const verdict = $("b-verdict");
+  verdict.value = state.verdict;
+  verdict.addEventListener("change", (event) => {
+    state.verdict = event.target.value;
+    update();
+  });
   $("b-nation").addEventListener("change", (event) => {
     state.nation = event.target.value;
     update();
