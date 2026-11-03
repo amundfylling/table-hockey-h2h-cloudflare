@@ -7452,16 +7452,40 @@ body[data-comparison-mode="matchup"] .player-only {
   margin: 2px 0 12px;
 }
 
+/* Formulas are typeset ahead of time by scripts/render-math.mjs (KaTeX). Math takes the text
+   colour, so it follows the theme; a formula too wide for a phone scrolls inside its box. */
 .doc-formula {
-  padding: 12px 16px;
+  margin: 0 0 14px;
+  padding: 14px 16px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--surface);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 14px !important;
-  line-height: 24px !important;
-  color: var(--ink) !important;
+  font-size: 16px;
+  line-height: 1.2;
+  color: var(--ink);
   overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.doc-formula .katex-display {
+  margin: 0;
+  text-align: left;
+}
+
+.doc-formula .katex-display > .katex {
+  text-align: left;
+}
+
+.doc .katex {
+  font-size: 1.12em;
+  color: var(--ink);
+}
+
+@media (max-width: 480px) {
+  .doc-formula {
+    padding: 12px;
+    font-size: 15px;
+  }
 }
 
 .doc-table-wrap {
