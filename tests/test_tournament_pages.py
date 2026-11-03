@@ -152,6 +152,41 @@ class TournamentFilesTest(unittest.TestCase):
         self.assertEqual(sorted(written[Path("t/7.json")]), ["1007", "7"])
         self.assertEqual(len(index), 3)
 
+    def test_fragment_of_another_sources_event_names_no_champion(self):
+        # 70 holds the 8 games only one source has; 80 got the 30 games both reported.
+        fragment = [dict(g, tournament_id=70) for g in _bo1_bracket()]
+        full = [dict(g, tournament_id=80, tournament_name="Full Open") for g in _bo1_bracket()]
+        kept = [dict(g, tournament_id=90) for g in _bo1_bracket()]
+        written = {}
+        index = build_tournament_files(
+            pd.DataFrame(fragment + full + kept), {}, set(), {},
+            lambda path, payload: written.update({path: payload}), Path("t"),
+            merged_into={70: (80, 30), 90: (80, 3)},
+        )
+        pages = {**written[Path("t/70.json")], **written[Path("t/80.json")],
+                 **written[Path("t/90.json")]}
+        self.assertIsNone(pages["70"]["champion"])
+        self.assertIsNone(pages["70"]["brackets"][0]["champion"])
+        self.assertEqual(pages["70"]["part_of"]["id"], 80)
+        self.assertEqual(pages["70"]["part_of"]["name"], "Full Open")
+        self.assertIsNone({t["id"]: t for t in index}[70]["champion"])
+        # A page that kept most of its games keeps its champion.
+        self.assertEqual(pages["90"]["champion"], 1)
+        self.assertNotIn("part_of", pages["90"])
+        self.assertEqual(pages["80"]["champion"], 1)
+
+    def test_fragment_links_past_another_fragment_to_the_full_event(self):
+        pages = {}
+        games = [dict(g, tournament_id=tid) for tid in (70, 71, 72) for g in _bo1_bracket()]
+        build_tournament_files(
+            pd.DataFrame(games), {}, set(), {},
+            lambda path, payload: pages.update(payload), Path("t"),
+            merged_into={70: (71, 20), 71: (72, 20)},
+        )
+        self.assertEqual(pages["70"]["part_of"]["id"], 72)
+        self.assertEqual(pages["71"]["part_of"]["id"], 72)
+        self.assertEqual(pages["72"]["champion"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()
