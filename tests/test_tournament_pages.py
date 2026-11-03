@@ -175,6 +175,18 @@ class TournamentFilesTest(unittest.TestCase):
         self.assertNotIn("part_of", pages["90"])
         self.assertEqual(pages["80"]["champion"], 1)
 
+    def test_fragment_links_past_another_fragment_to_the_full_event(self):
+        pages = {}
+        games = [dict(g, tournament_id=tid) for tid in (70, 71, 72) for g in _bo1_bracket()]
+        build_tournament_files(
+            pd.DataFrame(games), {}, set(), {},
+            lambda path, payload: pages.update(payload), Path("t"),
+            merged_into={70: (71, 20), 71: (72, 20)},
+        )
+        self.assertEqual(pages["70"]["part_of"]["id"], 72)
+        self.assertEqual(pages["71"]["part_of"]["id"], 72)
+        self.assertEqual(pages["72"]["champion"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -524,11 +524,20 @@ def mark_partial_pages(
     a fragment: its "champion" would just be whoever won the fragment, so it names none
     and gets `part_of`, the full event's page.
     """
-    for tournament_id, payload in payloads.items():
+    def is_fragment(tournament_id: int) -> bool:
         full_id, moved = merged_into.get(tournament_id, (None, 0))
-        full = payloads.get(full_id)
-        if full is None or moved <= payload["games"]:
+        payload = payloads.get(tournament_id)
+        return full_id in payloads and payload is not None and moved > payload["games"]
+
+    for tournament_id, payload in payloads.items():
+        if not is_fragment(tournament_id):
             continue
+        # With three sources the full event can itself be a fragment of a third one.
+        full_id, seen = merged_into[tournament_id][0], {tournament_id}
+        while is_fragment(full_id) and merged_into[full_id][0] not in seen:
+            seen.add(full_id)
+            full_id = merged_into[full_id][0]
+        full = payloads[full_id]
         payload["champion"] = payload["runner_up"] = None
         for bracket in payload["brackets"]:
             bracket["champion"] = bracket["runner_up"] = None
