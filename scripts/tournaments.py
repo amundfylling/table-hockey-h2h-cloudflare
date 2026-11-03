@@ -572,13 +572,58 @@ def build_tournament_files(
             "id": payload["id"],
             "name": payload["name"],
             "date": payload["date"],
+            "end_date": payload["end_date"],
             "level": payload["level"],
+            "city": payload["city"],
             "country": payload["country"],
             "games": payload["games"],
             "players": len(payload["players"]),
             "champion": payload["champion"],
+            "runner_up": payload["runner_up"],
+            "part_of": (payload.get("part_of") or {}).get("id"),
         })
     for bucket, payloads_in_bucket in buckets.items():
         write(out_dir / f"{bucket}.json", payloads_in_bucket)
     index.sort(key=lambda t: (t["date"] or "", t["id"]), reverse=True)
     return index
+
+
+def build_tournament_list(index: List[dict], names: Dict[int, str], linked_ids: set) -> dict:
+    """data/tournament-list.json: every tournament page for the tournaments browse page, newest
+    first, with its winner and runner-up.
+
+    Each row is a list in `fields` order, with the champion and runner-up as player ids (or
+    null) looked up in `players` ({id: [name, has a player page]}), and end_date left empty for
+    one-day events, which keeps the file small with thousands of events. Pages that hold only
+    the games one source has of an event another page shows in full are left out, so no event
+    is listed twice.
+    """
+    players: Dict[str, list] = {}
+
+    def finalist(pid) -> Optional[int]:
+        if pid is None:
+            return None
+        pid = int(pid)
+        players.setdefault(str(pid), [names.get(pid) or f"Player {pid}", pid in linked_ids])
+        return pid
+
+    rows = []
+    for entry in index:
+        if entry.get("part_of"):
+            continue
+        date = entry["date"] or ""
+        end_date = entry.get("end_date") or ""
+        rows.append([
+            entry["id"], entry["name"], date, "" if end_date == date else end_date,
+            entry["level"], entry.get("city") or "", entry["country"] or "",
+            entry["games"], entry["players"],
+            finalist(entry["champion"]), finalist(entry.get("runner_up")),
+        ])
+    return {
+        "fields": [
+            "id", "name", "date", "end_date", "level", "city", "country", "games", "players",
+            "champion", "runner_up",
+        ],
+        "players": players,
+        "tournaments": rows,
+    }

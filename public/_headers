@@ -24,3 +24,7 @@
   Cache-Control: no-cache
 /changelog
   Cache-Control: no-cache
+/leaderboard
+  Cache-Control: no-cache
+/tournaments
+  Cache-Control: no-cache

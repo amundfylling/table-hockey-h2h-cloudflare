@@ -20,7 +20,7 @@
   <link rel="preload" href="fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="fonts/barlow-condensed-latin-600.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="icon" type="image/png" sizes="32x32" href="favicon.png" />
-  <link rel="stylesheet" href="styles.css?v=20261103-ratings-math" />
+  <link rel="stylesheet" href="styles.css?v=20261103-browse" />
 </head>
 
 <body data-home="false" class="tournament-page">
@@ -33,6 +33,8 @@
       </a>
       <nav class="nav" aria-label="Main">
         <a href="./?home" data-nav="home">Head-to-head</a>
+        <a href="leaderboard">Leaderboard</a>
+        <a href="tournaments">Tournaments</a>
         <a href="./#records" data-nav="records">Records</a>
         <a href="./#rivalries" data-nav="rivalries">Rivalries</a>
         <a href="./#players" data-nav="players">Players</a>
@@ -75,6 +77,8 @@
     <nav id="mobile-menu" class="mobile-menu" aria-label="Main" hidden>
       <div class="wrap">
         <a href="./?home" data-nav="home">Head-to-head</a>
+        <a href="leaderboard">Leaderboard</a>
+        <a href="tournaments">Tournaments</a>
         <a href="./#records" data-nav="records">Records</a>
         <a href="./#rivalries" data-nav="rivalries">Rivalries</a>
         <a href="./#players" data-nav="players">Players</a>
@@ -85,7 +89,7 @@
   <main id="main" class="tournament-main" aria-busy="true">
     <div class="wrap view-hero">
       <nav class="crumbs" aria-label="Breadcrumb">
-        <a href="./?home">Head-to-head</a><span class="sep" aria-hidden="true">/</span><span>Tournament</span>
+        <a href="./?home">Head-to-head</a><span class="sep" aria-hidden="true">/</span><a href="tournaments">Tournaments</a>
       </nav>
       <h1 id="t-title" class="t-title">Loading tournament…</h1>
       <p id="t-meta" class="t-meta"></p>

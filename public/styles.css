@@ -3591,6 +3591,34 @@ kbd {
   gap: 8px;
 }
 
+.nav a {
+  white-space: nowrap;
+}
+
+/* Six main links leave little room on small laptops: the header search shrinks to its icon. */
+@media (min-width: 901px) and (max-width: 1180px) {
+  .nav {
+    gap: 18px;
+  }
+
+  .header-search {
+    width: 40px;
+    flex: none;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .header-search-label,
+  .header-search kbd {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+}
+
 body[data-home="true"] .header-search {
   display: none;
 }
@@ -4469,6 +4497,12 @@ button.rrow:hover {
   margin-left: auto;
   font-size: 13px;
   color: var(--ink-2);
+}
+
+.sec-head a.sec-link {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
 }
 
 .cols {
@@ -7201,7 +7235,8 @@ body[data-comparison-mode="matchup"] .player-only {
   font-variant-numeric: tabular-nums;
 }
 
-.tournament-page .header-search {
+.tournament-page .header-search,
+.browse-page .header-search {
   text-decoration: none;
 }
 
@@ -8321,5 +8356,281 @@ body.share-open {
 @media (max-width: 359px) {
   .brand-name {
     display: none;
+  }
+}
+
+/* ── Browse pages (leaderboard.html, tournaments.html) ───────────── */
+.b-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 16px;
+  margin-bottom: 12px;
+}
+
+.b-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.b-field label,
+.b-field .b-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.b-search {
+  flex: 1 1 240px;
+  max-width: 360px;
+}
+
+.b-field input,
+.b-field select {
+  height: 40px;
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  background-color: var(--surface);
+  /* 1rem minimum: iOS Safari zooms into smaller form controls. */
+  font-size: 1rem;
+  color: var(--ink);
+}
+
+.b-field input {
+  width: 100%;
+  padding: 0 12px;
+}
+
+.b-field select {
+  max-width: 220px;
+  padding: 0 36px 0 12px;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23868C94' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  text-overflow: ellipsis;
+}
+
+.b-chips {
+  display: flex;
+  gap: 6px;
+}
+
+.b-chips button {
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.b-chips button:hover {
+  background: var(--sunk);
+}
+
+.b-chips button[aria-pressed="true"] {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--bg);
+}
+
+.b-status {
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.b-table-wrap {
+  overflow: hidden;
+}
+
+.b-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+
+.b-table th,
+.b-table td {
+  padding: 10px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+
+.b-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.b-table tbody tr:hover {
+  background: var(--sunk);
+}
+
+.b-table th {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.b-table th button {
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.b-table th button:hover,
+.b-table th[aria-sort] button {
+  color: var(--ink);
+}
+
+.b-table th[aria-sort="descending"] button::after {
+  content: " ↓";
+}
+
+.b-table th[aria-sort="ascending"] button::after {
+  content: " ↑";
+}
+
+.b-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.b-table td.num {
+  font-family: var(--num);
+  font-size: 19px;
+  font-weight: 600;
+}
+
+.b-table td.b-rank {
+  width: 48px;
+  color: var(--ink-3);
+}
+
+.b-player {
+  min-width: 0;
+}
+
+.b-player a {
+  font-weight: 600;
+  color: var(--ink);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.b-player a:hover {
+  text-decoration: underline;
+}
+
+.b-sub {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.b-rd {
+  margin-left: 6px;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ink-3);
+}
+
+.b-table td.b-change {
+  color: var(--ink-3);
+}
+
+.b-table td.b-change.is-up {
+  color: var(--a);
+}
+
+.b-table td.b-change.is-down {
+  color: var(--b-text);
+}
+
+.b-table td.b-date {
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.b-final a {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.b-none {
+  color: var(--ink-3);
+}
+
+.b-empty {
+  padding: 32px 16px !important;
+  text-align: center !important;
+  color: var(--ink-2);
+}
+
+.b-narrow {
+  display: none;
+}
+
+.b-note {
+  max-width: 720px;
+  margin-top: 16px;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.t-meta a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+@media (max-width: 760px) {
+  .b-wide {
+    display: none;
+  }
+
+  span.b-narrow {
+    display: inline;
+  }
+
+  .b-search {
+    flex-basis: 100%;
+    max-width: none;
+  }
+
+  .b-table th,
+  .b-table td {
+    padding: 10px 12px;
+  }
+
+  .b-table td.b-rank {
+    width: 32px;
+    padding-right: 0;
+  }
+
+  .b-final {
+    width: 40%;
   }
 }

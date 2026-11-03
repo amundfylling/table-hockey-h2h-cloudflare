@@ -116,6 +116,11 @@ The frontend is vanilla ES modules under `public/js/`, loaded from `index.html` 
 * `tournament-page.js` - The tournament page (`tournament.html?id=…`), rendered from
   `data/t/{id % 1000}.json`. `date-range.js` formats its dates and names that file (also used
   by `functions/tournament.js`).
+* `leaderboard-page.js` - The ratings leaderboard (`leaderboard.html`), from
+  `data/leaderboard.json` (`build_leaderboard` in `build_h2h.py`).
+* `tournaments-page.js` - The tournaments browse page (`tournaments.html`), from
+  `data/tournament-list.json` (`build_tournament_list` in `tournaments.py`). Both browse pages
+  share `browse.js` (compact "fields + rows" JSON, filters kept in the URL).
 * `recent.js` - Recent-matchup chips + first-visit suggestions (`initRecent({ onCompare })`).
 * `filters.js` - Filter bar, advanced panel, active-filter chips.
 * `summary.js` - H2H scoreboard + highlight cards.

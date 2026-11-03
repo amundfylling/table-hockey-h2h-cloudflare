@@ -77,6 +77,8 @@ function pickViews() {
     ["tournament", `./tournament.html?id=${tournament}`],
     ["ratings", "./ratings.html"],
     ["changelog", "./changelog.html"],
+    ["leaderboard", "./leaderboard.html"],
+    ["tournaments", "./tournaments.html"],
   ];
 }
 
