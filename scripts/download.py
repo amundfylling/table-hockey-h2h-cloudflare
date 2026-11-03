@@ -109,13 +109,25 @@ def download(
                 tmp_path.unlink(missing_ok=True)
             except Exception:
                 pass
+            if is_not_found(err):
+                break
             if attempt < retries:
                 sleep_for = backoff * (2 ** attempt)
                 time.sleep(sleep_for)
                 continue
             break
 
-    raise RuntimeError(f"Failed to download {url}: {last_err}")
+    raise RuntimeError(f"Failed to download {url}: {last_err}") from last_err
+
+
+def is_not_found(err: BaseException) -> bool:
+    """True when err (or what caused it) is an HTTP 404 answer."""
+    while err is not None:
+        response = getattr(err, "response", None)
+        if isinstance(err, requests.HTTPError) and response is not None:
+            return response.status_code == 404
+        err = err.__cause__
+    return False
 
 
 def _resolve_default_url(kind: str) -> str:

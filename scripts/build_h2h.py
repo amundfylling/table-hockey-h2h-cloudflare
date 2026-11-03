@@ -390,9 +390,18 @@ def load_tournaments(
     return tournaments
 
 
+# The table-hockey-scrapers repo writes one Parquet per site (Czech Trefik, Finland,
+# escore.live, galdahokejs.lv). It also writes all_results.parquet with the four combined;
+# the build reads them one by one so each gets its own rejection budget and meta.json entry.
+TABLE_HOCKEY_SCRAPERS_DATA_URL = (
+    "https://raw.githubusercontent.com/amundfylling/table-hockey-scrapers/"
+    "refs/heads/claude/project-thread-1p5hg7/data"
+)
+
 # Supplemental result sources, each a Parquet in the bordshockey.net-scraper schema. Rows are
 # told apart by their "source" column (see DATA_SOURCES). url_env overrides the URL; an empty
-# value disables the source. "key" names the source in meta.json.
+# value disables the source. "key" names the source in meta.json. With "allow_missing", a
+# file the server does not have (HTTP 404) skips the source instead of failing the build.
 EXTRA_SOURCES = [
     {
         "id": "bordshockey",
@@ -413,6 +422,36 @@ EXTRA_SOURCES = [
             "refs/heads/main/data/table_hockey_eu_results.parquet"
         ),
         "cache_name": "table_hockey_eu_matches.parquet",
+    },
+    {
+        "id": "trefik",
+        "key": "trefik",
+        "url_env": "TREFIK_MATCHES_URL",
+        "url": f"{TABLE_HOCKEY_SCRAPERS_DATA_URL}/trefik_results.parquet",
+        "cache_name": "trefik_matches.parquet",
+    },
+    {
+        "id": "finland",
+        "key": "finland",
+        "url_env": "FINLAND_MATCHES_URL",
+        "url": f"{TABLE_HOCKEY_SCRAPERS_DATA_URL}/finland_results.parquet",
+        "cache_name": "finland_matches.parquet",
+        # The scraper has no Finnish results yet, so the file may not exist.
+        "allow_missing": True,
+    },
+    {
+        "id": "escore",
+        "key": "escore",
+        "url_env": "ESCORE_MATCHES_URL",
+        "url": f"{TABLE_HOCKEY_SCRAPERS_DATA_URL}/escore_results.parquet",
+        "cache_name": "escore_matches.parquet",
+    },
+    {
+        "id": "galdahokejs",
+        "key": "galdahokejs",
+        "url_env": "GALDAHOKEJS_MATCHES_URL",
+        "url": f"{TABLE_HOCKEY_SCRAPERS_DATA_URL}/galdahokejs_results.parquet",
+        "cache_name": "galdahokejs_matches.parquet",
     },
 ]
 EXTRA_MATCHES_URL = EXTRA_SOURCES[0]["url"]
@@ -437,6 +476,30 @@ DATA_SOURCES = [
         "name": "table-hockey.eu",
         "url": "https://table-hockey.eu/",
         "marker": "table-hockey.eu",
+    },
+    {
+        "id": "trefik",
+        "name": "stiga.trefik.cz",
+        "url": "https://stiga.trefik.cz/",
+        "marker": "trefik",
+    },
+    {
+        "id": "finland",
+        "name": "tulos.poytajaakiekko.fi",
+        "url": "https://tulos.poytajaakiekko.fi/",
+        "marker": "poytajaakiekko",
+    },
+    {
+        "id": "escore",
+        "name": "escore.live",
+        "url": "https://escore.live/",
+        "marker": "escore.live",
+    },
+    {
+        "id": "galdahokejs",
+        "name": "galdahokejs.lv",
+        "url": "https://galdahokejs.lv/",
+        "marker": "galdahokejs",
     },
 ]
 
@@ -1977,7 +2040,8 @@ def build_records(matches: pd.DataFrame, player_names: Dict[int, str]) -> dict:
 def build_source_summary(matches: pd.DataFrame, enabled_ids: Iterable[str]) -> list[dict]:
     """Game count and latest game date per source website.
 
-    The primary source is always listed; supplemental ones only when in enabled_ids.
+    The primary source is always listed; supplemental ones only when in enabled_ids and
+    they have games (a source can be enabled before its scraper finds any).
     """
     enabled = {DATA_SOURCES[0]["id"], *enabled_ids}
     source_ids = classify_sources(matches["source"])
@@ -1986,6 +2050,8 @@ def build_source_summary(matches: pd.DataFrame, enabled_ids: Iterable[str]) -> l
         if source["id"] not in enabled:
             continue
         mask = source_ids.eq(source["id"])
+        if source["id"] != DATA_SOURCES[0]["id"] and not mask.any():
+            continue
         latest = matches.loc[mask, "date_dt"].max()
         summary.append(
             {
@@ -2122,6 +2188,10 @@ def main() -> int:
 
     if skip_downloads:
         required_paths = [matches_path, players_path, tournaments_path]
+        for source in list(enabled_extra_sources):
+            if source.get("allow_missing") and not source["path"].exists():
+                print(f"Supplemental match source {source['id']} has no cached file; skipping it.")
+                enabled_extra_sources.remove(source)
         required_paths.extend(source["path"] for source in enabled_extra_sources)
         if require_tournament_metadata:
             required_paths.append(tournament_metadata_path)
@@ -2137,7 +2207,17 @@ def main() -> int:
         download_cached(matches_url, matches_path)
         for source in extra_sources:
             if source["download_url"]:
-                download_cached(source["download_url"], source["path"])
+                try:
+                    download_cached(source["download_url"], source["path"])
+                except RuntimeError as exc:
+                    if not (source.get("allow_missing") and dl.is_not_found(exc)):
+                        raise
+                    print(
+                        f"Supplemental match source {source['id']} has no file yet "
+                        f"({source['download_url']}); skipping it."
+                    )
+                    source["path"].unlink(missing_ok=True)
+                    enabled_extra_sources.remove(source)
             else:
                 print(
                     f"Supplemental match source {source['id']} disabled "
