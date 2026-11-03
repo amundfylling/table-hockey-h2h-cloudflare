@@ -513,6 +513,30 @@ def tournament_bucket(tournament_id: int) -> int:
     return int(tournament_id) % TOURNAMENT_BUCKETS
 
 
+def mark_partial_pages(
+    payloads: Dict[int, dict], merged_into: Dict[int, Tuple[int, int]]
+) -> None:
+    """Point a page that holds only part of an event at the event's full page.
+
+    When two sources report one event, the shared games go to one source's tournament
+    (see deduplicate_overlapping_source_matches) and the games only the other source has
+    stay on a page of their own. When that page kept fewer games than it gave away, it is
+    a fragment: its "champion" would just be whoever won the fragment, so it names none
+    and gets `part_of`, the full event's page.
+    """
+    for tournament_id, payload in payloads.items():
+        full_id, moved = merged_into.get(tournament_id, (None, 0))
+        full = payloads.get(full_id)
+        if full is None or moved <= payload["games"]:
+            continue
+        payload["champion"] = payload["runner_up"] = None
+        for bracket in payload["brackets"]:
+            bracket["champion"] = bracket["runner_up"] = None
+        payload["part_of"] = {
+            "id": full["id"], "name": full["name"], "date": full["date"], "games": full["games"],
+        }
+
+
 def build_tournament_files(
     matches: pd.DataFrame,
     names: Dict[int, str],
@@ -520,16 +544,20 @@ def build_tournament_files(
     details: Dict[int, dict],
     write,
     out_dir,
+    merged_into: Optional[Dict[int, Tuple[int, int]]] = None,
 ) -> List[dict]:
     """Write data/t/{bucket}.json files ({id: tournament}); return the index entries."""
     frame = matches.loc[matches["tournament_id"].notna()]
     frame = prepare_rows(frame.join(compute_pre_game_ratings(frame)))
-    index = []
-    buckets: Dict[int, dict] = {}
+    payloads: Dict[int, dict] = {}
     for tournament_id, rows in _group_rows(frame):
-        payload = build_tournament_payload(
+        payloads[int(tournament_id)] = build_tournament_payload(
             tournament_id, rows, names, linked_ids, details.get(tournament_id)
         )
+    mark_partial_pages(payloads, merged_into or {})
+    index = []
+    buckets: Dict[int, dict] = {}
+    for tournament_id, payload in payloads.items():
         buckets.setdefault(tournament_bucket(tournament_id), {})[str(tournament_id)] = payload
         index.append({
             "id": payload["id"],
@@ -541,7 +569,7 @@ def build_tournament_files(
             "players": len(payload["players"]),
             "champion": payload["champion"],
         })
-    for bucket, payloads in buckets.items():
-        write(out_dir / f"{bucket}.json", payloads)
+    for bucket, payloads_in_bucket in buckets.items():
+        write(out_dir / f"{bucket}.json", payloads_in_bucket)
     index.sort(key=lambda t: (t["date"] or "", t["id"]), reverse=True)
     return index

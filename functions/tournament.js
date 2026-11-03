@@ -59,6 +59,7 @@ export function tournamentDescription(data) {
   const runnerUp = data.runner_up ? playerName(data.runner_up) : "";
   const parts = [[name, when, where].filter(Boolean).join(", ") + "."];
   if (champion) parts.push(runnerUp ? `Won by ${champion} ahead of ${runnerUp}.` : `Won by ${champion}.`);
+  else if (data.part_of?.name) parts.push(`Part of ${decodeHtmlEntities(data.part_of.name)}.`);
   parts.push(`${count(Object.keys(data.players || {}).length, "player")}, ${count(data.games, "game")}.`);
   parts.push("Playoff bracket, standings and upsets.");
   return parts.join(" ");

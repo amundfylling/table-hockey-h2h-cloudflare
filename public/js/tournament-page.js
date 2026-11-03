@@ -42,6 +42,18 @@ function renderHeader(data) {
     }, `Full results on ${host}`));
     source.hidden = false;
   }
+  // Two sources reported this event: the full event (and its champion) is on another page,
+  // and this one holds the games only this source has.
+  const full = data.part_of;
+  if (full && ID_RE.test(String(full.id))) {
+    const partOf = document.getElementById("t-part-of");
+    partOf.replaceChildren(
+      "Part of an event that two sources report. These are the games only one has; the full event and its champion are on ",
+      el("a", { href: `tournament.html?id=${full.id}` }, tournamentLabel(full.name, full.date)),
+      ".",
+    );
+    partOf.hidden = false;
+  }
   document.title = pageTitle({ nameA: tournamentLabel(data.name, data.date) });
 }
 

@@ -64,6 +64,15 @@ test("the description reads naturally", () => {
   );
 });
 
+test("a page holding part of an event names the full event instead of a champion", () => {
+  const part = { ...data, champion: null, runner_up: null, part_of: { id: 8, name: "EM &amp; Co" } };
+  assert.equal(
+    tournamentDescription(part),
+    "Riga & Friends Open, 2–3 Mar 2024, Riga, Latvia. Part of EM & Co. "
+      + "3 players, 1,200 games. Playoff bracket, standings and upsets.",
+  );
+});
+
 test("bad ids, mismatched data and missing files pass through", async () => {
   for (const [path, options] of [["/tournament", {}], ["/tournament?id=x", {}],
     ["/tournament?id=8", {}], ["/tournament?id=7", { status: 404 }]]) {

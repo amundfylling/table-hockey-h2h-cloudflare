@@ -855,8 +855,12 @@ def match_source_pair(
     is_preferred: pd.Series,
     tournament_ids: pd.Series,
     tournament_names: Optional[pd.Series],
+    pair_counts: Optional[Dict[Tuple[int, int], int]] = None,
 ) -> Tuple[list[int], list[int]]:
     """Pair overlapping games between two sources; returns (kept, dropped) row indices.
+
+    With a pair_counts dict, it counts the dropped games per (primary, preferred)
+    tournament pair.
 
     kept[i] is the preferred-source row that replaces dropped[i].
     """
@@ -919,15 +923,24 @@ def match_source_pair(
             pair_count = min(len(preferred_indices), len(primary_indices))
             kept_indices.extend(preferred_indices[:pair_count])
             drop_indices.extend(primary_indices[:pair_count])
+            if pair_counts is not None:
+                pair_counts[pair] = pair_counts.get(pair, 0) + pair_count
     return kept_indices, drop_indices
 
 
-def deduplicate_overlapping_source_matches(matches: pd.DataFrame) -> pd.DataFrame:
+def deduplicate_overlapping_source_matches(
+    matches: pd.DataFrame,
+    merged_into: Optional[Dict[int, Tuple[int, int]]] = None,
+) -> pd.DataFrame:
     """Drop games that two sources both report.
 
     Each source in DATA_SOURCES is compared with every source listed before it, and on
     overlap the later source's row is kept. A kept row stands for one game, so it replaces
     at most one row from one other source.
+
+    With a merged_into dict, it is filled with {tournament id: (other tournament id, games)}
+    for each tournament that lost games to another source's tournament: the one it lost
+    the most games to, and how many.
     """
     if matches.empty or "source" not in matches:
         return matches
@@ -959,12 +972,18 @@ def deduplicate_overlapping_source_matches(matches: pd.DataFrame) -> pd.DataFram
             if not is_preferred.any() or not (in_pair & ~is_preferred).any():
                 continue
             rows = matches.index[in_pair]
+            pair_counts: Dict[Tuple[int, int], int] = {}
             kept_indices, pair_drops = match_source_pair(
                 matches.loc[rows],
                 is_preferred.loc[rows],
                 tournament_ids.loc[rows],
                 tournament_names.loc[rows] if tournament_names is not None else None,
+                pair_counts,
             )
+            if merged_into is not None:
+                for (lost_id, kept_id), count in pair_counts.items():
+                    if count > merged_into.get(lost_id, (None, 0))[1]:
+                        merged_into[lost_id] = (kept_id, count)
             if not pair_drops:
                 continue
             print(
@@ -2119,7 +2138,8 @@ def main() -> int:
         lambda tid: tournament_levels.get(int(tid)) if pd.notna(tid) else None
     )
     before_dedupe_count = len(matches)
-    matches = deduplicate_overlapping_source_matches(matches)
+    merged_into: Dict[int, Tuple[int, int]] = {}
+    matches = deduplicate_overlapping_source_matches(matches, merged_into)
     deduped_count = before_dedupe_count - len(matches)
     if deduped_count:
         print(f"Removed {deduped_count} overlapping source matches.")
@@ -2195,6 +2215,7 @@ def main() -> int:
         tournament_pages.load_tournament_details(tournament_metadata_path),
         write_json,
         DATA_STAGING_DIR / "t",
+        merged_into=merged_into,
     )
     print(f"Wrote {len(tournament_index)} tournament files.")
     write_json(DATA_STAGING_DIR / "records.json", records)
