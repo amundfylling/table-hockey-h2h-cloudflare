@@ -7509,6 +7509,145 @@ body[data-comparison-mode="matchup"] .player-only {
   border-bottom: none;
 }
 
+/* ── Changelog (changelog.html) ──────────────────────────────────── */
+.changelog > .releases {
+  max-width: 880px;
+}
+
+.changelog-key {
+  max-width: 640px;
+  margin: 0 0 32px;
+  font-size: 15px;
+  line-height: 24px;
+  color: var(--ink-2);
+}
+
+.changelog-key strong {
+  color: var(--ink);
+}
+
+.releases {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.release {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: 24px;
+  padding: 28px 0;
+  border-top: 1px solid var(--line);
+  scroll-margin-top: 80px;
+}
+
+.release-tag {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.release-version {
+  font-family: var(--num);
+  font-size: 40px;
+  line-height: 40px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.release-date {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.release-kind {
+  margin-top: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--a-tint);
+  color: var(--a);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.release-body h2 {
+  margin: 4px 0 10px;
+  font-size: 22px;
+  line-height: 28px;
+  color: var(--ink);
+}
+
+.release-body p,
+.release-body li {
+  font-size: 16px;
+  line-height: 26px;
+  color: var(--ink-2);
+}
+
+.release-body p {
+  margin: 0 0 10px;
+}
+
+.release-body ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.release-body li {
+  margin-bottom: 6px;
+}
+
+.release-body li::marker {
+  color: var(--ink-3);
+}
+
+.release-body strong {
+  color: var(--ink);
+}
+
+.release-body a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.release-major .release-version {
+  font-size: 52px;
+  line-height: 52px;
+}
+
+.release-major .release-body h2 {
+  font-size: 26px;
+  line-height: 32px;
+}
+
+.footer-links a {
+  font-weight: 600;
+}
+
+@media (max-width: 600px) {
+  .release {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    padding: 24px 0;
+  }
+
+  .release-tag {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 12px;
+  }
+
+  .release-kind {
+    margin-top: 0;
+    align-self: center;
+  }
+}
+
 /* Player: results against each nation */
 .nation-rows {
   display: grid;

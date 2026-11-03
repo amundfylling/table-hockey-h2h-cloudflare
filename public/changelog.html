@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Changelog · Table Hockey H2H</title>
+  <meta name="description" content="What's new on Table Hockey H2H: every update to the site since it launched, in plain words." />
+  <meta name="theme-color" content="#F4F3EF" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Table Hockey H2H" />
+  <meta property="og:title" content="Changelog · Table Hockey H2H" />
+  <meta property="og:description" content="What's new on Table Hockey H2H: every update to the site since it launched, in plain words." />
+  <meta property="og:url" content="https://h2h.puck.no/changelog" />
+  <meta property="og:image" content="https://h2h.puck.no/og-default.png" />
+  <link rel="canonical" href="https://h2h.puck.no/changelog" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="preload" href="fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="fonts/barlow-condensed-latin-600.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon.png" />
+  <link rel="stylesheet" href="styles.css?v=20261103-changelog" />
+</head>
+
+<body data-home="false" class="doc-page">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <a class="brand" href="./?home" data-nav="home" aria-label="Table Hockey H2H, home">
+        <img class="mark" src="nbhf-logo.png" alt="" width="24" height="36" />
+        <span class="brand-name">Table Hockey H2H</span>
+      </a>
+      <nav class="nav" aria-label="Main">
+        <a href="./?home" data-nav="home">Head-to-head</a>
+        <a href="./#records" data-nav="records">Records</a>
+        <a href="./#rivalries" data-nav="rivalries">Rivalries</a>
+        <a href="./#players" data-nav="players">Players</a>
+      </nav>
+      <a id="header-search" class="header-search" href="./?home">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
+          stroke-linejoin="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="7"></circle>
+          <path d="M20 20l-3.5-3.5"></path>
+        </svg>
+        <span class="header-search-label">Search players</span>
+        </a>
+      <div class="topbar-actions">
+        <a id="mobile-search" class="icon-button only-m" href="./?home" aria-label="Search players">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="7"></circle>
+            <path d="M20 20l-3.5-3.5"></path>
+          </svg>
+        </a>
+        <button id="theme-toggle" class="icon-button theme-toggle" type="button" aria-pressed="false"
+          aria-label="Switch to dark mode">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 3a6 6 0 0 0 9 7.4A9 9 0 1 1 12 3z"></path>
+          </svg>
+          <span class="sr-only">Dark mode</span>
+        </button>
+        <button id="menu-toggle" class="icon-button only-m" type="button" aria-label="Open menu"
+          aria-controls="mobile-menu" aria-expanded="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 7h16"></path>
+            <path d="M4 12h16"></path>
+            <path d="M4 17h16"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <nav id="mobile-menu" class="mobile-menu" aria-label="Main" hidden>
+      <div class="wrap">
+        <a href="./?home" data-nav="home">Head-to-head</a>
+        <a href="./#records" data-nav="records">Records</a>
+        <a href="./#rivalries" data-nav="rivalries">Rivalries</a>
+        <a href="./#players" data-nav="players">Players</a>
+      </div>
+    </nav>
+  </header>
+
+    <main id="main" class="doc-main">
+    <div class="wrap view-hero">
+      <nav class="crumbs" aria-label="Breadcrumb">
+        <a href="./?home">Head-to-head</a><span class="sep" aria-hidden="true">/</span><span aria-current="page">Changelog</span>
+      </nav>
+      <h1 class="t-title">Changelog</h1>
+      <p class="t-meta">Everything new on the site since it launched, newest first</p>
+    </div>
+
+    <div class="wrap section changelog">
+      <p class="changelog-key">A <strong>whole number</strong>, like 3.0, means a big change to the site.
+        A <strong>decimal</strong>, like 3.1, means smaller additions and fixes.</p>
+
+      <ol class="releases">
+        <li class="release" id="v4.2">
+          <div class="release-tag">
+            <span class="release-version">4.2</span>
+            <time class="release-date" datetime="2026-11-03">3 Nov 2026</time>
+          </div>
+          <div class="release-body">
+            <h2>Cleaner player and tournament records</h2>
+            <ul>
+              <li>45 players who were listed twice, under two separate entries, are now one player. Their
+                whole career and every head-to-head record now show in one place.</li>
+              <li>When two results sites report the same tournament differently, the smaller leftover page
+                no longer names a champion. It points you to the full event instead, for example
+                Göteborg Open 2016 and EM 2022 Open.</li>
+              <li>This changelog, so you can see what's new.</li>
+            </ul>
+          </div>
+        </li>
+
+        <li class="release" id="v4.1">
+          <div class="release-tag">
+            <span class="release-version">4.1</span>
+            <time class="release-date" datetime="2026-11-03">3 Nov 2026</time>
+          </div>
+          <div class="release-body">
+            <h2>Fixes and polish</h2>
+            <ul>
+              <li>About 5,200 games that two results sites both reported were counted twice. Each one now
+                counts once, so records and ratings are more accurate.</li>
+              <li>Some names with letters like ö and å showed up as a jumble of symbols. They now read
+                properly.</li>
+              <li>Tournaments that share a name, like the 127 events called “SM”, now show their year.</li>
+              <li>Players who share a name show a city, birth year or other detail in the search, so you
+                can tell them apart.</li>
+              <li>The home page no longer jumps around while it loads, and player pages start loading
+                sooner.</li>
+              <li>Fixes on phones: the year filter no longer opens off the edge of the screen, the menu
+                button fits on small phones, chart labels no longer overlap, and Records has no empty
+                gaps.</li>
+              <li>A matchup with no games now links to both players' pages instead of a dead end.</li>
+              <li>Going back to a player or matchup you looked at earlier no longer leaves the rating chart
+                and the forecast missing.</li>
+              <li>The logo and Head-to-head links on the ratings and tournament pages take you to the home
+                page.</li>
+              <li>Easier to use with a keyboard or a screen reader, calmer for people who turn off
+                animations, and the numbers in the scoreline grid are easier to read in both light and dark
+                mode.</li>
+              <li>The site now always uses a secure connection.</li>
+            </ul>
+          </div>
+        </li>
+
+        <li class="release release-major" id="v4.0">
+          <div class="release-tag">
+            <span class="release-version">4.0</span>
+            <time class="release-date" datetime="2026-11-02">2 Nov 2026</time>
+            <span class="release-kind">Major update</span>
+          </div>
+          <div class="release-body">
+            <h2>Ratings and forecasts</h2>
+            <p>Every player now has a rating, and matchups get a forecast.</p>
+            <ul>
+              <li>Every player gets a rating worked out from every game they've played, where a big win
+                counts a little more than a narrow one. Player pages show the rating over their whole
+                career, with their peak.</li>
+              <li>Matchup pages show <strong>If they met today</strong>: each player's chance to win, draw
+                or lose a game played now, from their ratings and how they've done against each
+                other.</li>
+              <li>With Playoff and Series picked, the forecast shows each player's chance of winning a
+                best-of-7 series.</li>
+              <li>A new page, <a href="ratings">How the ratings work</a>, explains the ratings and the
+                forecast, and how well they would have predicted past results.</li>
+              <li><strong>Against each nation</strong> on player pages shows the countries a player does
+                better or worse against than their rating says.</li>
+              <li><strong>Above and below the ratings</strong> shows the opponents a player beats more, or
+                less, often than expected.</li>
+              <li>A story rail on player and matchup pages sums up each section as you scroll: who leads,
+                when the lead changed, the most common score and more.</li>
+              <li>A new share image, sized for social media feeds, with both ratings, the forecast and
+                recent form. You can preview it, pick light or dark, and share, copy or download it.</li>
+              <li>After you pick a player, their career page is the first choice in the list, so it's
+                easier to find.</li>
+            </ul>
+          </div>
+        </li>
+
+        <li class="release" id="v3.3">
+          <div class="release-tag">
+            <span class="release-version">3.3</span>
+            <time class="release-date" datetime="2026-11-01">1 Nov 2026</time>
+          </div>
+          <div class="release-body">
+            <h2>Tournament pages and daily updates</h2>
+            <ul>
+              <li>Every tournament has its own page with the champion and runner-up, the biggest upsets,
+                the playoff bracket round by round, and the group standings.</li>
+              <li>Tap a tournament in a list of games to open its page.</li>
+              <li>Results now update every day instead of once a week.</li>
+              <li>Links you share now show the players' names and record in the preview in chat apps and
+                on social media.</li>
+              <li>The browser tab shows which player or matchup you're looking at.</li>
+              <li>Text appears faster, because the fonts now load from the site itself.</li>
+              <li>The site is now checked automatically for screen reader support and readable contrast,
+                and what those checks found has been fixed.</li>
+            </ul>
+          </div>
+        </li>
+
+        <li class="release" id="v3.2">
+          <div class="release-tag">
+            <span class="release-version">3.2</span>
+            <time class="release-date" datetime="2026-10-30">30 Oct 2026</time>
+          </div>
+          <div class="release-body">
+            <h2>A new home at h2h.puck.no</h2>
+            <ul>
+              <li>The site moved to h2h.puck.no. Old links still work and take you there.</li>
+              <li>The crest of Norges Bordhockeyforbund, the Norwegian table hockey federation, is the new
+                site logo.</li>
+              <li>Results from table-hockey.eu were added as a third source, so more games are
+                included.</li>
+              <li>Records is in the top menu, and the footer lists where the results come from.</li>
+              <li>Better at spotting the same game reported by more than one site, so it only counts
+                once.</li>
+            </ul>
+          </div>
+        </li>
+
+        <li class="release" id="v3.1">
+          <div class="release-tag">
+            <span class="release-version">3.1</span>
+            <time class="release-date" datetime="2026-10-29">29 Oct 2026</time>
+          </div>
+          <div class="release-body">
+            <h2>Records and the story behind each game</h2>
+            <ul>
+              <li>A <strong>Records</strong> section on the home page: longest winning streak, longest
+                unbeaten run, perfect record, most wins in a row over one rival, the most even rivalry and
+                the longest wait for a rematch. Each record has its own graphic.</li>
+              <li>Open a game in the list to see what it meant: the playoff series it was part of, the
+                head-to-head record after it, the previous meeting and the tournament level.</li>
+              <li>Tap a player's name on a matchup page to swap in a different opponent without starting
+                over.</li>
+              <li>Players and Rivalries in the top menu now take you to the top-ranked players and the
+                biggest rivalries.</li>
+            </ul>
+          </div>
+        </li>
+
+        <li class="release release-major" id="v3.0">
+          <div class="release-tag">
+            <span class="release-version">3.0</span>
+            <time class="release-date" datetime="2026-10-24">24 Oct 2026</time>
+            <span class="release-kind">Major update</span>
+          </div>
+          <div class="release-body">
+            <h2>A whole new look</h2>
+            <p>The site was redesigned from top to bottom, with much more to explore on every page.</p>
+            <ul>
+              <li><strong>Home:</strong> find a player straight away, and see the most-played rivalry and
+                the biggest rivalries between the world's top-ranked players.</li>
+              <li><strong>Matchups:</strong> a scoreboard with a one-line verdict, the last 10 games, a
+                chart of who led over time, results tournament by tournament, a side-by-side tale of the
+                tape, the most common scores and a season-by-season view.</li>
+              <li><strong>Players:</strong> key numbers at the top, win rate by season, who they play
+                most, and a table of every opponent with a button to compare.</li>
+              <li>A new top menu with search, a menu on phones, and the “/” key to jump to search.</li>
+              <li>Your browser's Back button takes you to the matchup you saw before.</li>
+              <li>Easier to read, and names in Cyrillic letters display properly.</li>
+            </ul>
+          </div>
+        </li>
+
+        <li class="release release-major" id="v2.0">
+          <div class="release-tag">
+            <span class="release-version">2.0</span>
+            <time class="release-date" datetime="2026-10-14">14 Oct 2026</time>
+            <span class="release-kind">Major update</span>
+          </div>
+          <div class="release-body">
+            <h2>Design refresh</h2>
+            <p>A cleaner, calmer site that puts the result first.</p>
+            <ul>
+              <li>The result of a matchup is shown once, in a big scoreboard with a player on each
+                side.</li>
+              <li>Stages and filters are together in one bar under the scoreboard, with the number of
+                games in each stage.</li>
+              <li>A new home screen with the headline numbers and the top-ranked rivalries.</li>
+              <li>A new game strip with one bar for every game: up for one player's wins, down for the
+                other's, and taller for bigger wins.</li>
+              <li>A score-first list of games on phones, and a score bar that stays at the top as you
+                scroll.</li>
+              <li>A new logo and app icon, so the site looks right when you add it to your home
+                screen.</li>
+              <li>The same date and number style everywhere.</li>
+            </ul>
+          </div>
+        </li>
+
+        <li class="release" id="v1.5">
+          <div class="release-tag">
+            <span class="release-version">1.5</span>
+            <time class="release-date" datetime="2026-09-06">6 Sep 2026</time>
+          </div>
+          <div class="release-body">
+            <h2>Better for screen readers</h2>
+            <ul>
+              <li>Screen readers now read out a short summary of each matchup's result.</li>
+            </ul>
+          </div>
+        </li>
+
+        <li class="release" id="v1.4">
+          <div class="release-tag">
+            <span class="release-version">1.4</span>
+            <time class="release-date" datetime="2026-08-01">1 Aug 2026</time>
+          </div>
+          <div class="release-body">
+            <h2>Smarter player search</h2>
+            <ul>
+              <li>A player listed under more than one name or spelling shows up once in the search.</li>
+              <li>The search is easier to use with a keyboard.</li>
+            </ul>
+          </div>
+        </li>
+
+        <li class="release" id="v1.3">
+          <div class="release-tag">
+            <span class="release-version">1.3</span>
+            <time class="release-date" datetime="2026-07-18">18 Jul 2026</time>
+          </div>
+          <div class="release-body">
+            <h2>Year filter and a fresh coat of paint</h2>
+            <ul>
+              <li>Filter games to a range of years.</li>
+              <li>The site shows how many players and games it covers.</li>
+              <li>Cleaner buttons, menus and game details.</li>
+              <li>A livelier animation when a player is on a run of seven or more wins.</li>
+              <li>Links keep the players and filters you picked more reliably.</li>
+            </ul>
+          </div>
+        </li>
+
+        <li class="release" id="v1.2">
+          <div class="release-tag">
+            <span class="release-version">1.2</span>
+            <time class="release-date" datetime="2026-06-21">21 Jun 2026</time>
+          </div>
+          <div class="release-body">
+            <h2>Group stages sorted correctly</h2>
+            <ul>
+              <li>Games from team events and group stages now show under Round-robin, with clearer stage
+                names.</li>
+            </ul>
+          </div>
+        </li>
+
+        <li class="release" id="v1.1">
+          <div class="release-tag">
+            <span class="release-version">1.1</span>
+            <time class="release-date" datetime="2026-06-12">12 Jun 2026</time>
+          </div>
+          <div class="release-body">
+            <h2>Look up one player</h2>
+            <ul>
+              <li>Pick a single player to see every opponent they've faced, in a table you can sort and
+                filter.</li>
+              <li>Shared links show a title and picture in chat apps and on social media.</li>
+              <li>A sharper, tidier share image.</li>
+            </ul>
+          </div>
+        </li>
+
+        <li class="release release-major" id="v1.0">
+          <div class="release-tag">
+            <span class="release-version">1.0</span>
+            <time class="release-date" datetime="2026-06-11">11 Jun 2026</time>
+            <span class="release-kind">Launch</span>
+          </div>
+          <div class="release-body">
+            <h2>Table Hockey H2H goes live</h2>
+            <ul>
+              <li>Pick any two players and see their full head-to-head record: wins, draws, losses and
+                goals.</li>
+              <li>Every game they've played, with the tournament, the stage and the score, and a link to
+                the tournament.</li>
+              <li>Look at round-robin and playoff games separately, and see playoff games as series.</li>
+              <li>Recent form, and charts of the rivalry and the goals over the years.</li>
+              <li>Make a share image or copy a link to any matchup.</li>
+              <li>Your recent matchups, one tap away.</li>
+              <li>Light and dark mode.</li>
+            </ul>
+          </div>
+        </li>
+      </ol>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <section class="data-sources" aria-labelledby="data-sources-title">
+        <h2 id="data-sources-title" class="data-sources-title">Data sources</h2>
+        <ul id="data-sources-list" class="data-sources-list">
+          <li><a href="https://th.sportscorpion.com/" target="_blank" rel="noopener">th.sportscorpion.com</a></li>
+          <li><a href="https://resultat.bordshockey.se/" target="_blank" rel="noopener">resultat.bordshockey.se</a></li>
+          <li><a href="https://table-hockey.eu/" target="_blank" rel="noopener">table-hockey.eu</a></li>
+        </ul>
+      </section>
+      <div class="footer-meta">
+        <p class="footer-links"><a href="changelog">Changelog</a></p>
+        <p id="home-stats" class="footer-stats" hidden></p>
+        <p id="data-freshness" class="data-freshness" hidden></p>
+      </div>
+    </div>
+  </footer>
+
+  <script type="module" src="js/changelog-page.js?v=20261103-changelog"></script>
+</body>
+
+</html>

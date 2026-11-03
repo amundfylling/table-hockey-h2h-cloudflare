@@ -137,6 +137,11 @@ The frontend is vanilla ES modules under `public/js/`, loaded from `index.html` 
 ## Frontend Conventions
 
 * **Cache busting**: bump the `styles.css?v=` query in `index.html` whenever CSS ships.
+* **Changelog**: `public/changelog.html` (served at `/changelog`, linked from every footer) lists
+  releases for players and fans in plain words, newest first. When a change people will notice
+  ships, add it to a new release or the newest one if it shipped the same day. A big change takes the
+  next whole number (`release-major`, 5.0); smaller additions and fixes take the next decimal (4.3).
+  Leave out changes nobody sees (build speed, refactors, CI).
 * **Module wiring**: modules that need a callback into `main.js` use dependency injection
   (`initTable(updateView)`, `initFilters(updateView)`, `initRecent({ onCompare })`) instead of
   importing `main.js` - do not introduce import cycles.
@@ -162,7 +167,7 @@ standard `unittest` framework.
   python -m unittest discover -s tests -v
   ```
 * **Accessibility check**: after the data build, `npm ci && npm run a11y` loads the home, player,
-  matchup and tournament views in Chromium and fails on any axe-core WCAG 2.1 A/AA violation
+  matchup, tournament, ratings and changelog views in Chromium and fails on any axe-core WCAG 2.1 A/AA violation
   (`scripts/a11y-check.mjs`). CI runs it before deploying.
 * **CI Pipeline Execution**:
   The test suite runs automatically in the GitHub Actions `Validate H2H data` job during the `build`
