@@ -1,6 +1,7 @@
 // Ratings leaderboard (leaderboard.html): every player with a page, ranked by the rating from
 // data/leaderboard.json, with name search, a nation filter, active or all-time players and
-// sortable columns. The filters live in the URL (?q=, ?nation=, ?all=1, ?sort=) for sharing.
+// sortable columns. The filters live in the URL (?q=, ?nation=, ?all=1, ?min=, ?sort=) for
+// sharing.
 import { el } from "./dom.js";
 import { initChrome } from "./chrome.js";
 import { getCountryFlag } from "./players.js";
@@ -26,6 +27,7 @@ const state = {
   asOf: "",
   query: "",
   nation: "",
+  minGames: 0,
   active: true,
   sort: "rating",
   ascending: false,
@@ -58,11 +60,18 @@ export function withWorldRankGap(players) {
   });
 }
 
+// Minimum games the slider steps through: the counts run from 50 to many thousands, so even
+// steps would leave most of the slider unused.
+export const MIN_GAMES_STEPS = [0, 50, 100, 200, 300, 500, 750, 1000, 1500, 2000, 3000, 5000];
+
 // The players that pass the filters, each with its rank by rating among them, in the
-// chosen order. The vs WR place counts every world-ranked player in the Active or All time
-// view, whatever the nation and name filters, so it matches the world ranking's scope.
-export function visiblePlayers(players, { query, nation, active, cutoff, sort, ascending }) {
-  const inView = players.filter((p) => !active || (p.last_played && p.last_played >= cutoff));
+// chosen order. The vs WR place counts every world-ranked player in the view (Active or All
+// time, and the minimum games), whatever the nation and name filters.
+export function visiblePlayers(players, {
+  query, nation, active, cutoff, sort, ascending, minGames = 0,
+}) {
+  const inView = players.filter((p) => (!active || (p.last_played && p.last_played >= cutoff))
+    && (p.games || 0) >= minGames);
   const ranked = withWorldRankGap(inView)
     .filter((p) => (!nation || p.nation === nation) && matchesQuery(p.name, query))
     .map((p, index) => ({ ...p, rank: index + 1 }));
@@ -116,6 +125,7 @@ function syncUrl() {
     q: state.query.trim(),
     nation: state.nation,
     all: state.active ? "" : "1",
+    min: state.minGames || "",
     sort: state.sort === "rating" && !state.ascending
       ? ""
       : `${state.sort}${state.ascending ? "-asc" : ""}`,
@@ -162,6 +172,8 @@ function readState() {
   state.query = params.get("q") || "";
   state.nation = params.get("nation") || "";
   state.active = params.get("all") !== "1";
+  const min = Number(params.get("min"));
+  state.minGames = MIN_GAMES_STEPS.includes(min) ? min : 0;
   const [sort, dir] = String(params.get("sort") || "").split("-");
   state.sort = SORTS[sort] ? sort : "rating";
   state.ascending = dir === "asc";
@@ -174,6 +186,21 @@ function bind() {
     state.query = query.value;
     update();
   }, 150));
+  const slider = $("b-min-games");
+  const showMinGames = () => {
+    $("b-min-games-value").textContent = state.minGames ? formatNumber(state.minGames) : "Any";
+    slider.setAttribute("aria-valuetext",
+      state.minGames ? `${formatNumber(state.minGames)} games` : "Any number of games");
+  };
+  slider.max = String(MIN_GAMES_STEPS.length - 1);
+  slider.value = String(MIN_GAMES_STEPS.indexOf(state.minGames));
+  showMinGames();
+  const applyMinGames = debounce(update, 120);
+  slider.addEventListener("input", () => {
+    state.minGames = MIN_GAMES_STEPS[Number(slider.value)] || 0;
+    showMinGames();
+    applyMinGames();
+  });
   $("b-nation").addEventListener("change", (event) => {
     state.nation = event.target.value;
     update();

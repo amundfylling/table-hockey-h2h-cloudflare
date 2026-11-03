@@ -104,3 +104,15 @@ test("vs WR counts only the players in the Active or All time view", () => {
   const norway = visiblePlayers(list, { ...defaults, active: true, nation: "Norway" });
   assert.deepEqual(norway.map((p) => [p.id, p.wr_gap]), [[3, 0]]);
 });
+
+test("minimum games narrows the view and the vs WR place with it", () => {
+  const list = [
+    { id: 1, rating: 2100, world_rank: 3, games: 60 },
+    { id: 2, rating: 2090, world_rank: 1, games: 900 },
+    { id: 3, rating: 2080, world_rank: 2, games: 1200 },
+  ];
+  const all = visiblePlayers(list, { ...defaults });
+  assert.deepEqual(all.map((p) => [p.id, p.wr_gap]), [[1, 2], [2, -1], [3, -1]]);
+  const seasoned = visiblePlayers(list, { ...defaults, minGames: 500 });
+  assert.deepEqual(seasoned.map((p) => [p.id, p.rank, p.wr_gap]), [[2, 1, 0], [3, 2, 0]]);
+});
