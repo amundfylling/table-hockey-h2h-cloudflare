@@ -20,7 +20,7 @@
   <link rel="preload" href="fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="fonts/barlow-condensed-latin-600.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="icon" type="image/png" sizes="32x32" href="favicon.png" />
-  <link rel="stylesheet" href="styles.css?v=20261103-changelog" />
+  <link rel="stylesheet" href="styles.css?v=20261103-changelog-types" />
 </head>
 
 <body data-home="false" class="doc-page">
@@ -93,7 +93,18 @@
 
     <div class="wrap section changelog">
       <p class="changelog-key">A <strong>whole number</strong>, like 3.0, means a big change to the site.
-        A <strong>decimal</strong>, like 3.1, means smaller additions and fixes.</p>
+        A <strong>decimal</strong>, like 3.1, means smaller additions and fixes. Each change is marked
+        <span class="change-type" data-type="new">New</span> for something you couldn't do before,
+        <span class="change-type" data-type="improved">Improved</span> for something that works better, or
+        <span class="change-type" data-type="fixed">Fixed</span> for something that was wrong.</p>
+
+      <div class="change-filter" role="group" aria-label="Show changes">
+        <button type="button" data-filter="all" aria-pressed="true">All</button>
+        <button type="button" data-filter="new" aria-pressed="false">New</button>
+        <button type="button" data-filter="improved" aria-pressed="false">Improved</button>
+        <button type="button" data-filter="fixed" aria-pressed="false">Fixed</button>
+      </div>
+      <p id="change-filter-status" class="sr-only" aria-live="polite"></p>
 
       <ol class="releases">
         <li class="release" id="v4.2">
@@ -103,13 +114,16 @@
           </div>
           <div class="release-body">
             <h2>Cleaner player and tournament records</h2>
-            <ul>
-              <li>45 players who were listed twice, under two separate entries, are now one player. Their
-                whole career and every head-to-head record now show in one place.</li>
-              <li>When two results sites report the same tournament differently, the smaller leftover page
-                no longer names a champion. It points you to the full event instead, for example
-                Göteborg Open 2016 and EM 2022 Open.</li>
-              <li>This changelog, so you can see what's new.</li>
+            <ul class="changes">
+              <li class="change" data-type="new"><span class="change-type">New</span>
+                <span class="change-text">This changelog, so you can see what's new.</span></li>
+              <li class="change" data-type="fixed"><span class="change-type">Fixed</span>
+                <span class="change-text">45 players who were listed twice, under two separate entries, are now one player.
+                  Their whole career and every head-to-head record now show in one place.</span></li>
+              <li class="change" data-type="fixed"><span class="change-type">Fixed</span>
+                <span class="change-text">When two results sites report the same tournament differently, the smaller leftover
+                  page no longer names a champion. It points you to the full event instead, for
+                  example Göteborg Open 2016 and EM 2022 Open.</span></li>
             </ul>
           </div>
         </li>
@@ -121,28 +135,40 @@
           </div>
           <div class="release-body">
             <h2>Fixes and polish</h2>
-            <ul>
-              <li>About 5,200 games that two results sites both reported were counted twice. Each one now
-                counts once, so records and ratings are more accurate.</li>
-              <li>Some names with letters like ö and å showed up as a jumble of symbols. They now read
-                properly.</li>
-              <li>Tournaments that share a name, like the 127 events called “SM”, now show their year.</li>
-              <li>Players who share a name show a city, birth year or other detail in the search, so you
-                can tell them apart.</li>
-              <li>The home page no longer jumps around while it loads, and player pages start loading
-                sooner.</li>
-              <li>Fixes on phones: the year filter no longer opens off the edge of the screen, the menu
-                button fits on small phones, chart labels no longer overlap, and Records has no empty
-                gaps.</li>
-              <li>A matchup with no games now links to both players' pages instead of a dead end.</li>
-              <li>Going back to a player or matchup you looked at earlier no longer leaves the rating chart
-                and the forecast missing.</li>
-              <li>The logo and Head-to-head links on the ratings and tournament pages take you to the home
-                page.</li>
-              <li>Easier to use with a keyboard or a screen reader, calmer for people who turn off
-                animations, and the numbers in the scoreline grid are easier to read in both light and dark
-                mode.</li>
-              <li>The site now always uses a secure connection.</li>
+            <ul class="changes">
+              <li class="change" data-type="improved"><span class="change-type">Improved</span>
+                <span class="change-text">Tournaments that share a name, like the 127 events called “SM”, now show their year.</span></li>
+              <li class="change" data-type="improved"><span class="change-type">Improved</span>
+                <span class="change-text">Players who share a name show a city, birth year or other detail in the search, so
+                  you can tell them apart.</span></li>
+              <li class="change" data-type="improved"><span class="change-type">Improved</span>
+                <span class="change-text">Player pages start loading sooner.</span></li>
+              <li class="change" data-type="improved"><span class="change-type">Improved</span>
+                <span class="change-text">A matchup with no games now links to both players' pages instead of a dead end.</span></li>
+              <li class="change" data-type="improved"><span class="change-type">Improved</span>
+                <span class="change-text">Easier to use with a keyboard or a screen reader, calmer for people who turn off
+                  animations, and the numbers in the scoreline grid are easier to read in both light
+                  and dark mode.</span></li>
+              <li class="change" data-type="improved"><span class="change-type">Improved</span>
+                <span class="change-text">The site now always uses a secure connection.</span></li>
+              <li class="change" data-type="fixed"><span class="change-type">Fixed</span>
+                <span class="change-text">About 5,200 games that two results sites both reported were counted twice. Each one
+                  now counts once, so records and ratings are more accurate.</span></li>
+              <li class="change" data-type="fixed"><span class="change-type">Fixed</span>
+                <span class="change-text">Some names with letters like ö and å showed up as a jumble of symbols. They now read
+                  properly.</span></li>
+              <li class="change" data-type="fixed"><span class="change-type">Fixed</span>
+                <span class="change-text">The home page no longer jumps around while it loads.</span></li>
+              <li class="change" data-type="fixed"><span class="change-type">Fixed</span>
+                <span class="change-text">On phones, the year filter no longer opens off the edge of the screen, the menu
+                  button fits on small phones, chart labels no longer overlap, and Records has no
+                  empty gaps.</span></li>
+              <li class="change" data-type="fixed"><span class="change-type">Fixed</span>
+                <span class="change-text">Going back to a player or matchup you looked at earlier no longer leaves the rating
+                  chart and the forecast missing.</span></li>
+              <li class="change" data-type="fixed"><span class="change-type">Fixed</span>
+                <span class="change-text">The logo and Head-to-head links on the ratings and tournament pages take you to the
+                  home page.</span></li>
             </ul>
           </div>
         </li>
@@ -156,27 +182,37 @@
           <div class="release-body">
             <h2>Ratings and forecasts</h2>
             <p>Every player now has a rating, and matchups get a forecast.</p>
-            <ul>
-              <li>Every player gets a rating worked out from every game they've played, where a big win
-                counts a little more than a narrow one. Player pages show the rating over their whole
-                career, with their peak.</li>
-              <li>Matchup pages show <strong>If they met today</strong>: each player's chance to win, draw
-                or lose a game played now, from their ratings and how they've done against each
-                other.</li>
-              <li>With Playoff and Series picked, the forecast shows each player's chance of winning a
-                best-of-7 series.</li>
-              <li>A new page, <a href="ratings">How the ratings work</a>, explains the ratings and the
-                forecast, and how well they would have predicted past results.</li>
-              <li><strong>Against each nation</strong> on player pages shows the countries a player does
-                better or worse against than their rating says.</li>
-              <li><strong>Above and below the ratings</strong> shows the opponents a player beats more, or
-                less, often than expected.</li>
-              <li>A story rail on player and matchup pages sums up each section as you scroll: who leads,
-                when the lead changed, the most common score and more.</li>
-              <li>A new share image, sized for social media feeds, with both ratings, the forecast and
-                recent form. You can preview it, pick light or dark, and share, copy or download it.</li>
-              <li>After you pick a player, their career page is the first choice in the list, so it's
-                easier to find.</li>
+            <ul class="changes">
+              <li class="change" data-type="new"><span class="change-type">New</span>
+                <span class="change-text">Every player gets a rating worked out from every game they've played, where a big
+                  win counts a little more than a narrow one. Player pages show the rating over their
+                  whole career, with their peak.</span></li>
+              <li class="change" data-type="new"><span class="change-type">New</span>
+                <span class="change-text">Matchup pages show <strong>If they met today</strong>: each player's chance to win,
+                  draw or lose a game played now, from their ratings and how they've done against each
+                  other.</span></li>
+              <li class="change" data-type="new"><span class="change-type">New</span>
+                <span class="change-text">With Playoff and Series picked, the forecast shows each player's chance of winning a
+                  best-of-7 series.</span></li>
+              <li class="change" data-type="new"><span class="change-type">New</span>
+                <span class="change-text">A new page, <a href="ratings">How the ratings work</a>, explains the ratings and the
+                  forecast, and how well they would have predicted past results.</span></li>
+              <li class="change" data-type="new"><span class="change-type">New</span>
+                <span class="change-text"><strong>Against each nation</strong> on player pages shows the countries a player
+                  does better or worse against than their rating says.</span></li>
+              <li class="change" data-type="new"><span class="change-type">New</span>
+                <span class="change-text"><strong>Above and below the ratings</strong> shows the opponents a player beats
+                  more, or less, often than expected.</span></li>
+              <li class="change" data-type="new"><span class="change-type">New</span>
+                <span class="change-text">A story rail on player and matchup pages sums up each section as you scroll: who
+                  leads, when the lead changed, the most common score and more.</span></li>
+              <li class="change" data-type="improved"><span class="change-type">Improved</span>
+                <span class="change-text">The share image was redesigned for social media feeds, with both ratings, the
+                  forecast and recent form. You can preview it, pick light or dark, and share, copy or
+                  download it.</span></li>
+              <li class="change" data-type="improved"><span class="change-type">Improved</span>
+                <span class="change-text">After you pick a player, their career page is the first choice in the list, so it's
+                  easier to find.</span></li>
             </ul>
           </div>
         </li>
@@ -188,17 +224,24 @@
           </div>
           <div class="release-body">
             <h2>Tournament pages and daily updates</h2>
-            <ul>
-              <li>Every tournament has its own page with the champion and runner-up, the biggest upsets,
-                the playoff bracket round by round, and the group standings.</li>
-              <li>Tap a tournament in a list of games to open its page.</li>
-              <li>Results now update every day instead of once a week.</li>
-              <li>Links you share now show the players' names and record in the preview in chat apps and
-                on social media.</li>
-              <li>The browser tab shows which player or matchup you're looking at.</li>
-              <li>Text appears faster, because the fonts now load from the site itself.</li>
-              <li>The site is now checked automatically for screen reader support and readable contrast,
-                and what those checks found has been fixed.</li>
+            <ul class="changes">
+              <li class="change" data-type="new"><span class="change-type">New</span>
+                <span class="change-text">Every tournament has its own page with the champion and runner-up, the biggest
+                  upsets, the playoff bracket round by round, and the group standings.</span></li>
+              <li class="change" data-type="new"><span class="change-type">New</span>
+                <span class="change-text">Tap a tournament in a list of games to open its page.</span></li>
+              <li class="change" data-type="improved"><span class="change-type">Improved</span>
+                <span class="change-text">Results now update every day instead of once a week.</span></li>
+              <li class="change" data-type="improved"><span class="change-type">Improved</span>
+                <span class="change-text">Links you share now show the players' names and record in the preview in chat apps
+                  and on social media.</span></li>
+              <li class="change" data-type="improved"><span class="change-type">Improved</span>
+                <span class="change-text">The browser tab shows which player or matchup you're looking at.</span></li>
+              <li class="change" data-type="improved"><span class="change-type">Improved</span>
+                <span class="change-text">Text appears faster, because the fonts now load from the site itself.</span></li>
+              <li class="change" data-type="fixed"><span class="change-type">Fixed</span>
+                <span class="change-text">New automatic checks for screen reader support and readable contrast found some
+                  problems, and they are fixed.</span></li>
             </ul>
           </div>
         </li>
@@ -210,15 +253,20 @@
           </div>
           <div class="release-body">
             <h2>A new home at h2h.puck.no</h2>
-            <ul>
-              <li>The site moved to h2h.puck.no. Old links still work and take you there.</li>
-              <li>The crest of Norges Bordhockeyforbund, the Norwegian table hockey federation, is the new
-                site logo.</li>
-              <li>Results from table-hockey.eu were added as a third source, so more games are
-                included.</li>
-              <li>Records is in the top menu, and the footer lists where the results come from.</li>
-              <li>Better at spotting the same game reported by more than one site, so it only counts
-                once.</li>
+            <ul class="changes">
+              <li class="change" data-type="new"><span class="change-type">New</span>
+                <span class="change-text">The site moved to h2h.puck.no. Old links still work and take you there.</span></li>
+              <li class="change" data-type="new"><span class="change-type">New</span>
+                <span class="change-text">The crest of Norges Bordhockeyforbund, the Norwegian table hockey federation, is the
+                  new site logo.</span></li>
+              <li class="change" data-type="new"><span class="change-type">New</span>
+                <span class="change-text">Results from table-hockey.eu were added as a third source, so more games are
+                  included.</span></li>
+              <li class="change" data-type="improved"><span class="change-type">Improved</span>
+                <span class="change-text">Records is in the top menu, and the footer lists where the results come from.</span></li>
+              <li class="change" data-type="fixed"><span class="change-type">Fixed</span>
+                <span class="change-text">Better at spotting the same game reported by more than one site, so it only counts
+                  once.</span></li>
             </ul>
           </div>
         </li>
@@ -230,16 +278,20 @@
           </div>
           <div class="release-body">
             <h2>Records and the story behind each game</h2>
-            <ul>
-              <li>A <strong>Records</strong> section on the home page: longest winning streak, longest
-                unbeaten run, perfect record, most wins in a row over one rival, the most even rivalry and
-                the longest wait for a rematch. Each record has its own graphic.</li>
-              <li>Open a game in the list to see what it meant: the playoff series it was part of, the
-                head-to-head record after it, the previous meeting and the tournament level.</li>
-              <li>Tap a player's name on a matchup page to swap in a different opponent without starting
-                over.</li>
-              <li>Players and Rivalries in the top menu now take you to the top-ranked players and the
-                biggest rivalries.</li>
+            <ul class="changes">
+              <li class="change" data-type="new"><span class="change-type">New</span>
+                <span class="change-text">A <strong>Records</strong> section on the home page: longest winning streak, longest
+                  unbeaten run, perfect record, most wins in a row over one rival, the most even
+                  rivalry and the longest wait for a rematch. Each record has its own graphic.</span></li>
+              <li class="change" data-type="new"><span class="change-type">New</span>
+                <span class="change-text">Open a game in the list to see what it meant: the playoff series it was part of, the
+                  head-to-head record after it, the previous meeting and the tournament level.</span></li>
+              <li class="change" data-type="new"><span class="change-type">New</span>
+                <span class="change-text">Tap a player's name on a matchup page to swap in a different opponent without
+                  starting over.</span></li>
+              <li class="change" data-type="fixed"><span class="change-type">Fixed</span>
+                <span class="change-text">Players and Rivalries in the top menu now take you to the top-ranked players and the
+                  biggest rivalries. Before, they went nowhere.</span></li>
             </ul>
           </div>
         </li>
@@ -253,17 +305,25 @@
           <div class="release-body">
             <h2>A whole new look</h2>
             <p>The site was redesigned from top to bottom, with much more to explore on every page.</p>
-            <ul>
-              <li><strong>Home:</strong> find a player straight away, and see the most-played rivalry and
-                the biggest rivalries between the world's top-ranked players.</li>
-              <li><strong>Matchups:</strong> a scoreboard with a one-line verdict, the last 10 games, a
-                chart of who led over time, results tournament by tournament, a side-by-side tale of the
-                tape, the most common scores and a season-by-season view.</li>
-              <li><strong>Players:</strong> key numbers at the top, win rate by season, who they play
-                most, and a table of every opponent with a button to compare.</li>
-              <li>A new top menu with search, a menu on phones, and the “/” key to jump to search.</li>
-              <li>Your browser's Back button takes you to the matchup you saw before.</li>
-              <li>Easier to read, and names in Cyrillic letters display properly.</li>
+            <ul class="changes">
+              <li class="change" data-type="new"><span class="change-type">New</span>
+                <span class="change-text"><strong>Home:</strong> find a player straight away, and see the most-played rivalry
+                  and the biggest rivalries between the world's top-ranked players.</span></li>
+              <li class="change" data-type="new"><span class="change-type">New</span>
+                <span class="change-text"><strong>Matchups:</strong> a scoreboard with a one-line verdict, the last 10 games,
+                  a chart of who led over time, results tournament by tournament, a side-by-side tale
+                  of the tape, the most common scores and a season-by-season view.</span></li>
+              <li class="change" data-type="new"><span class="change-type">New</span>
+                <span class="change-text"><strong>Players:</strong> key numbers at the top, win rate by season, who they play
+                  most, and a table of every opponent with a button to compare.</span></li>
+              <li class="change" data-type="new"><span class="change-type">New</span>
+                <span class="change-text">A new top menu with search, a menu on phones, and the “/” key to jump to search.</span></li>
+              <li class="change" data-type="improved"><span class="change-type">Improved</span>
+                <span class="change-text">Easier to read, with stronger contrast.</span></li>
+              <li class="change" data-type="fixed"><span class="change-type">Fixed</span>
+                <span class="change-text">Your browser's Back button takes you to the matchup you saw before.</span></li>
+              <li class="change" data-type="fixed"><span class="change-type">Fixed</span>
+                <span class="change-text">Names in Cyrillic letters display properly.</span></li>
             </ul>
           </div>
         </li>
@@ -277,19 +337,26 @@
           <div class="release-body">
             <h2>Design refresh</h2>
             <p>A cleaner, calmer site that puts the result first.</p>
-            <ul>
-              <li>The result of a matchup is shown once, in a big scoreboard with a player on each
-                side.</li>
-              <li>Stages and filters are together in one bar under the scoreboard, with the number of
-                games in each stage.</li>
-              <li>A new home screen with the headline numbers and the top-ranked rivalries.</li>
-              <li>A new game strip with one bar for every game: up for one player's wins, down for the
-                other's, and taller for bigger wins.</li>
-              <li>A score-first list of games on phones, and a score bar that stays at the top as you
-                scroll.</li>
-              <li>A new logo and app icon, so the site looks right when you add it to your home
-                screen.</li>
-              <li>The same date and number style everywhere.</li>
+            <ul class="changes">
+              <li class="change" data-type="new"><span class="change-type">New</span>
+                <span class="change-text">A new home screen with the headline numbers and the top-ranked rivalries.</span></li>
+              <li class="change" data-type="new"><span class="change-type">New</span>
+                <span class="change-text">A new game strip with one bar for every game: up for one player's wins, down for the
+                  other's, and taller for bigger wins.</span></li>
+              <li class="change" data-type="new"><span class="change-type">New</span>
+                <span class="change-text">A new logo and app icon, so the site looks right when you add it to your home
+                  screen.</span></li>
+              <li class="change" data-type="improved"><span class="change-type">Improved</span>
+                <span class="change-text">The result of a matchup is shown once, in a big scoreboard with a player on each
+                  side.</span></li>
+              <li class="change" data-type="improved"><span class="change-type">Improved</span>
+                <span class="change-text">Stages and filters are together in one bar under the scoreboard, with the number of
+                  games in each stage.</span></li>
+              <li class="change" data-type="improved"><span class="change-type">Improved</span>
+                <span class="change-text">A score-first list of games on phones, and a score bar that stays at the top as you
+                  scroll.</span></li>
+              <li class="change" data-type="improved"><span class="change-type">Improved</span>
+                <span class="change-text">The same date and number style everywhere.</span></li>
             </ul>
           </div>
         </li>
@@ -301,8 +368,9 @@
           </div>
           <div class="release-body">
             <h2>Better for screen readers</h2>
-            <ul>
-              <li>Screen readers now read out a short summary of each matchup's result.</li>
+            <ul class="changes">
+              <li class="change" data-type="improved"><span class="change-type">Improved</span>
+                <span class="change-text">Screen readers now read out a short summary of each matchup's result.</span></li>
             </ul>
           </div>
         </li>
@@ -314,9 +382,11 @@
           </div>
           <div class="release-body">
             <h2>Smarter player search</h2>
-            <ul>
-              <li>A player listed under more than one name or spelling shows up once in the search.</li>
-              <li>The search is easier to use with a keyboard.</li>
+            <ul class="changes">
+              <li class="change" data-type="improved"><span class="change-type">Improved</span>
+                <span class="change-text">A player listed under more than one name or spelling shows up once in the search.</span></li>
+              <li class="change" data-type="improved"><span class="change-type">Improved</span>
+                <span class="change-text">The search is easier to use with a keyboard.</span></li>
             </ul>
           </div>
         </li>
@@ -328,12 +398,17 @@
           </div>
           <div class="release-body">
             <h2>Year filter and a fresh coat of paint</h2>
-            <ul>
-              <li>Filter games to a range of years.</li>
-              <li>The site shows how many players and games it covers.</li>
-              <li>Cleaner buttons, menus and game details.</li>
-              <li>A livelier animation when a player is on a run of seven or more wins.</li>
-              <li>Links keep the players and filters you picked more reliably.</li>
+            <ul class="changes">
+              <li class="change" data-type="new"><span class="change-type">New</span>
+                <span class="change-text">Filter games to a range of years.</span></li>
+              <li class="change" data-type="new"><span class="change-type">New</span>
+                <span class="change-text">The site shows how many players and games it covers.</span></li>
+              <li class="change" data-type="improved"><span class="change-type">Improved</span>
+                <span class="change-text">Cleaner buttons, menus and game details.</span></li>
+              <li class="change" data-type="improved"><span class="change-type">Improved</span>
+                <span class="change-text">A livelier animation when a player is on a run of seven or more wins.</span></li>
+              <li class="change" data-type="fixed"><span class="change-type">Fixed</span>
+                <span class="change-text">Links keep the players and filters you picked more reliably.</span></li>
             </ul>
           </div>
         </li>
@@ -345,9 +420,10 @@
           </div>
           <div class="release-body">
             <h2>Group stages sorted correctly</h2>
-            <ul>
-              <li>Games from team events and group stages now show under Round-robin, with clearer stage
-                names.</li>
+            <ul class="changes">
+              <li class="change" data-type="fixed"><span class="change-type">Fixed</span>
+                <span class="change-text">Games from team events and group stages now show under Round-robin, with clearer
+                  stage names.</span></li>
             </ul>
           </div>
         </li>
@@ -359,11 +435,14 @@
           </div>
           <div class="release-body">
             <h2>Look up one player</h2>
-            <ul>
-              <li>Pick a single player to see every opponent they've faced, in a table you can sort and
-                filter.</li>
-              <li>Shared links show a title and picture in chat apps and on social media.</li>
-              <li>A sharper, tidier share image.</li>
+            <ul class="changes">
+              <li class="change" data-type="new"><span class="change-type">New</span>
+                <span class="change-text">Pick a single player to see every opponent they've faced, in a table you can sort
+                  and filter.</span></li>
+              <li class="change" data-type="new"><span class="change-type">New</span>
+                <span class="change-text">Shared links show a title and picture in chat apps and on social media.</span></li>
+              <li class="change" data-type="improved"><span class="change-type">Improved</span>
+                <span class="change-text">A sharper, tidier share image.</span></li>
             </ul>
           </div>
         </li>
@@ -376,16 +455,23 @@
           </div>
           <div class="release-body">
             <h2>Table Hockey H2H goes live</h2>
-            <ul>
-              <li>Pick any two players and see their full head-to-head record: wins, draws, losses and
-                goals.</li>
-              <li>Every game they've played, with the tournament, the stage and the score, and a link to
-                the tournament.</li>
-              <li>Look at round-robin and playoff games separately, and see playoff games as series.</li>
-              <li>Recent form, and charts of the rivalry and the goals over the years.</li>
-              <li>Make a share image or copy a link to any matchup.</li>
-              <li>Your recent matchups, one tap away.</li>
-              <li>Light and dark mode.</li>
+            <ul class="changes">
+              <li class="change" data-type="new"><span class="change-type">New</span>
+                <span class="change-text">Pick any two players and see their full head-to-head record: wins, draws, losses and
+                  goals.</span></li>
+              <li class="change" data-type="new"><span class="change-type">New</span>
+                <span class="change-text">Every game they've played, with the tournament, the stage and the score, and a link
+                  to the tournament.</span></li>
+              <li class="change" data-type="new"><span class="change-type">New</span>
+                <span class="change-text">Look at round-robin and playoff games separately, and see playoff games as series.</span></li>
+              <li class="change" data-type="new"><span class="change-type">New</span>
+                <span class="change-text">Recent form, and charts of the rivalry and the goals over the years.</span></li>
+              <li class="change" data-type="new"><span class="change-type">New</span>
+                <span class="change-text">Make a share image or copy a link to any matchup.</span></li>
+              <li class="change" data-type="new"><span class="change-type">New</span>
+                <span class="change-text">Your recent matchups, one tap away.</span></li>
+              <li class="change" data-type="new"><span class="change-type">New</span>
+                <span class="change-text">Light and dark mode.</span></li>
             </ul>
           </div>
         </li>
@@ -411,7 +497,7 @@
     </div>
   </footer>
 
-  <script type="module" src="js/changelog-page.js?v=20261103-changelog"></script>
+  <script type="module" src="js/changelog-page.js?v=20261103-changelog-types"></script>
 </body>
 
 </html>

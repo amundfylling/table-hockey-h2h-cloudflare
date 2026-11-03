@@ -7591,17 +7591,119 @@ body[data-comparison-mode="matchup"] .player-only {
   margin: 0 0 10px;
 }
 
-.release-body ul {
+.changes {
   margin: 0;
-  padding-left: 20px;
+  padding: 0;
+  list-style: none;
 }
 
-.release-body li {
-  margin-bottom: 6px;
+.change {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 10px;
 }
 
-.release-body li::marker {
-  color: var(--ink-3);
+.change-type {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  justify-self: start;
+  padding: 1px 8px 1px 6px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 20px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.change-type::before {
+  width: 12px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.change-type[data-type="new"],
+.change[data-type="new"] .change-type {
+  background: var(--a-tint);
+  color: var(--a);
+}
+
+.change-type[data-type="new"]::before,
+.change[data-type="new"] .change-type::before {
+  content: "+";
+  content: "+" / "";
+}
+
+.change-type[data-type="improved"],
+.change[data-type="improved"] .change-type {
+  background: var(--sunk);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+}
+
+.change-type[data-type="improved"]::before,
+.change[data-type="improved"] .change-type::before {
+  content: "\2191";
+  content: "\2191" / "";
+}
+
+.change-type[data-type="fixed"],
+.change[data-type="fixed"] .change-type {
+  background: var(--b-tint);
+  color: var(--b-text);
+}
+
+.change-type[data-type="fixed"]::before,
+.change[data-type="fixed"] .change-type::before {
+  content: "\2713";
+  content: "\2713" / "";
+}
+
+.release[hidden],
+.change[hidden] {
+  display: none;
+}
+
+.changelog-key .change-type {
+  vertical-align: 1px;
+}
+
+.change-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 28px;
+}
+
+.change-filter button {
+  min-height: 36px;
+  padding: 6px 14px;
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.change-filter button:hover {
+  background: var(--sunk);
+}
+
+.change-filter button[aria-pressed="true"] {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--bg);
+}
+
+.change-filter .count {
+  margin-left: 6px;
+  font-weight: 400;
+  opacity: 0.75;
 }
 
 .release-body strong {
@@ -7645,6 +7747,24 @@ body[data-comparison-mode="matchup"] .player-only {
   .release-kind {
     margin-top: 0;
     align-self: center;
+  }
+
+  .change {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+    margin-bottom: 14px;
+  }
+
+  .change-filter {
+    gap: 6px;
+  }
+
+  .change-filter button {
+    padding: 6px 10px;
+  }
+
+  .change-filter .count {
+    margin-left: 4px;
   }
 }
 

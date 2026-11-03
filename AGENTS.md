@@ -142,6 +142,8 @@ The frontend is vanilla ES modules under `public/js/`, loaded from `index.html` 
   ships, add it to a new release or the newest one if it shipped the same day. A big change takes the
   next whole number (`release-major`, 5.0); smaller additions and fixes take the next decimal (4.3).
   Leave out changes nobody sees (build speed, refactors, CI).
+  Mark each line `data-type="new"` (something people couldn't do before), `"improved"` (works
+  better) or `"fixed"` (was wrong), listed in that order; the page's filter and badges read it.
 * **Module wiring**: modules that need a callback into `main.js` use dependency injection
   (`initTable(updateView)`, `initFilters(updateView)`, `initRecent({ onCompare })`) instead of
   importing `main.js` - do not introduce import cycles.
