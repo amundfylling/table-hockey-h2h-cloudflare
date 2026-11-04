@@ -1,0 +1,685 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Guide · Table Hockey H2H</title>
+  <meta name="description" content="How to use Table Hockey H2H: find players, read a head-to-head, follow a career, and browse the leaderboard, tournaments and records." />
+  <meta name="theme-color" content="#F4F3EF" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Table Hockey H2H" />
+  <meta property="og:title" content="Guide · Table Hockey H2H" />
+  <meta property="og:description" content="How to use Table Hockey H2H: find players, read a head-to-head, follow a career, and browse the leaderboard, tournaments and records." />
+  <meta property="og:url" content="https://h2h.puck.no/guide" />
+  <meta property="og:image" content="https://h2h.puck.no/og-default.png" />
+  <link rel="canonical" href="https://h2h.puck.no/guide" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="preload" href="fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="fonts/barlow-condensed-latin-600.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon.png" />
+  <link rel="stylesheet" href="styles.css?v=20261103-browse" />
+</head>
+
+<body data-home="false" class="doc-page">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <a class="brand" href="./?home" data-nav="home" aria-label="Table Hockey H2H, home">
+        <img class="mark" src="nbhf-logo.png" alt="" width="24" height="36" />
+        <span class="brand-name">Table Hockey H2H</span>
+      </a>
+      <nav class="nav" aria-label="Main">
+        <a href="./?home" data-nav="home">Head-to-head</a>
+        <a href="leaderboard">Leaderboard</a>
+        <a href="tournaments">Tournaments</a>
+        <a href="./#records" data-nav="records">Records</a>
+        <a href="./#rivalries" data-nav="rivalries">Rivalries</a>
+        <a href="./#players" data-nav="players">Players</a>
+      </nav>
+      <a id="header-search" class="header-search" href="./?home">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
+          stroke-linejoin="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="7"></circle>
+          <path d="M20 20l-3.5-3.5"></path>
+        </svg>
+        <span class="header-search-label">Search players</span>
+        </a>
+      <div class="topbar-actions">
+        <a id="mobile-search" class="icon-button only-m" href="./?home" aria-label="Search players">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="7"></circle>
+            <path d="M20 20l-3.5-3.5"></path>
+          </svg>
+        </a>
+        <button id="theme-toggle" class="icon-button theme-toggle" type="button" aria-pressed="false"
+          aria-label="Switch to dark mode">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 3a6 6 0 0 0 9 7.4A9 9 0 1 1 12 3z"></path>
+          </svg>
+          <span class="sr-only">Dark mode</span>
+        </button>
+        <button id="menu-toggle" class="icon-button only-m" type="button" aria-label="Open menu"
+          aria-controls="mobile-menu" aria-expanded="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 7h16"></path>
+            <path d="M4 12h16"></path>
+            <path d="M4 17h16"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <nav id="mobile-menu" class="mobile-menu" aria-label="Main" hidden>
+      <div class="wrap">
+        <a href="./?home" data-nav="home">Head-to-head</a>
+        <a href="leaderboard">Leaderboard</a>
+        <a href="tournaments">Tournaments</a>
+        <a href="./#records" data-nav="records">Records</a>
+        <a href="./#rivalries" data-nav="rivalries">Rivalries</a>
+        <a href="./#players" data-nav="players">Players</a>
+      </div>
+    </nav>
+  </header>
+
+
+  <main id="main" class="doc-main guide">
+    <div class="wrap view-hero guide-hero">
+      <nav class="crumbs" aria-label="Breadcrumb">
+        <a href="./?home">Head-to-head</a><span class="sep" aria-hidden="true">/</span><span aria-current="page">Guide</span>
+      </nav>
+      <h1 class="t-title">How to use Table Hockey H2H</h1>
+      <p class="guide-lede">Every recorded game between the world's table hockey players, in one place. Search for a
+        player, put two side by side, and see who really has the upper hand. Here is a quick tour.</p>
+
+      <nav class="guide-map" aria-label="Guide sections">
+        <a href="#find"><span class="gm-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></span>
+          <span class="gm-text"><b>Find a player</b><small>Search by name</small></span></a>
+        <a href="#matchup"><span class="gm-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="7" cy="8" r="3"/><circle cx="17" cy="8" r="3"/><path d="M2 20c0-3 2.2-5 5-5s5 2 5 5"/><path d="M12 20c0-3 2.2-5 5-5s5 2 5 5"/></svg></span>
+          <span class="gm-text"><b>Head-to-head</b><small>Two players, every game</small></span></a>
+        <a href="#games"><span class="gm-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/></svg></span>
+          <span class="gm-text"><b>Every game</b><small>Scores, series, events</small></span></a>
+        <a href="#player"><span class="gm-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg></span>
+          <span class="gm-text"><b>Player pages</b><small>A whole career</small></span></a>
+        <a href="#leaderboard"><span class="gm-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 20V11"/><path d="M12 20V4"/><path d="M18 20v-6"/></svg></span>
+          <span class="gm-text"><b>Leaderboard</b><small>Everyone ranked by rating</small></span></a>
+        <a href="#tournaments"><span class="gm-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4"/><path d="M16 6h3a3 3 0 0 1-3 4"/><path d="M12 13v4"/><path d="M8 20h8"/></svg></span>
+          <span class="gm-text"><b>Tournaments</b><small>Every event and its winner</small></span></a>
+        <a href="#records"><span class="gm-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/></svg></span>
+          <span class="gm-text"><b>Records</b><small>Streaks and oddities</small></span></a>
+        <a href="#tips"><span class="gm-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/></svg></span>
+          <span class="gm-text"><b>Tips</b><small>Shortcuts and sharing</small></span></a>
+      </nav>
+    </div>
+
+    <section class="wrap guide-step" id="find" aria-labelledby="find-title">
+      <header class="gs-head">
+        <span class="gs-num" aria-hidden="true">01</span>
+        <div>
+          <h2 id="find-title">Find a player</h2>
+          <p>Everything starts with a search. Pick one player to see their career, or two to see their rivalry.</p>
+        </div>
+      </header>
+      <figure class="g-figure">
+        <div class="g-frame">
+          <div class="g-bar" aria-hidden="true"><i></i><i></i><i></i><span>h2h.puck.no</span></div>
+          <div class="g-canvas">
+        <!--figure:find-->
+        <picture class="g-shot g-shot-light">
+          <source media="(max-width: 600px)" srcset="guide/find-light-phone.webp" width="780" height="1046" />
+          <img src="guide/find-light-desk.webp" width="1280" height="559" alt="" loading="lazy" decoding="async" />
+        </picture>
+        <picture class="g-shot g-shot-dark">
+          <source media="(max-width: 600px)" srcset="guide/find-dark-phone.webp" width="780" height="1046" />
+          <img src="guide/find-dark-desk.webp" width="1280" height="559" alt="" loading="lazy" decoding="async" />
+        </picture>
+        <span class="g-pin" data-pin="1" style="--x:26.5%;--y:78.0%;--px:87.1%;--py:65.8%" aria-hidden="true">1</span>
+        <span class="g-pin" data-pin="2" style="--x:54.6%;--y:78.0%;--px:87.1%;--py:82.6%" aria-hidden="true">2</span>
+        <span class="g-pin" data-pin="3" style="--x:63.5%;--y:28.4%;--pd:none" aria-hidden="true">3</span>
+        <span class="g-pin" data-pin="4" style="--x:18.0%;--y:5.7%;--px:90.8%;--py:8.8%" aria-hidden="true">4</span>
+        <!--/figure-->
+          </div>
+        </div>
+        <figcaption class="sr-only">The home page, with the player search, the opponent search and the most-played rivalry.</figcaption>
+      </figure>
+      <ol class="g-notes">
+        <li data-pin="1"><b>Search for a player</b> Type a few letters of a name and pick from the list. Players
+          who share a name show a city or birth year so you can tell them apart.</li>
+        <li data-pin="2"><b>Add an opponent</b> The list suggests the people your first player has actually
+          played. Pick one and the head-to-head opens. Want just one player? Press <em>View player</em> instead.</li>
+        <li data-pin="3"><b>Not sure where to start?</b> The most-played rivalry on record, the top-ranked
+          rivalries and the top-ranked players are all one tap away on the home page.</li>
+        <li data-pin="4"><b>Jump anywhere</b> The menu takes you to the leaderboard, tournaments, records,
+          rivalries and players. On a phone it sits behind the <span class="kbd-icon">☰</span> button.</li>
+      </ol>
+    </section>
+
+    <section class="wrap guide-step" id="matchup" aria-labelledby="matchup-title">
+      <header class="gs-head">
+        <span class="gs-num" aria-hidden="true">02</span>
+        <div>
+          <h2 id="matchup-title">Read a head-to-head</h2>
+          <p>The top of a matchup tells you who leads, by how much, and who is likely to win the next one.</p>
+        </div>
+      </header>
+      <figure class="g-figure">
+        <div class="g-frame">
+          <div class="g-bar" aria-hidden="true"><i></i><i></i><i></i><span>h2h.puck.no/?p1=9763&amp;p2=391</span></div>
+          <div class="g-canvas">
+        <!--figure:matchup-->
+        <picture class="g-shot g-shot-light">
+          <source media="(max-width: 600px)" srcset="guide/matchup-light-phone.webp" width="780" height="1808" />
+          <img src="guide/matchup-light-desk.webp" width="1280" height="665" alt="" loading="lazy" decoding="async" />
+        </picture>
+        <picture class="g-shot g-shot-dark">
+          <source media="(max-width: 600px)" srcset="guide/matchup-dark-phone.webp" width="780" height="1808" />
+          <img src="guide/matchup-dark-desk.webp" width="1280" height="665" alt="" loading="lazy" decoding="async" />
+        </picture>
+        <span class="g-pin" data-pin="1" style="--x:50.0%;--y:13.5%;--px:50.0%;--py:17.3%" aria-hidden="true">1</span>
+        <span class="g-pin" data-pin="2" style="--x:24.5%;--y:27.4%;--px:4.1%;--py:6.4%" aria-hidden="true">2</span>
+        <span class="g-pin" data-pin="3" style="--x:28.3%;--y:43.0%;--px:6.7%;--py:32.5%" aria-hidden="true">3</span>
+        <span class="g-pin" data-pin="4" style="--x:1.7%;--y:55.6%;--px:5.9%;--py:45.2%" aria-hidden="true">4</span>
+        <span class="g-pin" data-pin="5" style="--x:1.7%;--y:75.3%;--px:4.1%;--py:70.0%" aria-hidden="true">5</span>
+        <span class="g-pin" data-pin="6" style="--x:1.7%;--y:88.4%;--px:4.1%;--py:83.5%" aria-hidden="true">6</span>
+        <span class="g-pin" data-pin="7" style="--x:67.4%;--y:85.4%;--px:28.4%;--py:92.4%" aria-hidden="true">7</span>
+        <span class="g-pin" data-pin="8" style="--x:96.9%;--y:85.7%;--px:95.9%;--py:92.6%" aria-hidden="true">8</span>
+        <!--/figure-->
+          </div>
+        </div>
+        <figcaption class="sr-only">The top of the Rainers Kalniņš against Edgars Caics matchup page.</figcaption>
+      </figure>
+      <ol class="g-notes">
+        <li data-pin="1"><b>The record</b> Wins for each player, with the number of games, years and tournaments
+          underneath. The first player is always <span class="sw sw-a">teal</span>, the second
+          <span class="sw sw-b">orange</span>, everywhere on the page.</li>
+        <li data-pin="2"><b>Swap a player</b> Tap a name to switch to another opponent without starting over, or to
+          open that player's career.</li>
+        <li data-pin="3"><b>If they met today</b> The chance of a win, a draw or a loss in one game played now,
+          from both players' ratings. The <span class="kbd-icon">i</span> button explains it.</li>
+        <li data-pin="4"><b>Record so far</b> The share of all their games each player has won, and the draws in
+          between. Under it, one sentence sums up the rivalry.</li>
+        <li data-pin="5"><b>Last 10 games</b> Newest on the left. Tap a chip to see when and where it was played.</li>
+        <li data-pin="6"><b>All, round-robin or playoff</b> Look at group games and knockout games on their own.
+          Playoff games are grouped into series.</li>
+        <li data-pin="7"><b>Filters</b> Narrow everything on the page to a range of years, one tournament, a
+          level of event, overtime games or one-goal games.</li>
+        <li data-pin="8"><b>Share it</b> <em>Copy link</em> gives you a link to exactly this view, filters
+          included. <em>Share image</em> makes a picture of the record for chats and social media.</li>
+      </ol>
+    </section>
+
+    <section class="wrap guide-step guide-step-split" id="charts" aria-labelledby="charts-title">
+      <header class="gs-head">
+        <span class="gs-num" aria-hidden="true">03</span>
+        <div>
+          <h2 id="charts-title">Follow the rivalry over time</h2>
+          <p>Below the record, charts show how the rivalry has swung, game by game and event by event.</p>
+        </div>
+      </header>
+      <figure class="g-figure">
+        <div class="g-frame">
+          <div class="g-bar" aria-hidden="true"><i></i><i></i><i></i><span>How the lead has moved</span></div>
+          <div class="g-canvas">
+        <!--figure:lead-->
+        <picture class="g-shot g-shot-light">
+          <source media="(max-width: 600px)" srcset="guide/lead-light-phone.webp" width="780" height="932" />
+          <img src="guide/lead-light-desk.webp" width="1280" height="510" alt="" loading="lazy" decoding="async" />
+        </picture>
+        <picture class="g-shot g-shot-dark">
+          <source media="(max-width: 600px)" srcset="guide/lead-dark-phone.webp" width="780" height="932" />
+          <img src="guide/lead-dark-desk.webp" width="1280" height="510" alt="" loading="lazy" decoding="async" />
+        </picture>
+        <span class="g-pin" data-pin="1" style="--x:27.5%;--y:51.8%;--px:45.8%;--py:33.9%" aria-hidden="true">1</span>
+        <span class="g-pin" data-pin="2" style="--x:62.4%;--y:38.4%;--px:32.0%;--py:55.4%" aria-hidden="true">2</span>
+        <span class="g-pin" data-pin="3" style="--x:5.1%;--y:85.3%;--px:8.5%;--py:90.8%" aria-hidden="true">3</span>
+        <!--/figure-->
+          </div>
+        </div>
+        <figcaption class="sr-only">The chart of how the lead has moved, with a tooltip open on one game.</figcaption>
+      </figure>
+      <ol class="g-notes">
+        <li data-pin="1"><b>Who is ahead</b> The line is the first player's wins minus losses. Above zero they
+          lead, below zero the opponent does.</li>
+        <li data-pin="2"><b>Point at any game</b> Hover, or tap on a phone, to see the score, the tournament and
+          the running record at that moment.</li>
+        <li data-pin="3"><b>Tournament by tournament</b> Each square is one event they both played, coloured by who
+          won more games there.</li>
+      </ol>
+      <div class="g-more">
+        <p class="g-more-title">Further down the same page</p>
+        <ul>
+          <li><b>Tale of the tape</b> Goals, one-goal wins, overtime wins, playoff series and streaks, side by side.</li>
+          <li><b>Scorelines</b> A grid of every result. The darker the square, the more often it happened.</li>
+          <li><b>Season by season</b> Who won more of their games each year.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="wrap guide-step" id="games" aria-labelledby="games-title">
+      <header class="gs-head">
+        <span class="gs-num" aria-hidden="true">04</span>
+        <div>
+          <h2 id="games-title">Check every game</h2>
+          <p>Every number on the page traces back to real games. Here is where you find them.</p>
+        </div>
+      </header>
+      <div class="g-pair">
+        <div>
+          <figure class="g-figure">
+            <div class="g-frame">
+              <div class="g-bar" aria-hidden="true"><i></i><i></i><i></i><span>Tournaments</span></div>
+              <div class="g-canvas">
+            <!--figure:tournaments-h2h-->
+        <picture class="g-shot g-shot-light">
+          <source media="(max-width: 600px)" srcset="guide/tournaments-h2h-light-phone.webp" width="780" height="1280" />
+          <img src="guide/tournaments-h2h-light-desk.webp" width="1280" height="470" alt="" loading="lazy" decoding="async" />
+        </picture>
+        <picture class="g-shot g-shot-dark">
+          <source media="(max-width: 600px)" srcset="guide/tournaments-h2h-dark-phone.webp" width="780" height="1280" />
+          <img src="guide/tournaments-h2h-dark-desk.webp" width="1280" height="470" alt="" loading="lazy" decoding="async" />
+        </picture>
+        <span class="g-pin" data-pin="1" style="--x:1.8%;--y:24.5%;--px:4.4%;--py:18.4%" aria-hidden="true">1</span>
+        <span class="g-pin" data-pin="2" style="--x:12.4%;--y:35.5%;--px:8.5%;--py:24.2%" aria-hidden="true">2</span>
+        <span class="g-pin" data-pin="3" style="--x:55.9%;--y:35.5%;--px:65.7%;--py:30.8%" aria-hidden="true">3</span>
+        <!--/figure-->
+              </div>
+            </div>
+            <figcaption class="sr-only">The list of tournaments where both players met, with the newest one opened.</figcaption>
+          </figure>
+          <ol class="g-notes">
+            <li data-pin="1"><b>Each tournament they met at</b> Tap a row to open it. The badge says who came out on top.</li>
+            <li data-pin="2"><b>The games</b> Each game of the series with its score, and <em>OT</em> when it went
+              to overtime. Tap one to jump to it.</li>
+            <li data-pin="3"><b>Whole tournament</b> Opens the event's own page with the standings and bracket.</li>
+          </ol>
+        </div>
+        <div>
+          <figure class="g-figure">
+            <div class="g-frame">
+              <div class="g-bar" aria-hidden="true"><i></i><i></i><i></i><span>Every game</span></div>
+              <div class="g-canvas">
+            <!--figure:games-->
+        <picture class="g-shot g-shot-light">
+          <source media="(max-width: 600px)" srcset="guide/games-light-phone.webp" width="780" height="1520" />
+          <img src="guide/games-light-desk.webp" width="1280" height="560" alt="" loading="lazy" decoding="async" />
+        </picture>
+        <picture class="g-shot g-shot-dark">
+          <source media="(max-width: 600px)" srcset="guide/games-dark-phone.webp" width="780" height="1520" />
+          <img src="guide/games-dark-desk.webp" width="1280" height="560" alt="" loading="lazy" decoding="async" />
+        </picture>
+        <span class="g-pin" data-pin="1" style="--x:10.5%;--y:16.3%;--px:65.1%;--py:8.9%" aria-hidden="true">1</span>
+        <span class="g-pin" data-pin="2" style="--x:2.6%;--y:37.7%;--px:93.1%;--py:27.8%" aria-hidden="true">2</span>
+        <span class="g-pin" data-pin="3" style="--x:1.8%;--y:51.6%;--px:7.2%;--py:38.4%" aria-hidden="true">3</span>
+        <span class="g-pin" data-pin="4" style="--x:74.9%;--y:7.1%;--px:98.0%;--py:8.9%" aria-hidden="true">4</span>
+        <!--/figure-->
+              </div>
+            </div>
+            <figcaption class="sr-only">The list of every game, with one game opened to show its details.</figcaption>
+          </figure>
+          <ol class="g-notes">
+            <li data-pin="1"><b>Sort</b> Newest first by default. Sort by any column, or with the sort menu on a phone.</li>
+            <li data-pin="2"><b>Open a game</b> The arrow shows the details.</li>
+            <li data-pin="3"><b>Game details</b> The rest of the series, the head-to-head record after this game and
+              when they last met before it.</li>
+            <li data-pin="4"><b>More rows</b> Choose how many games to show per page, and page through the rest.</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <section class="wrap guide-step" id="player" aria-labelledby="player-title">
+      <header class="gs-head">
+        <span class="gs-num" aria-hidden="true">05</span>
+        <div>
+          <h2 id="player-title">Explore a player's career</h2>
+          <p>Open a player on their own to see everything they have played, against everyone.</p>
+        </div>
+      </header>
+      <figure class="g-figure">
+        <div class="g-frame">
+          <div class="g-bar" aria-hidden="true"><i></i><i></i><i></i><span>h2h.puck.no/?p1=9763</span></div>
+          <div class="g-canvas">
+        <!--figure:player-->
+        <picture class="g-shot g-shot-light">
+          <source media="(max-width: 600px)" srcset="guide/player-light-phone.webp" width="780" height="1916" />
+          <img src="guide/player-light-desk.webp" width="1280" height="530" alt="" loading="lazy" decoding="async" />
+        </picture>
+        <picture class="g-shot g-shot-dark">
+          <source media="(max-width: 600px)" srcset="guide/player-dark-phone.webp" width="780" height="1916" />
+          <img src="guide/player-dark-desk.webp" width="1280" height="530" alt="" loading="lazy" decoding="async" />
+        </picture>
+        <span class="g-pin" data-pin="1" style="--x:1.6%;--y:18.3%;--px:92.3%;--py:6.6%" aria-hidden="true">1</span>
+        <span class="g-pin" data-pin="2" style="--x:84.7%;--y:20.8%;--px:4.1%;--py:15.2%" aria-hidden="true">2</span>
+        <span class="g-pin" data-pin="3" style="--x:3.1%;--y:33.6%;--px:4.1%;--py:21.5%" aria-hidden="true">3</span>
+        <span class="g-pin" data-pin="4" style="--x:1.7%;--y:69.1%;--px:4.1%;--py:71.7%" aria-hidden="true">4</span>
+        <span class="g-pin" data-pin="5" style="--x:1.7%;--y:85.5%;--px:4.1%;--py:87.4%" aria-hidden="true">5</span>
+        <!--/figure-->
+          </div>
+        </div>
+        <figcaption class="sr-only">The top of Rainers Kalniņš's player page.</figcaption>
+      </figure>
+      <ol class="g-notes">
+        <li data-pin="1"><b>Who they are</b> Club and country, world ranking, birth year and when they started playing.</li>
+        <li data-pin="2"><b>Compare with…</b> Pick an opponent to open the head-to-head.</li>
+        <li data-pin="3"><b>The career in five numbers</b> Games, record, win rate, goals and opponents.</li>
+        <li data-pin="4"><b>Recent form</b> Their last 10 games against anyone.</li>
+        <li data-pin="5"><b>Same filters</b> Round-robin or playoff, years and tournaments work just like on a
+          matchup, and the whole page follows them.</li>
+      </ol>
+
+      <div class="g-pair g-pair-wide">
+        <div>
+          <figure class="g-figure">
+            <div class="g-frame">
+              <div class="g-bar" aria-hidden="true"><i></i><i></i><i></i><span>Rating and nations</span></div>
+              <div class="g-canvas">
+            <!--figure:rating-->
+        <picture class="g-shot g-shot-light">
+          <source media="(max-width: 600px)" srcset="guide/rating-light-phone.webp" width="780" height="2200" />
+          <img src="guide/rating-light-desk.webp" width="1280" height="1142" alt="" loading="lazy" decoding="async" />
+        </picture>
+        <picture class="g-shot g-shot-dark">
+          <source media="(max-width: 600px)" srcset="guide/rating-dark-phone.webp" width="780" height="2200" />
+          <img src="guide/rating-dark-desk.webp" width="1280" height="1142" alt="" loading="lazy" decoding="async" />
+        </picture>
+        <span class="g-pin" data-pin="1" style="--x:50.0%;--y:16.7%;--px:50.0%;--py:18.9%" aria-hidden="true">1</span>
+        <span class="g-pin" data-pin="2" style="--x:78.7%;--y:6.6%;--px:8.5%;--py:11.9%" aria-hidden="true">2</span>
+        <span class="g-pin" data-pin="3" style="--x:4.0%;--y:52.8%;--px:8.5%;--py:57.2%" aria-hidden="true">3</span>
+        <span class="g-pin" data-pin="4" style="--x:58.6%;--y:40.5%;--pd:none" aria-hidden="true">4</span>
+        <!--/figure-->
+              </div>
+            </div>
+            <figcaption class="sr-only">The rating chart and the results against each nation.</figcaption>
+          </figure>
+          <ol class="g-notes">
+            <li data-pin="1"><b>Rating over time</b> The player's strength after every tournament. Point at the line
+              for the rating on any date.</li>
+            <li data-pin="2"><b>The shaded band</b> How sure the rating is. It narrows as they play and widens
+              during a break.</li>
+            <li data-pin="3"><b>Against each nation</b> How they did against players from each country, next to what
+              their ratings predicted.</li>
+            <li data-pin="4"><b>The verdict</b> Names the nations they beat more, or less, than expected, when the
+              gap is big enough to mean something.</li>
+          </ol>
+        </div>
+        <div>
+          <figure class="g-figure">
+            <div class="g-frame">
+              <div class="g-bar" aria-hidden="true"><i></i><i></i><i></i><span>Opponents</span></div>
+              <div class="g-canvas">
+            <!--figure:opponents-->
+        <picture class="g-shot g-shot-light">
+          <source media="(max-width: 600px)" srcset="guide/opponents-light-phone.webp" width="780" height="1240" />
+          <img src="guide/opponents-light-desk.webp" width="1280" height="470" alt="" loading="lazy" decoding="async" />
+        </picture>
+        <picture class="g-shot g-shot-dark">
+          <source media="(max-width: 600px)" srcset="guide/opponents-dark-phone.webp" width="780" height="1240" />
+          <img src="guide/opponents-dark-desk.webp" width="1280" height="470" alt="" loading="lazy" decoding="async" />
+        </picture>
+        <span class="g-pin" data-pin="1" style="--x:87.3%;--y:13.6%;--px:49.2%;--py:14.8%" aria-hidden="true">1</span>
+        <span class="g-pin" data-pin="2" style="--x:22.8%;--y:27.1%;--px:38.2%;--py:25.0%" aria-hidden="true">2</span>
+        <span class="g-pin" data-pin="3" style="--x:94.9%;--y:37.4%;--px:93.8%;--py:32.9%" aria-hidden="true">3</span>
+        <!--/figure-->
+              </div>
+            </div>
+            <figcaption class="sr-only">The table of a player's opponents.</figcaption>
+          </figure>
+          <ol class="g-notes">
+            <li data-pin="1"><b>Minimum games</b> Slide to hide opponents they have only met a few times.</li>
+            <li data-pin="2"><b>Sort</b> By games played, win rate or name.</li>
+            <li data-pin="3"><b>Compare</b> Opens the head-to-head with that opponent.</li>
+          </ol>
+          <div class="g-more">
+            <p class="g-more-title">Also on player pages</p>
+            <ul>
+              <li><b>Win rate by season</b> One bar per year.</li>
+              <li><b>Rival map</b> Every regular opponent as a dot. Tap one to compare.</li>
+              <li><b>Above and below the ratings</b> Who they beat more, and lose to more, than expected.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="wrap guide-step" id="leaderboard" aria-labelledby="leaderboard-title">
+      <header class="gs-head">
+        <span class="gs-num" aria-hidden="true">06</span>
+        <div>
+          <h2 id="leaderboard-title">See who is best right now</h2>
+          <p>The <a href="leaderboard">leaderboard</a> ranks every player by rating, worked out from every game on record.</p>
+        </div>
+      </header>
+      <figure class="g-figure">
+        <div class="g-frame">
+          <div class="g-bar" aria-hidden="true"><i></i><i></i><i></i><span>h2h.puck.no/leaderboard</span></div>
+          <div class="g-canvas">
+        <!--figure:leaderboard-->
+        <picture class="g-shot g-shot-light">
+          <source media="(max-width: 600px)" srcset="guide/leaderboard-light-phone.webp" width="780" height="1920" />
+          <img src="guide/leaderboard-light-desk.webp" width="1280" height="700" alt="" loading="lazy" decoding="async" />
+        </picture>
+        <picture class="g-shot g-shot-dark">
+          <source media="(max-width: 600px)" srcset="guide/leaderboard-dark-phone.webp" width="780" height="1920" />
+          <img src="guide/leaderboard-dark-desk.webp" width="1280" height="700" alt="" loading="lazy" decoding="async" />
+        </picture>
+        <span class="g-pin" data-pin="1" style="--x:30.4%;--y:42.1%;--px:93.1%;--py:30.5%" aria-hidden="true">1</span>
+        <span class="g-pin" data-pin="2" style="--x:41.1%;--y:39.3%;--px:32.3%;--py:36.6%" aria-hidden="true">2</span>
+        <span class="g-pin" data-pin="3" style="--x:64.4%;--y:39.3%;--px:48.4%;--py:44.7%" aria-hidden="true">3</span>
+        <span class="g-pin" data-pin="4" style="--x:78.2%;--y:42.1%;--px:93.6%;--py:46.8%" aria-hidden="true">4</span>
+        <span class="g-pin" data-pin="5" style="--x:45.1%;--y:54.9%;--px:50.3%;--py:64.2%" aria-hidden="true">5</span>
+        <!--/figure-->
+          </div>
+        </div>
+        <figcaption class="sr-only">The ratings leaderboard with its filters.</figcaption>
+      </figure>
+      <ol class="g-notes">
+        <li data-pin="1"><b>Find someone</b> Search by name to see where a player stands.</li>
+        <li data-pin="2"><b>One nation</b> Show only players from one country.</li>
+        <li data-pin="3"><b>Active or all time</b> <em>Active</em> shows people who still play. <em>All time</em>
+          adds the legends.</li>
+        <li data-pin="4"><b>Minimum games</b> Hide players with only a handful of games.</li>
+        <li data-pin="5"><b>Rating and more</b> Sort by the last 90 days to see who is climbing. <em>WR</em> is the
+          ITHF world rank, and <em>vs WR</em> shows who the world ranking under- or overrates.</li>
+      </ol>
+    </section>
+
+    <section class="wrap guide-step" id="tournaments" aria-labelledby="tournaments-title">
+      <header class="gs-head">
+        <span class="gs-num" aria-hidden="true">07</span>
+        <div>
+          <h2 id="tournaments-title">Look up a tournament</h2>
+          <p><a href="tournaments">Tournaments</a> lists every event, newest first. Each one has a page with its podium,
+            upsets, playoffs and groups.</p>
+        </div>
+      </header>
+      <div class="g-pair">
+        <div>
+          <figure class="g-figure">
+            <div class="g-frame">
+              <div class="g-bar" aria-hidden="true"><i></i><i></i><i></i><span>h2h.puck.no/tournaments</span></div>
+              <div class="g-canvas">
+            <!--figure:tournaments-->
+        <picture class="g-shot g-shot-light">
+          <source media="(max-width: 600px)" srcset="guide/tournaments-light-phone.webp" width="780" height="1840" />
+          <img src="guide/tournaments-light-desk.webp" width="1280" height="620" alt="" loading="lazy" decoding="async" />
+        </picture>
+        <picture class="g-shot g-shot-dark">
+          <source media="(max-width: 600px)" srcset="guide/tournaments-dark-phone.webp" width="780" height="1840" />
+          <img src="guide/tournaments-dark-desk.webp" width="1280" height="620" alt="" loading="lazy" decoding="async" />
+        </picture>
+        <span class="g-pin" data-pin="1" style="--x:30.4%;--y:47.6%;--px:93.1%;--py:29.7%" aria-hidden="true">1</span>
+        <span class="g-pin" data-pin="2" style="--x:37.0%;--y:42.7%;--px:18.8%;--py:36.0%" aria-hidden="true">2</span>
+        <span class="g-pin" data-pin="3" style="--x:13.4%;--y:69.3%;--px:46.7%;--py:59.2%" aria-hidden="true">3</span>
+        <!--/figure-->
+              </div>
+            </div>
+            <figcaption class="sr-only">The tournaments page.</figcaption>
+          </figure>
+          <ol class="g-notes">
+            <li data-pin="1"><b>Search</b> By tournament name, city or winner.</li>
+            <li data-pin="2"><b>Filter</b> By year, country and ITHF level.</li>
+            <li data-pin="3"><b>Open it</b> Tap a tournament for its page, or a name for that player's career.</li>
+          </ol>
+        </div>
+        <div>
+          <figure class="g-figure">
+            <div class="g-frame">
+              <div class="g-bar" aria-hidden="true"><i></i><i></i><i></i><span>h2h.puck.no/tournament</span></div>
+              <div class="g-canvas">
+            <!--figure:tournament-->
+        <picture class="g-shot g-shot-light">
+          <source media="(max-width: 600px)" srcset="guide/tournament-light-phone.webp" width="780" height="2038" />
+          <img src="guide/tournament-light-desk.webp" width="1280" height="820" alt="" loading="lazy" decoding="async" />
+        </picture>
+        <picture class="g-shot g-shot-dark">
+          <source media="(max-width: 600px)" srcset="guide/tournament-dark-phone.webp" width="780" height="2038" />
+          <img src="guide/tournament-dark-desk.webp" width="1280" height="820" alt="" loading="lazy" decoding="async" />
+        </picture>
+        <span class="g-pin" data-pin="1" style="--x:1.7%;--y:24.3%;--px:95.9%;--py:18.5%" aria-hidden="true">1</span>
+        <span class="g-pin" data-pin="2" style="--x:1.7%;--y:38.8%;--px:95.9%;--py:28.4%" aria-hidden="true">2</span>
+        <span class="g-pin" data-pin="3" style="--x:1.7%;--y:50.4%;--px:43.6%;--py:55.6%" aria-hidden="true">3</span>
+        <!--/figure-->
+              </div>
+            </div>
+            <figcaption class="sr-only">The page for the European Championship 2026 open tournament.</figcaption>
+          </figure>
+          <ol class="g-notes">
+            <li data-pin="1"><b>When and where</b> Dates, place, players and games, with a link to the original results.</li>
+            <li data-pin="2"><b>The podium</b> Who won, and how they got there.</li>
+            <li data-pin="3"><b>Biggest upsets</b> Wins by the lower-rated player, measured by their ratings before the game.</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <section class="wrap guide-step" id="records" aria-labelledby="records-title">
+      <header class="gs-head">
+        <span class="gs-num" aria-hidden="true">08</span>
+        <div>
+          <h2 id="records-title">Browse the records</h2>
+          <p><a href="./#records">Records</a> on the home page pulls the most remarkable numbers out of every game on record.</p>
+        </div>
+      </header>
+      <figure class="g-figure">
+        <div class="g-frame">
+          <div class="g-bar" aria-hidden="true"><i></i><i></i><i></i><span>h2h.puck.no/#records</span></div>
+          <div class="g-canvas">
+        <!--figure:records-->
+        <picture class="g-shot g-shot-light">
+          <source media="(max-width: 600px)" srcset="guide/records-light-phone.webp" width="780" height="2300" />
+          <img src="guide/records-light-desk.webp" width="1280" height="648" alt="" loading="lazy" decoding="async" />
+        </picture>
+        <picture class="g-shot g-shot-dark">
+          <source media="(max-width: 600px)" srcset="guide/records-dark-phone.webp" width="780" height="2300" />
+          <img src="guide/records-dark-desk.webp" width="1280" height="648" alt="" loading="lazy" decoding="async" />
+        </picture>
+        <span class="g-pin" data-pin="1" style="--x:3.1%;--y:13.0%;--px:4.1%;--py:8.7%" aria-hidden="true">1</span>
+        <span class="g-pin" data-pin="2" style="--x:3.1%;--y:54.9%;--px:4.1%;--py:44.4%" aria-hidden="true">2</span>
+        <span class="g-pin" data-pin="3" style="--x:34.8%;--y:54.9%;--px:4.1%;--py:64.3%" aria-hidden="true">3</span>
+        <span class="g-pin" data-pin="4" style="--x:66.5%;--y:54.9%;--px:4.1%;--py:84.2%" aria-hidden="true">4</span>
+        <!--/figure-->
+          </div>
+        </div>
+        <figcaption class="sr-only">The records section of the home page.</figcaption>
+      </figure>
+      <ol class="g-notes">
+        <li data-pin="1"><b>Longest streaks</b> The most wins in a row, and the most games without a loss. Each square is a game.</li>
+        <li data-pin="2"><b>Perfect record</b> The most wins against one opponent without ever dropping a point.</li>
+        <li data-pin="3"><b>Dead even</b> The longest rivalry where the two are exactly level.</li>
+        <li data-pin="4"><b>Longest wait for a rematch</b> The most years between two meetings.</li>
+      </ol>
+    </section>
+
+    <section class="wrap guide-step" id="tips" aria-labelledby="tips-title">
+      <header class="gs-head">
+        <span class="gs-num" aria-hidden="true">09</span>
+        <div>
+          <h2 id="tips-title">Good to know</h2>
+          <p>Small things that make the site quicker to use.</p>
+        </div>
+      </header>
+      <ul class="g-tips">
+        <li>
+          <span class="gt-icon" aria-hidden="true"><kbd>/</kbd></span>
+          <b>Search from anywhere</b>
+          <p>On a keyboard, press <kbd>/</kbd> on any page to jump to the player search.</p>
+        </li>
+        <li>
+          <span class="gt-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 7.4A9 9 0 1 1 12 3z"/></svg></span>
+          <b>Light or dark</b>
+          <p>The moon and sun button in the top corner switches modes. The site remembers your choice.</p>
+        </li>
+        <li>
+          <span class="gt-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg></span>
+          <b>Recent matchups</b>
+          <p>The matchups you looked at last wait under the search, one tap away.</p>
+        </li>
+        <li>
+          <span class="gt-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg></span>
+          <b>Every view is a link</b>
+          <p>The address always matches what you see, filters included, so you can bookmark it or send it on.</p>
+        </li>
+        <li>
+          <span class="gt-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 4L3 8l4 4"/><path d="M3 8h13"/><path d="M17 12l4 4-4 4"/><path d="M21 16H8"/></svg></span>
+          <b>Compare in one tap</b>
+          <p>On a player page, tap any opponent in the tables or the rival map to open the head-to-head.</p>
+        </li>
+        <li>
+          <span class="gt-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19l5-6 4 3 7-9"/><path d="M15 7h5v5"/></svg></span>
+          <b>How the ratings work</b>
+          <p>Ratings and forecasts, explained step by step on <a href="ratings">How the ratings work</a>.</p>
+        </li>
+        <li>
+          <span class="gt-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/></svg></span>
+          <b>What's new</b>
+          <p>The <a href="changelog">changelog</a> lists every update to the site, newest first.</p>
+        </li>
+        <li>
+          <span class="gt-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg></span>
+          <b>Where the games come from</b>
+          <p>Results are collected every day from the sites listed at the bottom of each page.</p>
+        </li>
+      </ul>
+
+      <div class="g-cta">
+        <div>
+          <p class="g-cta-title">Ready to settle a rivalry?</p>
+          <p>Try one of the closest at the top of the world ranking, or search for your own.</p>
+        </div>
+        <div class="g-cta-actions">
+          <a class="btn primary" href="./?p1=9763&amp;p2=391">Kalniņš vs Caics</a>
+          <a class="btn" href="./?home">Search players</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <section class="data-sources" aria-labelledby="data-sources-title">
+        <h2 id="data-sources-title" class="data-sources-title">Data sources</h2>
+        <ul id="data-sources-list" class="data-sources-list">
+          <li><a href="https://th.sportscorpion.com/" target="_blank" rel="noopener">th.sportscorpion.com</a></li>
+          <li><a href="https://resultat.bordshockey.se/" target="_blank" rel="noopener">resultat.bordshockey.se</a></li>
+          <li><a href="https://table-hockey.eu/" target="_blank" rel="noopener">table-hockey.eu</a></li>
+          <li><a href="https://stiga.trefik.cz/" target="_blank" rel="noopener">stiga.trefik.cz</a></li>
+          <li><a href="https://escore.live/" target="_blank" rel="noopener">escore.live</a></li>
+          <li><a href="https://galdahokejs.lv/" target="_blank" rel="noopener">galdahokejs.lv</a></li>
+        </ul>
+      </section>
+      <div class="footer-meta">
+        <p class="footer-links"><a href="guide" aria-current="page">Guide</a><a href="changelog">Changelog</a></p>
+        <p id="home-stats" class="footer-stats" hidden></p>
+        <p id="data-freshness" class="data-freshness" hidden></p>
+      </div>
+    </div>
+  </footer>
+
+  <script type="module" src="js/guide-page.js?v=20261104-guide"></script>
+</body>
+
+</html>
