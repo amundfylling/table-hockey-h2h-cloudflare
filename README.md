@@ -17,6 +17,10 @@ Raw URLs (overridable via env vars):
 - `RANKING_TXT_URL`: `https://stiga.trefik.cz/ithf/ranking/ranking.txt`
 - `EXTRA_MATCHES_URL`: bordshockey.net supplemental results Parquet, `https://raw.githubusercontent.com/amundfylling/bordshockey.net-scraper/refs/heads/main/data/bordshockey_results.parquet` (set to an empty string to disable)
 - `TABLE_HOCKEY_EU_MATCHES_URL`: table-hockey.eu results Parquet in the same schema, `https://raw.githubusercontent.com/amundfylling/table-hockey-eu-fetch/refs/heads/main/data/table_hockey_eu_results.parquet` (set to an empty string to disable)
+- `TREFIK_MATCHES_URL`: Czech results from stiga.trefik.cz, built by [table-hockey-scrapers](https://github.com/amundfylling/table-hockey-scrapers), `https://raw.githubusercontent.com/amundfylling/table-hockey-scrapers/refs/heads/claude/project-thread-1p5hg7/data/trefik_results.parquet` (set to an empty string to disable)
+- `FINLAND_MATCHES_URL`: Finnish results from tulos.poytajaakiekko.fi, `https://raw.githubusercontent.com/amundfylling/table-hockey-scrapers/refs/heads/claude/project-thread-1p5hg7/data/finland_results.parquet`. The scraper has no Finnish results yet, so a missing file (HTTP 404) or an empty one is skipped (set to an empty string to disable)
+- `ESCORE_MATCHES_URL`: Latvian results from escore.live, `https://raw.githubusercontent.com/amundfylling/table-hockey-scrapers/refs/heads/claude/project-thread-1p5hg7/data/escore_results.parquet` (set to an empty string to disable)
+- `GALDAHOKEJS_MATCHES_URL`: Latvian results from galdahokejs.lv, `https://raw.githubusercontent.com/amundfylling/table-hockey-scrapers/refs/heads/claude/project-thread-1p5hg7/data/galdahokejs_results.parquet` (set to an empty string to disable)
 - `REQUIRE_RANKINGS`: set to `1` to fail the build instead of deploying without ranking data
 - `MIN_RANKING_ROWS`: minimum parsed ranking rows when rankings are required (CI: `1000`)
 - `MAX_RANKING_AGE_DAYS`: optional maximum age for required ranking data (CI: `45`)
@@ -104,6 +108,7 @@ export TOURNAMENT_METADATA_CSV_URL="https://raw.githubusercontent.com/your-org/y
 export RANKING_TXT_URL="https://example.com/ranking.txt"
 export EXTRA_MATCHES_URL="https://example.com/supplemental-results.parquet"
 export TABLE_HOCKEY_EU_MATCHES_URL="https://example.com/table-hockey-eu-results.parquet"
+export TREFIK_MATCHES_URL="https://example.com/trefik-results.parquet"
 export REQUIRE_RANKINGS=1
 python3 scripts/build_h2h.py
 ```

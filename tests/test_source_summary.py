@@ -2,7 +2,7 @@ import unittest
 
 import pandas as pd
 
-from scripts.build_h2h import build_source_summary
+from scripts.build_h2h import build_source_summary, classify_sources
 
 
 def _matches(rows):
@@ -34,6 +34,18 @@ class SourceSummaryTest(unittest.TestCase):
             ],
         )
         self.assertEqual(sum(s["matches"] for s in summary), len(matches))
+
+    def test_skips_supplemental_sources_without_games(self):
+        summary = build_source_summary(_matches([("", "2026-01-05")]), ["finland"])
+        self.assertEqual([s["id"] for s in summary], ["sportscorpion"])
+
+    def test_classifies_the_table_hockey_scrapers_sources(self):
+        source = pd.Series(
+            ["stiga.trefik.cz", "tulos.poytajaakiekko.fi", "escore.live", "galdahokejs.lv"]
+        )
+        self.assertEqual(
+            classify_sources(source).tolist(), ["trefik", "finland", "escore", "galdahokejs"]
+        )
 
     def test_skips_disabled_supplemental_sources(self):
         summary = build_source_summary(_matches([("", "2026-01-05")]), [])

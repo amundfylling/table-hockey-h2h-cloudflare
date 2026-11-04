@@ -71,6 +71,7 @@ graph TD
         A[Scorpion-Scraper Parquet] -->|Download| D[scripts/build_h2h.py]
         B[bordshockey.net Parquet] -->|Download| D
         K[table-hockey.eu Parquet] -->|Download| D
+        L[table-hockey-scrapers Parquets: Trefik, Finland, escore, galdahokejs] -->|Download| D
         C[ITHF World Rankings TXT] -->|Download| D
     end
     subgraph Build Time Processing
