@@ -24,6 +24,10 @@
   Cache-Control: no-cache
 /changelog
   Cache-Control: no-cache
+/guide
+  Cache-Control: no-cache
+/guide/*
+  Cache-Control: public, max-age=86400
 /leaderboard
   Cache-Control: no-cache
 /tournaments

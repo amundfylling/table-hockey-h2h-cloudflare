@@ -155,6 +155,12 @@ The frontend is vanilla ES modules under `public/js/`, loaded from `index.html` 
   Leave out changes nobody sees (build speed, refactors, CI).
   Mark each line `data-type="new"` (something people couldn't do before), `"improved"` (works
   better) or `"fixed"` (was wrong), listed in that order; the page's filter and badges read it.
+* **Guide**: `public/guide.html` (served at `/guide`, linked from every footer) walks through the
+  site with annotated screenshots. `node scripts/guide-screenshots.mjs` captures them from the live
+  site (or `GUIDE_BASE_URL`) in light/dark at desktop and phone width into `public/guide/`, and
+  rewrites each `<!--figure:id-->` block with the images and numbered markers. Captions live in
+  the HTML; what each figure shows and where its markers point live in the script. Re-run it when
+  a pictured view changes noticeably.
 * **Module wiring**: modules that need a callback into `main.js` use dependency injection
   (`initTable(updateView)`, `initFilters(updateView)`, `initRecent({ onCompare })`) instead of
   importing `main.js` - do not introduce import cycles.
