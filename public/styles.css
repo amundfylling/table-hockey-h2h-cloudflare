@@ -3189,8 +3189,10 @@ body[data-theme="dark"] .top-opponents-row:hover {
     color: var(--muted);
   }
 
+  /* Date at its natural width, then the stage takes what is left and trims with an ellipsis,
+     so a long stage name never runs over the date. */
   body[data-comparison-mode="matchup"][data-stats-mode="games"] #matches-table tr:not(.detail-row) {
-    grid-template-columns: 64px minmax(0, 1fr) auto auto 28px;
+    grid-template-columns: 64px auto minmax(0, 1fr) auto 28px;
     gap: 2px 10px;
     align-items: center;
   }
@@ -3241,7 +3243,9 @@ body[data-theme="dark"] .top-opponents-row:hover {
 
   body[data-comparison-mode="matchup"][data-stats-mode="games"] #matches-table td.stage-cell {
     grid-column: 3;
-    text-align: right;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   body[data-comparison-mode="matchup"][data-stats-mode="games"] #matches-table td.round-cell {
