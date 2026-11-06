@@ -40,7 +40,6 @@ export const state = {
   page: 1,
   loading: false,
   playoffMode: "series",
-  goalsMode: "series",
 };
 
 export const elements = {
@@ -56,8 +55,6 @@ export const elements = {
   tabs: document.querySelectorAll(".tab"),
   playoffModeToggle: document.getElementById("playoff-mode-toggle"),
   modeButtons: document.querySelectorAll("#playoff-mode-toggle .mode-btn"),
-  goalsModeToggle: document.getElementById("goals-mode-toggle"),
-  goalsModeButtons: document.querySelectorAll("#goals-mode-toggle .mode-btn"),
   stageCounts: document.querySelectorAll("[data-stage-count]"),
   headline: document.getElementById("headline"),
   subhead: document.getElementById("subhead"),

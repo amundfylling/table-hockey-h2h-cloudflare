@@ -1,4 +1,5 @@
 import { state, elements } from "./state.js";
+import { cancelOpponentLoading, setOpponentBox } from "./data.js";
 import {
   normalizeText,
   debounce,
@@ -350,9 +351,8 @@ export function setupTypeahead(inputEl, listEl, options = {}) {
       if (options.onReset) options.onReset();
     } else {
       clearInputPlayer(elements.playerB, elements.listB);
-      state.opponentsOfA = new Map();
-      elements.playerB.disabled = true;
-      elements.playerB.placeholder = "Pick a player first";
+      cancelOpponentLoading();
+      setOpponentBox("none");
       if (options.onReset) options.onReset();
     }
     debouncedUpdate();

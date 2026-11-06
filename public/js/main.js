@@ -28,6 +28,8 @@ import {
   loadOpponentsForPlayer,
   cancelOpponentLoading,
   fetchJson,
+  getOpponentBoxStatus,
+  setOpponentBox,
 } from "./data.js";
 import { buildPlayoffSeries, annotatePlayoffGamesWithSeries } from "./series.js";
 import { formatNumber } from "./utils.js";
@@ -118,7 +120,6 @@ function updateFinderPrompt() {
 
 export function setLoading(isLoading) {
   state.loading = isLoading;
-  if (isLoading) setHomeVisible(false);
   document.body.classList.toggle("is-loading", isLoading);
   [elements.summarySection, elements.visualizationsSection, elements.matchesSection]
     .filter(Boolean)
@@ -126,13 +127,45 @@ export function setLoading(isLoading) {
   updateSelectionControls();
 }
 
-function setResultsSectionsVisible(visible) {
-  if (visible) setHomeVisible(false);
-  if (!visible) clearStory();
-  if (!visible && elements.matchupResult) elements.matchupResult.hidden = true;
-  if (elements.summarySection) elements.summarySection.hidden = !visible;
-  if (elements.visualizationsSection) elements.visualizationsSection.hidden = !visible;
-  if (elements.matchesSection) elements.matchesSection.hidden = !visible;
+// The main area shows one of these phases at a time. Each lists the parts it shows and
+// everything else is hidden, so two of them (the home screen and an error, say) are never on
+// screen together.
+//   home          the home screen, or the finder waiting for an opponent
+//   loading       a player or matchup is loading
+//   results       the loaded games, with the stage tabs and filters
+//   filteredEmpty games loaded, but the stage or filters leave none
+//   empty         the player or pair has no games
+//   error         loading failed
+const VIEW_PHASES = {
+  home: [],
+  loading: [],
+  results: ["controls", "results"],
+  filteredEmpty: ["controls", "filterEmpty"],
+  empty: ["empty"],
+  error: ["error"],
+};
+let viewPhase = "home";
+
+function setViewPhase(phase) {
+  const shows = new Set(VIEW_PHASES[phase]);
+  viewPhase = phase;
+  setHomeVisible(phase === "home");
+  if (!shows.has("results")) {
+    clearStory();
+    if (elements.matchupResult) elements.matchupResult.hidden = true;
+  }
+  [elements.summarySection, elements.visualizationsSection, elements.matchesSection]
+    .filter(Boolean)
+    .forEach((section) => { section.hidden = !shows.has("results"); });
+  if (elements.singlePlayerSection) {
+    elements.singlePlayerSection.hidden = !(shows.has("results") && isSinglePlayerMode());
+  }
+  [elements.controlsBar, elements.stageCard, elements.filterCard]
+    .filter(Boolean)
+    .forEach((card) => { card.hidden = !shows.has("controls"); });
+  if (elements.filterEmptyState) elements.filterEmptyState.hidden = !shows.has("filterEmpty");
+  if (elements.emptyState) elements.emptyState.hidden = !shows.has("empty");
+  if (elements.errorState) elements.errorState.hidden = !shows.has("error");
 }
 
 export function updateStageMeta() {
@@ -203,18 +236,14 @@ export function updateView() {
   if (!state.baseMatches.length) {
     resetFormPresentation();
     setDataControlsEnabled(false);
-    setStageFilterCardsVisible(false);
-    setResultsSectionsVisible(false);
-    if (elements.filterEmptyState) elements.filterEmptyState.hidden = true;
+    // Nothing is loaded, so a phase that shows games falls back to the home screen.
+    if (viewPhase === "results" || viewPhase === "filteredEmpty") setViewPhase("home");
     updateModeControls();
     updateFilterCount();
-    if (elements.singlePlayerSection) elements.singlePlayerSection.hidden = true;
-    clearStory();
     return;
   }
 
   setDataControlsEnabled(true);
-  setStageFilterCardsVisible(true);
   updateModeControls();
   state.stageMatches = getActiveItems();
   const filtered = applyFilters(state.stageMatches);
@@ -225,9 +254,7 @@ export function updateView() {
 
   if (!state.filteredMatches.length) {
     resetFormPresentation();
-    setResultsSectionsVisible(false);
-    if (elements.singlePlayerSection) elements.singlePlayerSection.hidden = true;
-    if (elements.filterEmptyState) elements.filterEmptyState.hidden = false;
+    setViewPhase("filteredEmpty");
     const stageHasNoData = state.stageMatches.length === 0 && state.stageTab !== "overall";
     if (elements.filterEmptyTitle) {
       elements.filterEmptyTitle.textContent = stageHasNoData
@@ -242,14 +269,12 @@ export function updateView() {
     if (elements.clearFiltersBtn) {
       elements.clearFiltersBtn.textContent = stageHasNoData ? "Show all stages" : "Clear filters";
     }
-    clearStory();
     updateFilterCount();
     updateUrl();
     return;
   }
 
-  if (elements.filterEmptyState) elements.filterEmptyState.hidden = true;
-  setResultsSectionsVisible(true);
+  setViewPhase("results");
   // Make room for the rail before the charts measure their width.
   prepareStory();
 
@@ -259,12 +284,7 @@ export function updateView() {
   if (!isSinglePlayerMode()) renderTournaments(state.filteredMatches);
   renderTable(state.filteredMatches);
 
-  if (isSinglePlayerMode()) {
-    if (elements.singlePlayerSection) elements.singlePlayerSection.hidden = false;
-    renderSinglePlayerPanels(state.filteredMatches);
-  } else {
-    if (elements.singlePlayerSection) elements.singlePlayerSection.hidden = true;
-  }
+  if (isSinglePlayerMode()) renderSinglePlayerPanels(state.filteredMatches);
   renderStory(state.filteredMatches);
 
   updateFilterCount();
@@ -293,19 +313,13 @@ export function setStageTabControls(stage = "overall") {
   updateModeControls();
 }
 
-export function renderIdleState() {
+// Clears the results and shows the home screen, or the error view when loading failed.
+export function renderIdleState(phase = "home") {
   resetFormPresentation();
-  if (elements.singlePlayerSection) elements.singlePlayerSection.hidden = true;
-  setStageFilterCardsVisible(false);
-  setResultsSectionsVisible(false);
-  if (elements.filterEmptyState) elements.filterEmptyState.hidden = true;
   const selectedId = resolvePlayerId(elements.playerA);
   const selectedPlayer = selectedId ? getSelectionPlayer(elements.playerA, selectedId) : null;
   // A picked player keeps the finder up so the opponent is one step away.
-  setHomeVisible(true);
-
-  if (elements.emptyState) elements.emptyState.hidden = true;
-  if (elements.errorState) elements.errorState.hidden = true;
+  setViewPhase(phase);
   if (elements.headline) {
     elements.headline.textContent = selectedPlayer ? selectedPlayer.name : "Pick a player";
   }
@@ -338,7 +352,6 @@ export function resetCurrentResults(options = {}) {
   abortActiveComparison();
   setLoading(false);
   if (options.cancelOpponents) cancelOpponentLoading();
-  if (elements.singlePlayerSection) elements.singlePlayerSection.hidden = true;
   const keepPlayerA = Boolean(options.keepPlayerA);
   state.baseMatches = [];
   state.stageMatches = [];
@@ -358,12 +371,6 @@ export function resetCurrentResults(options = {}) {
   if (options.clearStoredSelection) safeStorageRemove(STORAGE_KEYS.last);
   if (options.clearUrl) clearUrlSelection();
   if (options.message != null) setStatus(options.message);
-}
-
-function setStageFilterCardsVisible(visible) {
-  if (elements.controlsBar) elements.controlsBar.hidden = !visible;
-  if (elements.stageCard) elements.stageCard.hidden = !visible;
-  if (elements.filterCard) elements.filterCard.hidden = !visible;
 }
 
 // True when the control that opened a view has been hidden or removed by it, which
@@ -460,12 +467,7 @@ export async function handleCompare(options = {}) {
   state.filteredMatches = [];
   setStageCounts();
   setDataControlsEnabled(false);
-  setStageFilterCardsVisible(false);
-  setResultsSectionsVisible(false);
-  if (elements.singlePlayerSection) elements.singlePlayerSection.hidden = true;
-  if (elements.filterEmptyState) elements.filterEmptyState.hidden = true;
-  if (elements.emptyState) elements.emptyState.hidden = true;
-  if (elements.errorState) elements.errorState.hidden = true;
+  setViewPhase("loading");
 
   try {
     const data = isSingle
@@ -490,7 +492,6 @@ export async function handleCompare(options = {}) {
 
     const matches = Array.isArray(data?.matches) ? data.matches : [];
     if (!matches.length) {
-      if (elements.emptyState) elements.emptyState.hidden = false;
       if (elements.emptyStateTitle) {
         elements.emptyStateTitle.textContent = isSingle
           ? "No recorded games"
@@ -506,8 +507,7 @@ export async function handleCompare(options = {}) {
       state.filteredMatches = [];
       setStageCounts();
       setDataControlsEnabled(false);
-      setStageFilterCardsVisible(false);
-      setResultsSectionsVisible(false);
+      setViewPhase("empty");
       setLoading(false);
       setStatus("No games found.");
       updateSelectionControls();
@@ -553,8 +553,7 @@ export async function handleCompare(options = {}) {
     if (currentToken !== compareRequestToken) return;
     console.error(err);
     setLoading(false);
-    renderIdleState();
-    if (elements.errorState) elements.errorState.hidden = false;
+    renderIdleState("error");
     setStatus(isSingle ? "Failed to load player stats." : "Failed to load matchup.");
   }
 }
@@ -591,7 +590,6 @@ export async function handleSwap() {
   // Reload opponents for the new Player A
   const newAId = bId ? Number(bId) : null;
   if (newAId) {
-    elements.playerB.disabled = false;
     await Promise.all([
       handleCompare(),
       loadOpponentsForPlayer(
@@ -776,22 +774,6 @@ export function initModeToggle() {
   }
 }
 
-export function initGoalsModeToggle() {
-  if (!elements.goalsModeButtons) return;
-  elements.goalsModeButtons.forEach((button) => {
-    button.addEventListener("click", () => {
-      state.goalsMode = button.dataset.goalsMode || "series";
-      elements.goalsModeButtons.forEach((modeButton) => {
-        const isActive = modeButton.dataset.goalsMode === state.goalsMode;
-        modeButton.classList.toggle("is-active", isActive);
-        modeButton.setAttribute("aria-pressed", isActive ? "true" : "false");
-      });
-      renderCharts(state.filteredMatches);
-      updateUrl();
-    });
-  });
-}
-
 export function setStageTab(stage) {
   const previousStage = state.stageTab;
   state.stageTab = stage;
@@ -911,11 +893,8 @@ function goHome() {
   cancelOpponentLoading();
   clearInputPlayer(elements.playerA, elements.listA);
   clearInputPlayer(elements.playerB, elements.listB);
-  state.opponentsOfA = new Map();
-  elements.playerB.disabled = true;
-  elements.playerB.placeholder = "Pick a player first";
+  setOpponentBox("none");
   resetCurrentResults({ clearStoredSelection: true, clearUrl: true, message: "" });
-  setHomeVisible(true);
 }
 
 // Opens a view asked for by a link, breadcrumb, chart or list elsewhere.
@@ -928,7 +907,12 @@ async function openView(detail) {
     return;
   }
   if (detail.action === "compare-with") {
-    elements.playerB.disabled = false;
+    // A failed opponent list gets another try here, the one way back to it without
+    // picking the first player again.
+    const idA = resolvePlayerId(elements.playerA);
+    if (idA && getOpponentBoxStatus() !== "ready" && getOpponentBoxStatus() !== "loading") {
+      await loadOpponentsForPlayer(idA, getSelectionIds(elements.playerA), null);
+    }
     setFinderOpen(true, elements.playerB);
     return;
   }
@@ -936,7 +920,6 @@ async function openView(detail) {
   const p2 = Number(detail.p2);
   if (!detail.p1 && Number.isInteger(p2) && state.playersById.has(p2)) {
     // Keep the current player, pick an opponent.
-    elements.playerB.disabled = false;
     setInputPlayer(elements.playerB, { ...getPlayerById(p2), ids: getAliasGroup(p2) });
     window.scrollTo({ top: 0 });
     await handleCompare({ scrollToResults: false });
@@ -950,7 +933,6 @@ async function openView(detail) {
   setInputPlayer(elements.playerA, { ...getPlayerById(p1), ids: idsA });
   window.scrollTo({ top: 0 });
   if (Number.isInteger(p2) && state.playersById.has(p2)) {
-    elements.playerB.disabled = false;
     const idsB = detail.p2Ids?.length ? detail.p2Ids : getAliasGroup(p2);
     setInputPlayer(elements.playerB, { ...getPlayerById(p2), ids: idsB });
     await Promise.all([
@@ -1005,9 +987,7 @@ export async function init() {
       if (button.dataset.clear === "a") {
         cancelOpponentLoading();
         clearInputPlayer(elements.playerB, elements.listB);
-        state.opponentsOfA = new Map();
-        elements.playerB.disabled = true;
-        elements.playerB.placeholder = "Pick a player first";
+        setOpponentBox("none");
         resetCurrentResults({
           clearStoredSelection: true,
           clearUrl: true,
@@ -1066,7 +1046,6 @@ export async function init() {
   initOpponents({ onCompare: handleCompare });
   initTabs();
   initModeToggle();
-  initGoalsModeToggle();
   initScoreBug();
   initNav();
   document.addEventListener("h2h:open", (event) => {
@@ -1101,7 +1080,7 @@ export async function init() {
   if (!hasInitialSelection) {
     renderHomeCounts(await Promise.race([metaReady, new Promise((done) => setTimeout(done, 500))]));
   }
-  setHomeVisible(!hasInitialSelection);
+  setViewPhase(hasInitialSelection ? "loading" : "home");
 
   await loadPlayers();
   renderRecent();
@@ -1184,7 +1163,6 @@ async function showSelection(selection, fromUrl) {
     const p2Ids = selection.p2 ? validateSelectionIds(selection.p2, selection.p2Ids) : [];
     const player1 = { ...(getPlayerById(selection.p1) || { id: selection.p1, name: `Player ${selection.p1}` }), ids: p1Ids };
     setInputPlayer(elements.playerA, player1);
-    elements.playerB.disabled = false;
     if (selection.p2) {
       const player2 = { ...(getPlayerById(selection.p2) || { id: selection.p2, name: `Player ${selection.p2}` }), ids: p2Ids };
       setInputPlayer(elements.playerB, player2);
@@ -1216,8 +1194,7 @@ async function showSelection(selection, fromUrl) {
 init().catch((err) => {
   console.error(err);
   setLoading(false);
-  renderIdleState();
-  if (elements.errorState) elements.errorState.hidden = false;
+  renderIdleState("error");
   if (elements.playerA) elements.playerA.disabled = true;
   if (elements.playerB) elements.playerB.disabled = true;
   setStatus("The player index could not be loaded. Please refresh to try again.");
