@@ -97,11 +97,8 @@ export function updateUrl(p1, p2 = null, p1Ids = [], p2Ids = []) {
     url.searchParams.delete("playoffMode");
   }
 
-  if (state.goalsMode && state.goalsMode !== "series") {
-    url.searchParams.set("goalsMode", state.goalsMode);
-  } else {
-    url.searchParams.delete("goalsMode");
-  }
+  // Older links can carry goalsMode, a setting the page no longer has.
+  url.searchParams.delete("goalsMode");
 
   if (state.filters.search) {
     url.searchParams.set("search", state.filters.search);
@@ -159,80 +156,72 @@ export function updateUrl(p1, p2 = null, p1Ids = [], p2Ids = []) {
   writeUrl(url);
 }
 
-export function restoreStateFromUrl() {
-  const params = new URLSearchParams(window.location.search);
+// Every view setting the query string carries, with its default when the URL leaves it out.
+// Parsing gives a complete view, so restoring one (on load, Back or Forward) replaces the
+// current settings instead of keeping whatever the previous view had.
+export function parseViewParams(params) {
+  const view = {
+    stageTab: "overall",
+    playoffMode: "series",
+    filters: {
+      yearFrom: "all",
+      yearTo: "all",
+      tournament: "all",
+      tournamentLevels: [],
+      stage: "all",
+      search: "",
+      otOnly: false,
+      tightOnly: false,
+      bestOf: [],
+    },
+  };
+  const { filters } = view;
 
   const stage = params.get("stage");
-  if (["overall", "round-robin", "playoff"].includes(stage)) {
-    state.stageTab = stage;
-  }
+  if (["overall", "round-robin", "playoff"].includes(stage)) view.stageTab = stage;
 
   const playoffMode = params.get("playoffMode");
-  if (["series", "games"].includes(playoffMode)) {
-    state.playoffMode = playoffMode;
-  }
-
-  const goalsMode = params.get("goalsMode");
-  if (["series", "match"].includes(goalsMode)) {
-    state.goalsMode = goalsMode;
-  }
+  if (["series", "games"].includes(playoffMode)) view.playoffMode = playoffMode;
 
   const search = params.get("search");
-  if (search) {
-    state.filters.search = search.slice(0, 120);
-    if (elements.searchFilter) elements.searchFilter.value = state.filters.search;
-  }
+  if (search) filters.search = search.slice(0, 120);
 
   const yearFrom = params.get("yearFrom");
-  if (/^\d{4}$/.test(yearFrom || "")) {
-    state.filters.yearFrom = yearFrom;
-  }
+  if (/^\d{4}$/.test(yearFrom || "")) filters.yearFrom = yearFrom;
   const yearTo = params.get("yearTo");
-  if (/^\d{4}$/.test(yearTo || "")) {
-    state.filters.yearTo = yearTo;
-  }
-  if (
-    state.filters.yearFrom !== "all"
-    && state.filters.yearTo !== "all"
-    && state.filters.yearFrom > state.filters.yearTo
-  ) {
-    [state.filters.yearFrom, state.filters.yearTo] = [
-      state.filters.yearTo,
-      state.filters.yearFrom,
-    ];
+  if (/^\d{4}$/.test(yearTo || "")) filters.yearTo = yearTo;
+  if (filters.yearFrom !== "all" && filters.yearTo !== "all" && filters.yearFrom > filters.yearTo) {
+    [filters.yearFrom, filters.yearTo] = [filters.yearTo, filters.yearFrom];
   }
 
   const tournament = params.get("tournament");
-  if (tournament) {
-    state.filters.tournament = tournament;
-  }
+  if (tournament) filters.tournament = tournament;
 
   const levels = params.get("levels");
-  if (levels) {
-    state.filters.tournamentLevels = levels.split(",");
-  }
+  if (levels) filters.tournamentLevels = levels.split(",");
 
   const stageDetail = params.get("stageDetail");
-  if (stageDetail) {
-    state.filters.stage = stageDetail;
-  }
+  if (stageDetail) filters.stage = stageDetail;
 
-  const ot = params.get("ot");
-  if (ot === "true") {
-    state.filters.otOnly = true;
-    if (elements.otToggle) elements.otToggle.checked = true;
-  }
-
-  const tight = params.get("tight");
-  if (tight === "true") {
-    state.filters.tightOnly = true;
-    if (elements.tightToggle) elements.tightToggle.checked = true;
-  }
+  filters.otOnly = params.get("ot") === "true";
+  filters.tightOnly = params.get("tight") === "true";
 
   const bestOf = params.get("bestOf");
-  if (bestOf) {
-    state.filters.bestOf = bestOf.split(",");
-  }
+  if (bestOf) filters.bestOf = bestOf.split(",");
+
+  return view;
+}
+
+// Applies the view settings in the URL, resetting any it leaves out to their defaults.
+// The selects are filled once the matches load (refreshFilterOptions reads state.filters).
+export function restoreStateFromUrl() {
+  const view = parseViewParams(new URLSearchParams(window.location.search));
+  state.stageTab = view.stageTab;
+  state.playoffMode = view.playoffMode;
+  Object.assign(state.filters, view.filters);
+  if (elements.searchFilter) elements.searchFilter.value = view.filters.search;
+  if (elements.otToggle) elements.otToggle.checked = view.filters.otOnly;
+  if (elements.tightToggle) elements.tightToggle.checked = view.filters.tightOnly;
 }
 
 export function getUrlSelection() {

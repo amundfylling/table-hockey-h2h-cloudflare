@@ -138,7 +138,6 @@ function selectOpponent(opp) {
     ...(getPlayerById(opponentId) || { id: opponentId, name: opp.name }),
     ids: getAliasGroup(opponentId),
   };
-  elements.playerB.disabled = false;
   setInputPlayer(elements.playerB, opponent);
   _onCompare();
 }
