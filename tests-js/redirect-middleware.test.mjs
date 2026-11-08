@@ -69,7 +69,7 @@ test("moves the host and old ids in one redirect", async () => {
 });
 
 test("leaves current player ids alone", async () => {
-  for (const id of ["1022", "16590", "9070077", "21000447", "50000266"]) {
+  for (const id of ["1022", "16590", "9070077", "21000447", "50000266", "8007927"]) {
     const { ctx, wasNextCalled } = context(`https://h2h.puck.no/?p1=${id}`);
     const response = await onRequest(ctx);
     assert.equal(response.status, 200);

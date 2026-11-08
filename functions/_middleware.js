@@ -2,9 +2,11 @@ const LEGACY_HOST = "table-hockey-h2h.pages.dev";
 const CANONICAL_HOST = "h2h.puck.no";
 
 // bordshockey.net used to number players who have an ITHF id but no Sportscorpion record
-// 1,000,000 + ITHF id. Every source now uses 9,000,000 + ITHF id, and nothing else uses
-// the old range, so links with an old id are sent to the same player's new id.
+// 1,000,000 + ITHF id. Every source now uses 9,000,000 + ITHF id, so links with an old id are
+// sent to the same player's new id. ITHF ids are below 1,000,000, so old ids end at 1,999,999;
+// table-hockey.eu numbers its own players from 8,000,000, and those must pass through.
 const OLD_ITHF_BASE = 1_000_000;
+const OLD_ITHF_END = 2_000_000;
 const NEW_ITHF_BASE = 9_000_000;
 const PLAYER_PARAMS = ["p1", "p2", "p1g", "p2g"];
 const H2H_PATH_RE = /^\/h2h\/(\d+)\/(\d+)(\/.*)?$/;
@@ -12,7 +14,7 @@ const H2H_PATH_RE = /^\/h2h\/(\d+)\/(\d+)(\/.*)?$/;
 export function currentPlayerId(value) {
   if (!/^[1-9]\d{6}$/.test(value)) return value;
   const id = Number(value);
-  if (id < OLD_ITHF_BASE || id >= NEW_ITHF_BASE) return value;
+  if (id < OLD_ITHF_BASE || id >= OLD_ITHF_END) return value;
   return String(id - OLD_ITHF_BASE + NEW_ITHF_BASE);
 }
 
