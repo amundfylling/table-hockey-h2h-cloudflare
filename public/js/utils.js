@@ -143,7 +143,8 @@ export function formatDateRange(start, end) {
 export function classifyStage(stage) {
   const text = normalizeText(stage);
   if (!text) return "other";
-  if (text.includes("team")) {
+  // A whole word, so "Steampunk Playoff" is not a team event.
+  if (/\bteams?\b/.test(text)) {
     return "round-robin";
   }
   if (
