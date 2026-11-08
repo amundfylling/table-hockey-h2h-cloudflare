@@ -8,6 +8,7 @@ import pandas as pd
 from scripts.build_h2h import (  # noqa: E402
     build_unique_player_name_index,
     deduplicate_overlapping_source_matches,
+    normalize_player_name,
     read_extra_matches_parquet,
 )
 
@@ -45,8 +46,13 @@ class TestBordshockeySourceFields(unittest.TestCase):
             ]
         )
 
-        self.assertNotIn("jose example", index)
-        self.assertEqual(index["unique player"], 3)
+        self.assertNotIn("example jose", index)
+        self.assertEqual(index["player unique"], 3)
+
+    def test_player_name_index_ignores_word_order_and_accents(self):
+        index = build_unique_player_name_index([{"id": 7, "name": "Filip Hamáček"}])
+
+        self.assertEqual(index[normalize_player_name("Hamacek Filip")], 7)
 
     def test_extra_parquet_preserves_stage_type_and_source_links(self):
         shared = {
@@ -147,7 +153,7 @@ class TestBordshockeySourceFields(unittest.TestCase):
             source.to_parquet(parquet_path, index=False)
             matches = read_extra_matches_parquet(
                 parquet_path,
-                {"jose example": 11, "other player": 22},
+                {"example jose": 11, "other player": 22},
             )
 
         self.assertEqual(len(matches), 1)
