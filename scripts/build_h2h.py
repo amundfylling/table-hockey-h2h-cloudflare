@@ -257,7 +257,7 @@ RANKING_NATIONS = {
     "LAT": "Latvia", "LTU": "Lithuania", "NED": "Netherlands", "NOR": "Norway",
     "POL": "Poland", "PRT": "Portugal", "POR": "Portugal", "RUS": "Russia", "SLO": "Slovenia",
     "SRB": "Serbia", "SUI": "Switzerland", "SVK": "Slovakia", "SWE": "Sweden",
-    "UKR": "Ukraine", "USA": "United States of America",
+    "UKR": "Ukraine", "USA": "United States of America", "AUT": "Austria",
 }
 
 
@@ -1527,6 +1527,140 @@ def filter_players(
     return filtered, id_to_name
 
 
+# Ids from 9,000,000 up to 20,000,000 are 9,000,000 + the player's ITHF id: the sources give
+# that id to a player who has an ITHF id but no Sportscorpion record.
+ITHF_ID_BASE = 9_000_000
+ITHF_ID_END = 20_000_000
+
+# Sportscorpion accounts that stand in for unknown entrants. Each one covers many different
+# people, so they get no page, rating or leaderboard row (their games still count for their
+# opponents).
+PLACEHOLDER_PLAYER_IDS = {204, 1847, 5600, 6076, 10169}
+PLACEHOLDER_NAME_KEYS = {"", "no no", "нет нет", "0 0", "extraplats", "extraplats extraplats"}
+HIDDEN_NAME = "* *"
+
+# Look-alike letters for names that mix the two alphabets inside one word.
+_CYRILLIC_TO_LATIN = str.maketrans("аеорсухкАВЕКМНОРСТХ", "aeopcyxkABEKMHOPCTX")
+_LATIN_TO_CYRILLIC = str.maketrans("aeopcyxkABEKMHOPCTX", "аеорсухкАВЕКМНОРСТХ")
+_LATIN_RE = re.compile(r"[A-Za-z]")
+_CYRILLIC_RE = re.compile(r"[\u0400-\u04FF]")
+
+
+def ithf_id_from_player_id(player_id: int) -> Optional[int]:
+    """The ITHF id a 9,000,000 + ITHF player id was built from, or None."""
+    if ITHF_ID_BASE <= int(player_id) < ITHF_ID_END:
+        return int(player_id) - ITHF_ID_BASE
+    return None
+
+
+def tidy_display_name(name: str) -> str:
+    """A player name fit to show: one alphabet per word, no stray spaces or commas, and
+    names typed in all lower or all upper case put in title case."""
+    text = re.sub(r"\s+", " ", str(name or "")).strip().strip(",;").strip()
+    words = []
+    for word in text.split(" "):
+        latin = len(_LATIN_RE.findall(word))
+        cyrillic = len(_CYRILLIC_RE.findall(word))
+        if latin and cyrillic:
+            word = word.translate(
+                _CYRILLIC_TO_LATIN if latin >= cyrillic else _LATIN_TO_CYRILLIC
+            )
+        words.append(word)
+    text = " ".join(words)
+    letters = [character for character in text if character.isalpha()]
+    if len(letters) > 3 and (text == text.lower() or text == text.upper()):
+        text = " ".join(word[:1].upper() + word[1:].lower() for word in text.split(" "))
+    return text
+
+
+def placeholder_player_ids(players: Iterable[dict], matches: pd.DataFrame) -> set[int]:
+    """Ids that stand for unknown entrants rather than one person.
+
+    These are the listed ids plus every id whose profile name and every match name is blank
+    or a known filler ("no no", "- -", ...).
+    """
+    def is_filler(name: object) -> bool:
+        key = normalize_dedupe_text(name)
+        return key in PLACEHOLDER_NAME_KEYS or re.fullmatch(r"(player \d+)?", key) is not None
+
+    profile_names = {int(player["id"]): player.get("name", "") for player in players}
+    names: Dict[int, set] = {}
+    for id_column, name_column in [("player1_id", "player1_name"), ("player2_id", "player2_name")]:
+        pairs = matches[[id_column, name_column]].drop_duplicates()
+        for player_id, name in pairs.itertuples(index=False, name=None):
+            names.setdefault(int(player_id), set()).add(clean_optional_string(name))
+    found = set(PLACEHOLDER_PLAYER_IDS)
+    for player_id, seen in names.items():
+        if HIDDEN_NAME in seen:
+            continue  # A real player whose name Sportscorpion hides.
+        if all(is_filler(name) for name in seen) and is_filler(profile_names.get(player_id, "")):
+            found.add(player_id)
+    return found
+
+
+def tidy_players(
+    players: Iterable[dict],
+    matches: pd.DataFrame,
+    rankings: Optional[Dict[int, dict]] = None,
+) -> list[dict]:
+    """Give each page player a name, a nation and a search key worth showing.
+
+    - A blank Sportscorpion profile ("Player 289") takes the name the games use.
+    - A name Sportscorpion hides ("* *") shows as "Hidden player {id}".
+    - A 9,000,000 + ITHF id gets the ITHF ranking fields, so it has a nation and world rank.
+    - `country` becomes the one cleaned nation (player_nation), also used by the leaderboard.
+    - `alt_names` lists other names the games use (e.g. the Latin spelling of a Cyrillic
+      profile name), so search finds the player under either.
+    """
+    rankings = rankings or {}
+    match_names: Dict[int, Dict[str, int]] = {}
+    for id_column, name_column in [("player1_id", "player1_name"), ("player2_id", "player2_name")]:
+        counts = matches.groupby([id_column, name_column]).size()
+        for (player_id, name), count in counts.items():
+            cleaned = clean_optional_string(name)
+            if cleaned and cleaned != HIDDEN_NAME:
+                bucket = match_names.setdefault(int(player_id), {})
+                bucket[cleaned] = bucket.get(cleaned, 0) + int(count)
+
+    tidied = []
+    for player in players:
+        player = dict(player)
+        pid = int(player["id"])
+        seen = match_names.get(pid, {})
+        name = str(player.get("name") or "").strip()
+        if not name or re.fullmatch(r"Player \d+", name):
+            if seen:
+                name = max(seen.items(), key=lambda item: (item[1], item[0]))[0]
+            else:
+                name = f"Hidden player {pid}"
+        name = tidy_display_name(name)
+        player["name"] = name
+
+        ithf_id = ithf_id_from_player_id(pid)
+        if ithf_id is not None and not player.get("ranking_id"):
+            player["ranking_id"] = ithf_id
+            if ithf_id in rankings:
+                player.update(rankings[ithf_id])
+        player["country"] = player_nation(player)
+
+        own_key = normalize_player_name(name)
+        alt_names = sorted(
+            {
+                tidy_display_name(other)
+                for other in seen
+                if normalize_player_name(tidy_display_name(other)) != own_key
+            }
+        )
+        if alt_names:
+            player["alt_names"] = alt_names
+        else:
+            player.pop("alt_names", None)
+        player["search_key"] = normalize_search_key(" ".join([name, *alt_names]))
+        tidied.append(player)
+    tidied.sort(key=lambda player: player["name"].casefold())
+    return tidied
+
+
 def build_player_files(
     matches: pd.DataFrame,
     player_names: Dict[int, str],
@@ -2639,7 +2773,11 @@ def main() -> int:
         .drop_duplicates(id_column, keep="last")
         .itertuples(index=False, name=None)
     }
-    all_names.update(player_names)
+    # A blank profile ("Player 289") keeps the name its games use.
+    all_names.update(
+        {pid: name for pid, name in player_names.items() if not re.fullmatch(r"Player \d+", name)}
+    )
+    all_names = {pid: tidy_display_name(name) for pid, name in all_names.items()}
     records = build_records(matches, all_names)
 
     all_matches = matches
@@ -2647,6 +2785,9 @@ def main() -> int:
     all_ids = pd.concat([matches["player1_id"], matches["player2_id"]])
     match_counts = all_ids.value_counts()
     eligible_ids = set(match_counts[match_counts >= min_matches].index.astype(int).tolist())
+    placeholders = placeholder_player_ids(players, all_matches)
+    print(f"Leaving out {len(eligible_ids & placeholders)} placeholder accounts.")
+    eligible_ids -= placeholders
 
     matches = matches[
         matches["player1_id"].isin(eligible_ids)
@@ -2654,6 +2795,13 @@ def main() -> int:
     ]
 
     players, player_names = filter_players(players, eligible_ids, matches)
+    players = tidy_players(players, all_matches, rankings)
+    player_names = {int(player["id"]): player["name"] for player in players}
+    all_names.update(player_names)
+    for player_id in pd.concat([all_matches["player1_id"], all_matches["player2_id"]]).unique():
+        ithf_id = ithf_id_from_player_id(int(player_id))
+        if ithf_id is not None and ithf_id in rankings and not nations.get(int(player_id)):
+            nations[int(player_id)] = player_nation(rankings[ithf_id])
     write_json(DATA_STAGING_DIR / "players.json", players)
 
     print("Computing Glicko-2 ratings and forecasts...")
