@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from scripts import stage_fixes  # noqa: E402
 from scripts.build_h2h import (  # noqa: E402
     EXTRA_SOURCES,
     build_unique_player_name_index,
@@ -117,6 +118,7 @@ class TestH2HCounts(unittest.TestCase):
         matches = deduplicate_overlapping_source_matches(matches)
         matches, _ = drop_walkovers(matches)
         matches, _ = deduplicate_within_source_copies(matches)
+        matches, _ = stage_fixes.drop_carried_over_copies(matches)
 
         eligible = self.player_id_set
         matches = matches[
