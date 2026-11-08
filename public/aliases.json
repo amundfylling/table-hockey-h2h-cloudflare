@@ -1,42 +1,6 @@
 {
   "groups": [
     {
-      "name": "Vegard Klippen",
-      "ids": [
-        1307,
-        2164
-      ]
-    },
-    {
-      "name": "Aleksandrs Ozernojs",
-      "ids": [
-        4400,
-        5711
-      ]
-    },
-    {
-      "name": "Andrey Babintsev",
-      "ids": [
-        3612,
-        10972
-      ]
-    },
-    {
-      "name": "Artūrs Zasurcevs",
-      "ids": [
-        11083,
-        12546
-      ]
-    },
-    {
-      "name": "Baurzhan Ualiev",
-      "ids": [
-        1653,
-        5078,
-        4337
-      ]
-    },
-    {
       "name": "Bogdan Bilovusyak",
       "ids": [
         1079,
@@ -44,286 +8,10 @@
       ]
     },
     {
-      "name": "Daniil Perov",
-      "ids": [
-        2396,
-        3289
-      ]
-    },
-    {
-      "name": "Denys Opara",
-      "ids": [
-        1403,
-        2960,
-        1020
-      ]
-    },
-    {
-      "name": "Espen Moe",
-      "ids": [
-        1230,
-        2425
-      ]
-    },
-    {
-      "name": "Eva Ozerova",
-      "ids": [
-        2861,
-        310
-      ]
-    },
-    {
-      "name": "Evgeniy Goloviznin",
-      "ids": [
-        607,
-        628
-      ]
-    },
-    {
-      "name": "Felix Waldmann",
-      "ids": [
-        10958,
-        12770
-      ]
-    },
-    {
-      "name": "Gergely Regula",
-      "ids": [
-        5438,
-        1244
-      ]
-    },
-    {
-      "name": "Igor Ivanov",
-      "ids": [
-        4942,
-        4392
-      ]
-    },
-    {
-      "name": "Igor Scherbakov",
-      "ids": [
-        927,
-        606
-      ]
-    },
-    {
-      "name": "Ivan Veremeenko",
-      "ids": [
-        3798,
-        1089
-      ]
-    },
-    {
-      "name": "Denis Katkov",
-      "ids": [
-        2472,
-        197,
-        613
-      ]
-    },
-    {
       "name": "Kirill Pavlov",
       "ids": [
         415,
         503
-      ]
-    },
-    {
-      "name": "Konstantin Zosimov",
-      "ids": [
-        12018,
-        12062
-      ]
-    },
-    {
-      "name": "Matīss Ģelzis",
-      "ids": [
-        4419,
-        9336
-      ]
-    },
-    {
-      "name": "Maxim Starkov",
-      "ids": [
-        1478,
-        350
-      ]
-    },
-    {
-      "name": "Mykhailo Bibik",
-      "ids": [
-        778,
-        961
-      ]
-    },
-    {
-      "name": "Mārcis Radelis",
-      "ids": [
-        9769,
-        13665
-      ]
-    },
-    {
-      "name": "Nicklas Nilsson",
-      "ids": [
-        4636,
-        2209
-      ]
-    },
-    {
-      "name": "Nikita Pavlov",
-      "ids": [
-        946,
-        681
-      ]
-    },
-    {
-      "name": "Nikolay Bublikov",
-      "ids": [
-        1666,
-        696
-      ]
-    },
-    {
-      "name": "Oksana Derkach",
-      "ids": [
-        3367,
-        1077
-      ]
-    },
-    {
-      "name": "Oleg Bublikov",
-      "ids": [
-        1490,
-        767,
-        928
-      ]
-    },
-    {
-      "name": "Oleksandr Malyarozov",
-      "ids": [
-        543,
-        489
-      ]
-    },
-    {
-      "name": "Ondrej Gruncl",
-      "ids": [
-        15736,
-        15442
-      ]
-    },
-    {
-      "name": "Pavel Churilin",
-      "ids": [
-        610,
-        776
-      ]
-    },
-    {
-      "name": "Peter Östlund",
-      "ids": [
-        2920,
-        1206
-      ]
-    },
-    {
-      "name": "Polina Kvasnikova",
-      "ids": [
-        11998,
-        12057
-      ]
-    },
-    {
-      "name": "Borsanyi Peter",
-      "ids": [
-        1268,
-        3065
-      ]
-    },
-    {
-      "name": "Timur Kudashev",
-      "ids": [
-        288,
-        1929
-      ]
-    },
-    {
-      "name": "Valeriy Matantsev",
-      "ids": [
-        1405,
-        1174
-      ]
-    },
-    {
-      "name": "Valery Spirin",
-      "ids": [
-        4493,
-        2992
-      ]
-    },
-    {
-      "name": "Vesa Huotelin",
-      "ids": [
-        625,
-        10589
-      ]
-    },
-    {
-      "name": "Vladimir Areshkin",
-      "ids": [
-        663,
-        2359
-      ]
-    },
-    {
-      "name": "Vladimir Goncharov",
-      "ids": [
-        612,
-        394
-      ]
-    },
-    {
-      "name": "Vladimir Vedernikov",
-      "ids": [
-        1369,
-        5941
-      ]
-    },
-    {
-      "name": "Yuri Fedotov",
-      "ids": [
-        10691,
-        9860
-      ]
-    },
-    {
-      "name": "Yuriy Verbitskiy",
-      "ids": [
-        3911,
-        2468
-      ]
-    },
-    {
-      "name": "Zair Koshkin",
-      "ids": [
-        4464,
-        4667
-      ]
-    },
-    {
-      "name": "denis Opara",
-      "ids": [
-        950,
-        951
-      ]
-    },
-    {
-      "name": "Øystein Klippen",
-      "ids": [
-        1507,
-        2843
       ]
     },
     {
@@ -453,31 +141,10 @@
       ]
     },
     {
-      "name": "Karol Hudec",
-      "ids": [
-        4137,
-        1240
-      ]
-    },
-    {
       "name": "Frode Hagerup",
       "ids": [
         1300,
         2124
-      ]
-    },
-    {
-      "name": "Vladimir Slizh",
-      "ids": [
-        7656,
-        7352
-      ]
-    },
-    {
-      "name": "Aleksey Plugatarev",
-      "ids": [
-        6375,
-        12463
       ]
     },
     {
@@ -492,13 +159,6 @@
       "ids": [
         4939,
         6000
-      ]
-    },
-    {
-      "name": "Sergei Romanov",
-      "ids": [
-        9564,
-        15046
       ]
     },
     {
@@ -520,6 +180,1512 @@
       "ids": [
         1306,
         2165
+      ]
+    },
+    {
+      "name": "Vegard Klippen",
+      "ids": [
+        1307,
+        2164
+      ]
+    },
+    {
+      "name": "Aleksandrs Ozernojs",
+      "ids": [
+        4400,
+        5711
+      ]
+    },
+    {
+      "name": "Andrey Babintsev",
+      "ids": [
+        3612,
+        10972
+      ]
+    },
+    {
+      "name": "Artūrs Zasurcevs",
+      "ids": [
+        11083,
+        12546
+      ]
+    },
+    {
+      "name": "Baurzhan Ualiev",
+      "ids": [
+        1653,
+        5078,
+        4337
+      ]
+    },
+    {
+      "name": "Daniil Perov",
+      "ids": [
+        2396,
+        3289
+      ]
+    },
+    {
+      "name": "Espen Moe",
+      "ids": [
+        1230,
+        2425
+      ]
+    },
+    {
+      "name": "Eva Ozerova",
+      "ids": [
+        2861,
+        310
+      ]
+    },
+    {
+      "name": "Evgeniy Goloviznin",
+      "ids": [
+        607,
+        628,
+        9655563
+      ]
+    },
+    {
+      "name": "Felix Waldmann",
+      "ids": [
+        10958,
+        12770
+      ]
+    },
+    {
+      "name": "Gergely Regula",
+      "ids": [
+        5438,
+        1244
+      ]
+    },
+    {
+      "name": "Igor Ivanov",
+      "ids": [
+        4942,
+        4392
+      ]
+    },
+    {
+      "name": "Igor Scherbakov",
+      "ids": [
+        927,
+        606,
+        673
+      ]
+    },
+    {
+      "name": "Ivan Veremeenko",
+      "ids": [
+        3798,
+        1089
+      ]
+    },
+    {
+      "name": "Denis Katkov",
+      "ids": [
+        2472,
+        197,
+        613
+      ]
+    },
+    {
+      "name": "Konstantin Zosimov",
+      "ids": [
+        12018,
+        12062
+      ]
+    },
+    {
+      "name": "Matīss Ģelzis",
+      "ids": [
+        4419,
+        9336
+      ]
+    },
+    {
+      "name": "Maxim Starkov",
+      "ids": [
+        1478,
+        350
+      ]
+    },
+    {
+      "name": "Mykhailo Bibik",
+      "ids": [
+        778,
+        961
+      ]
+    },
+    {
+      "name": "Mārcis Radelis",
+      "ids": [
+        9769,
+        13665
+      ]
+    },
+    {
+      "name": "Nicklas Nilsson",
+      "ids": [
+        4636,
+        2209
+      ]
+    },
+    {
+      "name": "Nikita Pavlov",
+      "ids": [
+        946,
+        681
+      ]
+    },
+    {
+      "name": "Nikolay Bublikov",
+      "ids": [
+        1666,
+        696,
+        1665
+      ]
+    },
+    {
+      "name": "Oksana Derkach",
+      "ids": [
+        3367,
+        1077
+      ]
+    },
+    {
+      "name": "Oleg Bublikov",
+      "ids": [
+        1490,
+        767,
+        928,
+        695
+      ]
+    },
+    {
+      "name": "Oleksandr Malyarozov",
+      "ids": [
+        543,
+        489
+      ]
+    },
+    {
+      "name": "Ondrej Gruncl",
+      "ids": [
+        15736,
+        15442
+      ]
+    },
+    {
+      "name": "Pavel Churilin",
+      "ids": [
+        610,
+        776
+      ]
+    },
+    {
+      "name": "Peter Östlund",
+      "ids": [
+        2920,
+        1206
+      ]
+    },
+    {
+      "name": "Polina Kvasnikova",
+      "ids": [
+        11998,
+        12057
+      ]
+    },
+    {
+      "name": "Borsanyi Peter",
+      "ids": [
+        3065,
+        1268,
+        14578
+      ]
+    },
+    {
+      "name": "Timur Kudashev",
+      "ids": [
+        288,
+        1929,
+        454
+      ]
+    },
+    {
+      "name": "Valeriy Matantsev",
+      "ids": [
+        1405,
+        1174
+      ]
+    },
+    {
+      "name": "Valery Spirin",
+      "ids": [
+        4493,
+        2992,
+        3284,
+        3409
+      ]
+    },
+    {
+      "name": "Vesa Huotelin",
+      "ids": [
+        625,
+        10589
+      ]
+    },
+    {
+      "name": "Vladimir Areshkin",
+      "ids": [
+        663,
+        2359
+      ]
+    },
+    {
+      "name": "Vladimir Goncharov",
+      "ids": [
+        612,
+        394
+      ]
+    },
+    {
+      "name": "Vladimir Vedernikov",
+      "ids": [
+        1369,
+        5941,
+        21000609
+      ]
+    },
+    {
+      "name": "Yuri Fedotov",
+      "ids": [
+        10691,
+        9860,
+        4060
+      ]
+    },
+    {
+      "name": "Yuriy Verbitskiy",
+      "ids": [
+        3911,
+        2468,
+        16533
+      ]
+    },
+    {
+      "name": "Zair Koshkin",
+      "ids": [
+        4464,
+        4667
+      ]
+    },
+    {
+      "name": "Øystein Klippen",
+      "ids": [
+        1507,
+        2843
+      ]
+    },
+    {
+      "name": "Alexandr Zaytsev",
+      "ids": [
+        217,
+        7705
+      ]
+    },
+    {
+      "name": "Sergey Shikerin",
+      "ids": [
+        285,
+        658
+      ]
+    },
+    {
+      "name": "Dmitry Afonin",
+      "ids": [
+        421,
+        1474
+      ]
+    },
+    {
+      "name": "Elizar Bubnov",
+      "ids": [
+        429,
+        5223
+      ]
+    },
+    {
+      "name": "Yan Zaripov",
+      "ids": [
+        443,
+        1031
+      ]
+    },
+    {
+      "name": "Eldar Usmanov",
+      "ids": [
+        460,
+        11052
+      ]
+    },
+    {
+      "name": "Yevgen Rykun",
+      "ids": [
+        516,
+        1643,
+        21000606
+      ]
+    },
+    {
+      "name": "Mikhail Nekrylov",
+      "ids": [
+        546,
+        442
+      ]
+    },
+    {
+      "name": "Oleg Matveyev",
+      "ids": [
+        600,
+        1658
+      ]
+    },
+    {
+      "name": "Valeriy Samsonov",
+      "ids": [
+        654,
+        16053
+      ]
+    },
+    {
+      "name": "Vladimir Sannikov",
+      "ids": [
+        668,
+        1075
+      ]
+    },
+    {
+      "name": "Mykhaylo Spalek",
+      "ids": [
+        694,
+        587
+      ]
+    },
+    {
+      "name": "Martynenko Maria",
+      "ids": [
+        843,
+        638,
+        867,
+        962
+      ]
+    },
+    {
+      "name": "Dmitriy Afanasyev",
+      "ids": [
+        852,
+        589
+      ]
+    },
+    {
+      "name": "Ielizaveta Ignatenko",
+      "ids": [
+        883,
+        2314
+      ]
+    },
+    {
+      "name": "Nadzharyan Ashot",
+      "ids": [
+        926,
+        751
+      ]
+    },
+    {
+      "name": "Vitaly Vaschuk",
+      "ids": [
+        956,
+        939
+      ]
+    },
+    {
+      "name": "Ilia Ignatenko",
+      "ids": [
+        983,
+        1453
+      ]
+    },
+    {
+      "name": "Denys Opara",
+      "ids": [
+        1403,
+        1096,
+        950,
+        951,
+        2960,
+        1020,
+        530,
+        1084,
+        469
+      ]
+    },
+    {
+      "name": "Oleksandr Zaichuk",
+      "ids": [
+        1197,
+        1130
+      ]
+    },
+    {
+      "name": "Igor Nehoroshikh",
+      "ids": [
+        1202,
+        830
+      ]
+    },
+    {
+      "name": "Vaclav Pikl",
+      "ids": [
+        1218,
+        14668
+      ]
+    },
+    {
+      "name": "Elnara Abasova",
+      "ids": [
+        1377,
+        7689
+      ]
+    },
+    {
+      "name": "Morten Aarflot",
+      "ids": [
+        1420,
+        7573
+      ]
+    },
+    {
+      "name": "Sergiy Krasyuk",
+      "ids": [
+        1454,
+        900
+      ]
+    },
+    {
+      "name": "Vadim Romanenko",
+      "ids": [
+        1555,
+        1772
+      ]
+    },
+    {
+      "name": "Kirill Vasilev",
+      "ids": [
+        1644,
+        8740
+      ]
+    },
+    {
+      "name": "Yurchenko Olga",
+      "ids": [
+        1812,
+        3221
+      ]
+    },
+    {
+      "name": "Vitali Pavlogradski",
+      "ids": [
+        1849,
+        6714
+      ]
+    },
+    {
+      "name": "Alexander Gashin",
+      "ids": [
+        1852,
+        1611
+      ]
+    },
+    {
+      "name": "Kazybek Zholdasbekov",
+      "ids": [
+        1901,
+        1888
+      ]
+    },
+    {
+      "name": "Grigoriy Kazarin",
+      "ids": [
+        1971,
+        7988,
+        2392
+      ]
+    },
+    {
+      "name": "Grigoriy Boldyrev",
+      "ids": [
+        1972,
+        2980
+      ]
+    },
+    {
+      "name": "Andrey Chaplygin",
+      "ids": [
+        1984,
+        1045
+      ]
+    },
+    {
+      "name": "Jari Sahlgren",
+      "ids": [
+        1996,
+        5353
+      ]
+    },
+    {
+      "name": "Alexey Treschalov",
+      "ids": [
+        2246,
+        2561
+      ]
+    },
+    {
+      "name": "Alexey Gavrilov",
+      "ids": [
+        2479,
+        6718,
+        1393
+      ]
+    },
+    {
+      "name": "George Titov",
+      "ids": [
+        2554,
+        1784
+      ]
+    },
+    {
+      "name": "Darya Gladkova",
+      "ids": [
+        2790,
+        5329
+      ]
+    },
+    {
+      "name": "Aleksey Eliseev",
+      "ids": [
+        2815,
+        831
+      ]
+    },
+    {
+      "name": "Pavel Volkov Pavlovich",
+      "ids": [
+        2823,
+        10996
+      ]
+    },
+    {
+      "name": "Oleksandr Petrov",
+      "ids": [
+        3254,
+        3937
+      ]
+    },
+    {
+      "name": "Andrey Belyy",
+      "ids": [
+        3260,
+        3723
+      ]
+    },
+    {
+      "name": "Vadim Lukin",
+      "ids": [
+        3274,
+        395,
+        655
+      ]
+    },
+    {
+      "name": "Vitalii Kutsuruk",
+      "ids": [
+        3352,
+        7972
+      ]
+    },
+    {
+      "name": "Alexandr Loginov",
+      "ids": [
+        3413,
+        3982
+      ]
+    },
+    {
+      "name": "Vladimir Tolstikov",
+      "ids": [
+        3756,
+        4789
+      ]
+    },
+    {
+      "name": "Alexander Kozmin",
+      "ids": [
+        3952,
+        3751
+      ]
+    },
+    {
+      "name": "Vladimir Otinov",
+      "ids": [
+        3973,
+        3794
+      ]
+    },
+    {
+      "name": "Andrey Stolyarov",
+      "ids": [
+        4047,
+        11381
+      ]
+    },
+    {
+      "name": "Nikolay Fedotov",
+      "ids": [
+        4075,
+        9859
+      ]
+    },
+    {
+      "name": "Aleksandr Sevryukov",
+      "ids": [
+        4289,
+        4140
+      ]
+    },
+    {
+      "name": "Maksim Kuznetsov",
+      "ids": [
+        4619,
+        4456,
+        3525,
+        3987,
+        3850
+      ]
+    },
+    {
+      "name": "Alexey Gladkov",
+      "ids": [
+        4632,
+        4002,
+        3856
+      ]
+    },
+    {
+      "name": "Nikolay Buylov",
+      "ids": [
+        4956,
+        2485
+      ]
+    },
+    {
+      "name": "Sergei Romanov",
+      "ids": [
+        5063,
+        9564,
+        15046
+      ]
+    },
+    {
+      "name": "Anatoliy Soglaev",
+      "ids": [
+        5147,
+        5328
+      ]
+    },
+    {
+      "name": "Aleksey Plugatarev",
+      "ids": [
+        6375,
+        12463
+      ]
+    },
+    {
+      "name": "Vladimir Slizh",
+      "ids": [
+        7656,
+        7352
+      ]
+    },
+    {
+      "name": "Vorobiev Ebgeniy",
+      "ids": [
+        8169,
+        5009
+      ]
+    },
+    {
+      "name": "Andrey Rabcevich",
+      "ids": [
+        8350,
+        9444
+      ]
+    },
+    {
+      "name": "Artem Bederdinov",
+      "ids": [
+        8755,
+        8606
+      ]
+    },
+    {
+      "name": "Arman Janbosinov",
+      "ids": [
+        9018,
+        10226
+      ]
+    },
+    {
+      "name": "Evgeny Dunichkin",
+      "ids": [
+        9203,
+        9049
+      ]
+    },
+    {
+      "name": "Deniss Adamovičs",
+      "ids": [
+        9377,
+        13896
+      ]
+    },
+    {
+      "name": "Andriy Chalovskiy",
+      "ids": [
+        9733,
+        7974
+      ]
+    },
+    {
+      "name": "Artem Meltcev",
+      "ids": [
+        9820,
+        9778
+      ]
+    },
+    {
+      "name": "Genadijs Adamovičs",
+      "ids": [
+        10371,
+        13895
+      ]
+    },
+    {
+      "name": "Alexander Dolgov",
+      "ids": [
+        10471,
+        12665
+      ]
+    },
+    {
+      "name": "Fedor Fedotov",
+      "ids": [
+        10692,
+        9861
+      ]
+    },
+    {
+      "name": "Sergey Maslov",
+      "ids": [
+        10764,
+        10650
+      ]
+    },
+    {
+      "name": "Инсаф Галимуллин",
+      "ids": [
+        10804,
+        11336,
+        10643
+      ]
+    },
+    {
+      "name": "Артём Лавров",
+      "ids": [
+        10865,
+        11209
+      ]
+    },
+    {
+      "name": "Konstantin Ivanov",
+      "ids": [
+        10970,
+        14503
+      ]
+    },
+    {
+      "name": "Aleksandra Kachalova",
+      "ids": [
+        11153,
+        9985
+      ]
+    },
+    {
+      "name": "Mykola Verbytskyy",
+      "ids": [
+        11390,
+        10974
+      ]
+    },
+    {
+      "name": "Maksim Ogurtsov",
+      "ids": [
+        11583,
+        13343
+      ]
+    },
+    {
+      "name": "Sergey Shitov",
+      "ids": [
+        11605,
+        11270
+      ]
+    },
+    {
+      "name": "Vladimir Maslov",
+      "ids": [
+        11661,
+        10917
+      ]
+    },
+    {
+      "name": "Andrey Igumnov",
+      "ids": [
+        11665,
+        13599
+      ]
+    },
+    {
+      "name": "Yuri Zaycev",
+      "ids": [
+        11980,
+        11727
+      ]
+    },
+    {
+      "name": "Vladimir Osmanov",
+      "ids": [
+        12060,
+        14184
+      ]
+    },
+    {
+      "name": "Nikita Peshkov",
+      "ids": [
+        12472,
+        12223
+      ]
+    },
+    {
+      "name": "Stanislav Sizentsev",
+      "ids": [
+        13222,
+        13055
+      ]
+    },
+    {
+      "name": "Andrey Sharkov",
+      "ids": [
+        14680,
+        3755
+      ]
+    },
+    {
+      "name": "Sergey Baryshev",
+      "ids": [
+        15144,
+        15321
+      ]
+    },
+    {
+      "name": "Andrej Surovyj",
+      "ids": [
+        15210,
+        13349
+      ]
+    },
+    {
+      "name": "vasily senichenkov",
+      "ids": [
+        15259,
+        15326
+      ]
+    },
+    {
+      "name": "Alexander Raskosha",
+      "ids": [
+        15421,
+        3983
+      ]
+    },
+    {
+      "name": "Tereza Krausová",
+      "ids": [
+        21000312,
+        9070008
+      ]
+    },
+    {
+      "name": "Magdalena Malá",
+      "ids": [
+        21000706,
+        9070051
+      ]
+    },
+    {
+      "name": "Karel Konečný",
+      "ids": [
+        21000298,
+        9070067
+      ]
+    },
+    {
+      "name": "Michal Zunka",
+      "ids": [
+        21000155,
+        9070080
+      ]
+    },
+    {
+      "name": "Kristýna Baščanová",
+      "ids": [
+        21000772,
+        9070187
+      ]
+    },
+    {
+      "name": "Miroslav Hubáček ml.",
+      "ids": [
+        21000612,
+        9070222
+      ]
+    },
+    {
+      "name": "Petr Sládek",
+      "ids": [
+        21000243,
+        9070417
+      ]
+    },
+    {
+      "name": "Marie Vargová",
+      "ids": [
+        21000425,
+        9070491
+      ]
+    },
+    {
+      "name": "Dušan Krása",
+      "ids": [
+        21000197,
+        9079309
+      ]
+    },
+    {
+      "name": "Markus Laakso",
+      "ids": [
+        21000890,
+        9100123
+      ]
+    },
+    {
+      "name": "Patricia Kapuvári",
+      "ids": [
+        21000871,
+        9150046
+      ]
+    },
+    {
+      "name": "Máté Szabó",
+      "ids": [
+        21000615,
+        9150166
+      ]
+    },
+    {
+      "name": "Zoltán Szabó",
+      "ids": [
+        21000617,
+        9150177
+      ]
+    },
+    {
+      "name": "Barnabas Parkanszki",
+      "ids": [
+        21000337,
+        9150285
+      ]
+    },
+    {
+      "name": "Janis Kirsis",
+      "ids": [
+        9200118,
+        21000955
+      ]
+    },
+    {
+      "name": "Espen Selbak",
+      "ids": [
+        9220239,
+        21000947
+      ]
+    },
+    {
+      "name": "Alexandr Mihin",
+      "ids": [
+        21000758,
+        9240218
+      ]
+    },
+    {
+      "name": "Daniel Hansson",
+      "ids": [
+        9280186,
+        21000446
+      ]
+    },
+    {
+      "name": "Dan Engdahl",
+      "ids": [
+        9280637,
+        21000650
+      ]
+    },
+    {
+      "name": "Kristijan Curkovic",
+      "ids": [
+        21000222,
+        9450002
+      ]
+    },
+    {
+      "name": "Radim Nevrlík",
+      "ids": [
+        21000160,
+        9651418
+      ]
+    },
+    {
+      "name": "David Brdíček",
+      "ids": [
+        21000327,
+        9652310
+      ]
+    },
+    {
+      "name": "Tomislav Cigula",
+      "ids": [
+        21000227,
+        9655177
+      ]
+    },
+    {
+      "name": "Lukáš Staněk",
+      "ids": [
+        21000306,
+        9655710
+      ]
+    },
+    {
+      "name": "Micael Palm",
+      "ids": [
+        9656581,
+        21000492
+      ]
+    },
+    {
+      "name": "Jakub Saj",
+      "ids": [
+        21000115,
+        21000176
+      ]
+    },
+    {
+      "name": "Štěpán Krejzlík",
+      "ids": [
+        21000116,
+        21000175
+      ]
+    },
+    {
+      "name": "László Bobák",
+      "ids": [
+        21000749,
+        21000932
+      ]
+    },
+    {
+      "name": "Braiens Goršanovs",
+      "ids": [
+        50000198,
+        40000875
+      ]
+    },
+    {
+      "name": "Tīna Goršanova",
+      "ids": [
+        50000299,
+        40001484
+      ]
+    },
+    {
+      "name": "Belavina Alexandra",
+      "ids": [
+        181,
+        9240027
+      ]
+    },
+    {
+      "name": "Maria Yalbacheva",
+      "ids": [
+        9240719,
+        188
+      ]
+    },
+    {
+      "name": "Maria Miloradova",
+      "ids": [
+        228,
+        21000449
+      ]
+    },
+    {
+      "name": "Totchasov Pavel",
+      "ids": [
+        229,
+        9240450
+      ]
+    },
+    {
+      "name": "Ivan Zaharov",
+      "ids": [
+        235,
+        21000586
+      ]
+    },
+    {
+      "name": "Alexander Miloradov",
+      "ids": [
+        237,
+        21000488
+      ]
+    },
+    {
+      "name": "Kashentsev Igor",
+      "ids": [
+        238,
+        9240132,
+        21000893
+      ]
+    },
+    {
+      "name": "Magnus Ahlberg",
+      "ids": [
+        9100004,
+        240
+      ]
+    },
+    {
+      "name": "Dmytro Kudrytsky",
+      "ids": [
+        465,
+        21000844,
+        50000234
+      ]
+    },
+    {
+      "name": "Mykhailo Bibik",
+      "ids": [
+        585,
+        21000469
+      ]
+    },
+    {
+      "name": "Viacheslav Patekhin",
+      "ids": [
+        627,
+        21000552
+      ]
+    },
+    {
+      "name": "Artem Valiev",
+      "ids": [
+        711,
+        918,
+        21000370
+      ]
+    },
+    {
+      "name": "Mika Myllykangas",
+      "ids": [
+        9100174,
+        1219
+      ]
+    },
+    {
+      "name": "Klaus Jean-Claude",
+      "ids": [
+        1255,
+        9290011
+      ]
+    },
+    {
+      "name": "Petrek Jaroslav",
+      "ids": [
+        1259,
+        9260086
+      ]
+    },
+    {
+      "name": "Cserhati Zoltan",
+      "ids": [
+        1260,
+        9150019
+      ]
+    },
+    {
+      "name": "Kent Richter",
+      "ids": [
+        9050227,
+        1269
+      ]
+    },
+    {
+      "name": "Maskova Iva",
+      "ids": [
+        1317,
+        9652034
+      ]
+    },
+    {
+      "name": "Markéta Pilařová",
+      "ids": [
+        21000518,
+        1319,
+        9070177
+      ]
+    },
+    {
+      "name": "Per Ivar Lønne",
+      "ids": [
+        1429,
+        9657837
+      ]
+    },
+    {
+      "name": "Torkildsen Fredrik",
+      "ids": [
+        1430,
+        9657440
+      ]
+    },
+    {
+      "name": "Eike Rompa",
+      "ids": [
+        1613,
+        1265,
+        50000266
+      ]
+    },
+    {
+      "name": "Fredrik Gunnarsson",
+      "ids": [
+        9660147,
+        2258
+      ]
+    },
+    {
+      "name": "Henric Andersson",
+      "ids": [
+        2923,
+        1228,
+        9280021
+      ]
+    },
+    {
+      "name": "Mikhail Mikhin",
+      "ids": [
+        3020,
+        21000750
+      ]
+    },
+    {
+      "name": "Evgenii Soloviev",
+      "ids": [
+        3362,
+        21000191
+      ]
+    },
+    {
+      "name": "Karol Hudec",
+      "ids": [
+        9260046,
+        4137,
+        1240
+      ]
+    },
+    {
+      "name": "Ulf Söderberg",
+      "ids": [
+        9662881,
+        5020
+      ]
+    },
+    {
+      "name": "Antti Suojanen",
+      "ids": [
+        5434,
+        1301,
+        21000368
+      ]
+    },
+    {
+      "name": "Raivis \"The Cobra\" Miglinieks",
+      "ids": [
+        8566,
+        50000023
+      ]
+    },
+    {
+      "name": "Timur Rimski",
+      "ids": [
+        9009,
+        50000103
+      ]
+    },
+    {
+      "name": "Jonas Andersson",
+      "ids": [
+        10698,
+        9676270
+      ]
+    },
+    {
+      "name": "Kanutte Holmin Brunvoll",
+      "ids": [
+        11392,
+        9672709
+      ]
+    },
+    {
+      "name": "Elīna Gala",
+      "ids": [
+        2005,
+        40000745,
+        12841
+      ]
+    },
+    {
+      "name": "Mykhailo Razkevych",
+      "ids": [
+        14560,
+        50000106
+      ]
+    },
+    {
+      "name": "Michael Moravec",
+      "ids": [
+        9675286,
+        14661
+      ]
+    },
+    {
+      "name": "Martin Moravec",
+      "ids": [
+        9656211,
+        14662
+      ]
+    },
+    {
+      "name": "Albin Holmin Brunvoll",
+      "ids": [
+        14964,
+        9676169
+      ]
+    },
+    {
+      "name": "Håkon Hugdahl Larsen",
+      "ids": [
+        15132,
+        9676292
+      ]
+    },
+    {
+      "name": "Edgars Liepins",
+      "ids": [
+        9676383,
+        15217
+      ]
+    },
+    {
+      "name": "Tomas Hoven Skauge",
+      "ids": [
+        15324,
+        9676507
+      ]
+    },
+    {
+      "name": "Laura Revheim",
+      "ids": [
+        15435,
+        9676763
+      ]
+    },
+    {
+      "name": "Imrich Blaško",
+      "ids": [
+        9260161,
+        15494,
+        1233
+      ]
+    },
+    {
+      "name": "Magnus Heradstveit",
+      "ids": [
+        15503,
+        9676902
+      ]
+    },
+    {
+      "name": "Andris Kovalcuks",
+      "ids": [
+        15538,
+        9676787
+      ]
+    },
+    {
+      "name": "Renārs Masulis",
+      "ids": [
+        15556,
+        9676876
+      ]
+    },
+    {
+      "name": "Tollak Nesse Haland",
+      "ids": [
+        9678066,
+        16036
+      ]
+    },
+    {
+      "name": "Alex Lauritsen",
+      "ids": [
+        9678318,
+        16400
       ]
     }
   ]
