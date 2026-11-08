@@ -10,7 +10,9 @@ export function normalizePlayerRecord(player) {
     name,
     country: decodeHtmlEntities(player.country),
     city: decodeHtmlEntities(player.city),
-    search_key: normalizeText(name),
+    // The Latin spelling of a Cyrillic profile name (and other names the games use) also finds
+    // the player.
+    search_key: normalizeText([name, ...(player.alt_names || [])].join(" ")),
   };
 }
 

@@ -32,6 +32,8 @@ _PLAYOFF_WORDS = (
 _SECONDARY_BRACKET_RE = re.compile(
     r"^\s*([b-h])\s*[-\s]?\s*(?:playoff|slutspel|sluttspill)", re.IGNORECASE
 )
+# Team events list team matches, not knockout series. A whole word, so "Steampunk" is no team.
+_TEAM_RE = re.compile(r"\bteams?\b")
 # Playoff rounds named in the stage (ASCII-folded), earliest first. Checked in this order, so
 # "semifinal" and "kvartsfinal" are matched before plain "final".
 _ROUND_NAME_RANKS = [
@@ -60,7 +62,7 @@ def classify_stage(stage_type: object, stage: object, tournament_name: object) -
     if text in ("round-robin", "round robin", "roundrobin"):
         return "round-robin"
     stage_text = _plain(stage)
-    if "team" in stage_text or "team" in _plain(tournament_name):
+    if _TEAM_RE.search(stage_text) or _TEAM_RE.search(_plain(tournament_name)):
         return "round-robin"
     if any(word in stage_text for word in _PLAYOFF_WORDS):
         return "playoff"
@@ -183,63 +185,123 @@ def _round_name(depth: int) -> str:
     return f"Round of {2 ** (depth + 1)}"
 
 
-def build_brackets(series: List[dict], stage_names: Dict[object, str]) -> List[dict]:
-    """Group playoff series into brackets and name their rounds.
+def _bracket(items: List[dict], stage_names: Dict[object, str]) -> dict:
+    """One bracket from linked series, in playing order.
 
-    A bracket is a set of players linked by series. Walking the series in playing order, a
-    series is on the main path when neither player has lost a series yet; the champion is the
-    one main-path player who never loses. Rounds count back from the final (0): a series is
-    one round before the next main-path series its winner played. Other series (third place,
-    placement) are listed separately.
+    A series is on the main path when neither player has lost a series yet; the champion is
+    the one main-path player who never loses. Rounds count back from the final (0): a series
+    is one round before the next main-path series its winner played. Other series (third
+    place, placement) are listed separately.
     """
-    brackets = []
+    lost: set = set()
+    for s in items:
+        s["main"] = s["a"] not in lost and s["b"] not in lost
+        if s["winner"] is not None:
+            lost.add(s["b"] if s["winner"] == s["a"] else s["a"])
+    main = [s for s in items if s["main"] and s["winner"] is not None]
+    unbeaten = {s["winner"] for s in main} - lost
+    champion = next(iter(unbeaten)) if len(unbeaten) == 1 else None
+    runner_up = None
+    if champion is not None:
+        final = [s for s in main if champion in (s["a"], s["b"])][-1]
+        runner_up = final["b"] if final["a"] == champion else final["a"]
+    # Walk back from the end: a series is one round before the next one its winner played.
+    next_depth: Dict[int, int] = {}
+    for s in reversed(main):
+        following = next_depth.get(s["winner"])
+        s["depth"] = 0 if following is None else following + 1
+        next_depth[s["a"]] = s["depth"]
+        next_depth[s["b"]] = s["depth"]
+    rounds: Dict[int, list] = {}
+    other = []
+    for s in items:
+        if not s["main"] or s["winner"] is None:
+            other.append(s)
+            continue
+        rounds.setdefault(s["depth"], []).append(s)
+    names = {stage_names.get(s["stage"], "") for s in items}
+    prefix = next((m.group(1).upper() for m in map(_SECONDARY_BRACKET_RE.match, names) if m),
+                  None)
+    return {
+        "label": f"{prefix}-Playoff" if prefix else "Playoff",
+        "secondary": prefix is not None,
+        "champion": champion,
+        "runner_up": runner_up,
+        "rounds": [
+            {"name": _round_name(depth), "series": [_series_out(s) for s in rounds[depth]]}
+            for depth in sorted(rounds, reverse=True)
+        ],
+        "other": [_series_out(s) for s in other],
+        "_rounds": len(rounds),
+        "_size": len(items),
+        "_first": min(s["order"] for s in items),
+        "_stages": {s["stage"] for s in items},
+    }
+
+
+def _linked_brackets(series: List[dict], stage_names: Dict[object, str]) -> List[dict]:
+    """A bracket for each set of players linked by series."""
+    out = []
     for members in _components((s["a"], s["b"]) for s in series):
         items = sorted((s for s in series if s["a"] in members), key=lambda s: s["order"])
-        lost: set = set()
-        for s in items:
-            s["main"] = s["a"] not in lost and s["b"] not in lost
-            if s["winner"] is not None:
-                lost.add(s["b"] if s["winner"] == s["a"] else s["a"])
-        main = [s for s in items if s["main"] and s["winner"] is not None]
-        unbeaten = {s["winner"] for s in main} - lost
-        champion = next(iter(unbeaten)) if len(unbeaten) == 1 else None
-        runner_up = None
-        if champion is not None:
-            final = [s for s in main if champion in (s["a"], s["b"])][-1]
-            runner_up = final["b"] if final["a"] == champion else final["a"]
-        # Walk back from the end: a series is one round before the next one its winner played.
-        next_depth: Dict[int, int] = {}
-        for s in reversed(main):
-            following = next_depth.get(s["winner"])
-            s["depth"] = 0 if following is None else following + 1
-            next_depth[s["a"]] = s["depth"]
-            next_depth[s["b"]] = s["depth"]
-        rounds: Dict[int, list] = {}
-        other = []
-        for s in items:
-            if not s["main"] or s["winner"] is None:
-                other.append(s)
-                continue
-            rounds.setdefault(s["depth"], []).append(s)
-        names = {stage_names.get(s["stage"], "") for s in items}
-        prefix = next((m.group(1).upper() for m in map(_SECONDARY_BRACKET_RE.match, names) if m),
-                      None)
-        brackets.append({
-            "label": f"{prefix}-Playoff" if prefix else "Playoff",
-            "secondary": prefix is not None,
-            "champion": champion,
-            "runner_up": runner_up,
-            "rounds": [
-                {"name": _round_name(depth), "series": [_series_out(s) for s in rounds[depth]]}
-                for depth in sorted(rounds, reverse=True)
-            ],
-            "other": [_series_out(s) for s in other],
-            "_size": len(items),
-            "_first": min(s["order"] for s in items),
-        })
-    brackets.sort(key=lambda b: (b["secondary"], -b["_size"], b["_first"]))
+        out.append(_bracket(items, stage_names))
+    return out
+
+
+def build_brackets(
+    series: List[dict],
+    stage_names: Dict[object, str],
+    stage_seqs: Optional[Dict[object, Optional[int]]] = None,
+    first_round_robin_seq: Optional[int] = None,
+) -> List[dict]:
+    """Group playoff series into brackets and name their rounds.
+
+    Some sources store each round as its own stage (Playoff 1/8, Playoff 1/4, ...); those are
+    linked into brackets by the players they share. A stage is kept apart when it is a whole
+    knockout on its own (one bracket with a champion over two or more rounds) and some of
+    its players had already lost a series in an earlier stage, so they cannot be continuing
+    that knockout. That keeps a side cup or a placement playoff from merging with the main
+    playoff.
+
+    The main bracket is the largest non-secondary one with a champion; side cups that end
+    before the round robin starts come after the rest.
+    """
+    stage_seqs = stage_seqs or {}
+    by_stage: Dict[object, List[dict]] = {}
+    for s in series:
+        by_stage.setdefault(s["stage"], []).append(s)
+    brackets: List[dict] = []
+    linked: List[dict] = []
+    if len(by_stage) > 1:
+        stages = sorted(by_stage.values(), key=lambda items: min(s["order"] for s in items))
+        lost_before: set = set()
+        for items in stages:
+            players = {p for s in items for p in (s["a"], s["b"])}
+            alone = _linked_brackets(items, stage_names) if players & lost_before else []
+            if (len(alone) == 1 and alone[0]["champion"] is not None
+                    and alone[0]["_rounds"] >= 2):
+                brackets.extend(alone)
+            else:
+                linked.extend(items)
+            for s in items:
+                if s["winner"] is not None:
+                    lost_before.add(s["b"] if s["winner"] == s["a"] else s["a"])
+    else:
+        linked = list(series)
+    brackets.extend(_linked_brackets(linked, stage_names))
+
+    def side_cup(bracket: dict) -> bool:
+        if first_round_robin_seq is None:
+            return False
+        seqs = [stage_seqs.get(key) for key in bracket["_stages"]]
+        seqs = [seq for seq in seqs if seq is not None]
+        return bool(seqs) and max(seqs) <= first_round_robin_seq
+
+    brackets.sort(key=lambda b: (b["secondary"], side_cup(b), b["champion"] is None,
+                                 -b["_size"], b["_first"]))
     for bracket in brackets:
-        del bracket["_size"], bracket["_first"]
+        for key in ("_size", "_first", "_rounds", "_stages"):
+            del bracket[key]
     if len(brackets) > 1 and not any(b["secondary"] for b in brackets[1:]):
         for index, bracket in enumerate(brackets[1:], start=2):
             bracket["label"] = f"Playoff {index}"
@@ -282,6 +344,32 @@ def _clean(value: object) -> str:
     if value is None or (isinstance(value, float) and math.isnan(value)) or value is pd.NA:
         return ""
     return html.unescape(str(value)).strip()
+
+
+def _clean_name(value: object) -> str:
+    """_clean, with runs of spaces and tabs inside the name collapsed to one space."""
+    return re.sub(r"\s+", " ", _clean(value))
+
+
+# A metadata end date this many days after the last game is a later edit, not the event.
+END_DATE_MAX_DAYS_AFTER_GAMES = 7
+
+
+def _end_date(start: str, metadata_end: str, game_dates: List[str]) -> str:
+    """The metadata end date, unless it is before the start or long after the last game."""
+    last_game = game_dates[-1] if game_dates else ""
+    if not metadata_end:
+        return last_game
+    if start and metadata_end < start:
+        return last_game or start
+    if last_game:
+        try:
+            gap = (pd.Timestamp(metadata_end) - pd.Timestamp(last_game)).days
+        except (ValueError, TypeError):
+            return last_game
+        if gap > END_DATE_MAX_DAYS_AFTER_GAMES:
+            return max(last_game, start) if start else last_game
+    return metadata_end
 
 
 def _opt_int(value: object) -> Optional[int]:
@@ -349,7 +437,7 @@ def build_tournament_payload(
     order, as prepare_rows sorts them."""
     details = details or {}
     (_, tournament_name, level, tournament_url, source, *_rest) = rows[0]
-    tournament_name = _clean(tournament_name)
+    tournament_name = _clean_name(tournament_name)
     stages: Dict[object, dict] = {}
     games: List[dict] = []
     dates = []
@@ -400,7 +488,14 @@ def build_tournament_payload(
             "groups": build_standings(stage["games"]),
         })
     playoff_games = [g for s in ordered_stages if s["type"] == "playoff" for g in s["games"]]
-    brackets = build_brackets(_series_from_games(playoff_games), stage_names)
+    round_robin_seqs = [s["seq"] for s in ordered_stages
+                        if s["type"] == "round-robin" and s["seq"] is not None]
+    brackets = build_brackets(
+        _series_from_games(playoff_games),
+        stage_names,
+        {s["key"]: s["seq"] for s in ordered_stages},
+        min(round_robin_seqs) if round_robin_seqs else None,
+    )
 
     champion = runner_up = None
     main_bracket = next((b for b in brackets if not b["secondary"]), None)
@@ -433,12 +528,13 @@ def build_tournament_payload(
 
     player_ids = sorted({g["p1"] for g in games} | {g["p2"] for g in games})
     dates.sort()
+    start_date = _clean(details.get("date")) or (dates[0] if dates else "")
     url = _clean(details.get("url")) or _clean(tournament_url)
     return {
         "id": int(tournament_id),
-        "name": tournament_name or _clean(details.get("name")) or f"Tournament {tournament_id}",
-        "date": _clean(details.get("date")) or (dates[0] if dates else ""),
-        "end_date": _clean(details.get("end_date")) or (dates[-1] if dates else ""),
+        "name": tournament_name or _clean_name(details.get("name")) or f"Tournament {tournament_id}",
+        "date": start_date,
+        "end_date": _end_date(start_date, _clean(details.get("end_date")), dates),
         "level": _clean(level) or None,
         "city": _clean(details.get("city")),
         "country": _clean(details.get("country")),
@@ -478,6 +574,14 @@ def payload_from_frame(tournament_id, frame, names, linked_ids, details=None) ->
     return build_tournament_payload(tournament_id, rows, names, linked_ids, details)
 
 
+# Tournaments whose date is wrong in the source, by tournament id. Both dates are in the
+# tournament names on th.sportscorpion.com ("7-й этап 22.12.2010", "10-й этап, 19.01.2011").
+DATE_OVERRIDES: Dict[int, str] = {
+    75: "2010-12-22",
+    80: "2011-01-19",
+}
+
+
 def load_tournament_details(metadata_path) -> Dict[int, dict]:
     """Date, place and source link per tournament from the scraper's metadata CSV."""
     try:
@@ -500,6 +604,8 @@ def load_tournament_details(metadata_path) -> Dict[int, dict]:
             "country": _clean(row.Country),
             "url": _clean(row.DetailURL),
         }
+        if tid in DATE_OVERRIDES:
+            details[tid]["date"] = details[tid]["end_date"] = DATE_OVERRIDES[tid]
     return details
 
 

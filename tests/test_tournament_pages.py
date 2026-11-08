@@ -42,6 +42,10 @@ class ClassifyStageTest(unittest.TestCase):
         self.assertEqual(classify_stage("", "B-Playoff Kvartsfinal", ""), "playoff")
         self.assertEqual(classify_stage("", "Round-Robin", ""), "round-robin")
         self.assertEqual(classify_stage("", "Playoff", "Team Cup"), "round-robin")
+        self.assertEqual(classify_stage("", "Playoff", "WC 2023 - OPEN TEAMS"), "round-robin")
+
+    def test_team_is_a_whole_word(self):
+        self.assertEqual(classify_stage("", "Playoff", "Steampunk Winter Cup #1"), "playoff")
 
 
 class StandingsTest(unittest.TestCase):
@@ -117,6 +121,66 @@ class BracketTest(unittest.TestCase):
         self.assertEqual(payload["brackets"], [])
         self.assertEqual((payload["champion"], payload["runner_up"]), (1, 2))
         self.assertEqual(payload["round_robin"][0]["name"], "Round-Robin")
+
+
+class SeparateStagesTest(unittest.TestCase):
+    def _payload(self, games, details=None):
+        return payload_from_frame(7, pd.DataFrame(games), {}, set(), details)
+
+    def _knockout(self, players, stage, seq):
+        # A full knockout over 8 players in one stage: the first player beats everyone.
+        a = players
+        pairs = [(a[0], a[7]), (a[1], a[6]), (a[2], a[5]), (a[3], a[4]),
+                 (a[0], a[3]), (a[1], a[2]), (a[0], a[1])]
+        values = [0.25] * 4 + [0.5] * 2 + [1.0]
+        return [dict(_game(p, q, 3, 1, stage=stage, seq=seq), round_value=v)
+                for (p, q), v in zip(pairs, values)]
+
+    def test_side_cup_before_the_group_stage_stays_its_own_bracket(self):
+        # A cup with everyone first, then the group stage, then the A-playoff. Player 18 won
+        # the cup; 8 is the A-playoff winner and lost to 18 in the cup.
+        cup = self._knockout([18, 8, 11, 12, 13, 14, 15, 16], stage=1, seq=1)
+        groups = [_game(8, 11, 2, 1, stage=2, stage_name="Round-Robin", seq=2),
+                  _game(11, 12, 2, 1, stage=2, stage_name="Round-Robin", seq=2)]
+        a_playoff = self._knockout([8, 1, 2, 3, 4, 5, 6, 18], stage=3, seq=3)
+        payload = self._payload(cup + groups + a_playoff)
+        self.assertEqual(len(payload["brackets"]), 2)
+        self.assertEqual(payload["champion"], 8)
+        self.assertEqual(payload["brackets"][1]["champion"], 18)
+        self.assertEqual(payload["brackets"][0]["other"], [])
+
+    def test_rounds_stored_as_stages_still_form_one_bracket(self):
+        games = []
+        for game, stage, name in zip(
+                _bo1_bracket(), [11] * 4 + [12] * 2 + [13, 14],
+                ["Playoff 1/4"] * 4 + ["Playoff 1/2"] * 2 + ["Playoff 3rd", "Playoff Final"]):
+            games.append(dict(game, stage_id=stage, stage=name))
+        payload = self._payload(games)
+        self.assertEqual(len(payload["brackets"]), 1)
+        self.assertEqual((payload["champion"], payload["runner_up"]), (1, 2))
+
+
+class TournamentDetailsTest(unittest.TestCase):
+    def _payload(self, details):
+        games = [_game(1, 2, 3, 1, date="2024-03-02"), _game(1, 2, 2, 1, date="2024-03-03")]
+        return payload_from_frame(7, pd.DataFrame(games), {}, set(), details)
+
+    def test_end_date_long_after_the_games_is_ignored(self):
+        payload = self._payload({"date": "2024-03-02", "end_date": "2026-01-31"})
+        self.assertEqual(payload["end_date"], "2024-03-03")
+
+    def test_end_date_before_the_start_is_ignored(self):
+        payload = self._payload({"date": "2024-03-02", "end_date": "2024-02-18"})
+        self.assertEqual(payload["end_date"], "2024-03-03")
+
+    def test_plausible_end_date_is_kept(self):
+        payload = self._payload({"date": "2024-03-02", "end_date": "2024-03-04"})
+        self.assertEqual(payload["end_date"], "2024-03-04")
+
+    def test_whitespace_in_names_is_collapsed(self):
+        games = [dict(_game(1, 2, 3, 1), tournament_name="XVI  World\tChampionship")]
+        payload = payload_from_frame(7, pd.DataFrame(games), {}, set())
+        self.assertEqual(payload["name"], "XVI World Championship")
 
 
 class RatingsTest(unittest.TestCase):

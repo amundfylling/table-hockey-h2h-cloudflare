@@ -143,7 +143,8 @@ export function formatDateRange(start, end) {
 export function classifyStage(stage) {
   const text = normalizeText(stage);
   if (!text) return "other";
-  if (text.includes("team")) {
+  // A whole word, so "Steampunk Playoff" is not a team event.
+  if (/\bteams?\b/.test(text)) {
     return "round-robin";
   }
   if (
@@ -171,7 +172,9 @@ export function normalizeStageType(value, stage, tournamentName) {
   if (text === "round-robin" || text === "round robin") return "round-robin";
   const stageText = normalizeText(stage);
   const tournText = normalizeText(tournamentName);
-  if (stageText.includes("team") || tournText.includes("team")) {
+  // A whole word, so "Steampunk" is not a team event.
+  const team = /\bteams?\b/;
+  if (team.test(stageText) || team.test(tournText)) {
     return "round-robin";
   }
   return classifyStage(stage);
