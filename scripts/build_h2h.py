@@ -24,6 +24,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 import download as dl  # noqa: E402
 import ratings  # noqa: E402
+import stage_fixes  # noqa: E402
 import tournaments as tournament_pages  # noqa: E402
 
 CACHE_DIR = ROOT_DIR / ".cache"
@@ -2752,6 +2753,19 @@ def main() -> int:
         "count": len(name_conflicts),
         "examples": name_conflicts[:50],
     }
+    matches, carried_copies = stage_fixes.drop_carried_over_copies(matches)
+    if carried_copies:
+        print(
+            f"Dropped {sum(item['dropped'] for item in carried_copies)} carried-over game "
+            f"copies from {len(carried_copies)} final-group stages."
+        )
+    source_validation["carried_over_copies_removed"] = sum(
+        item["dropped"] for item in carried_copies
+    )
+    team_games = stage_fixes.mark_team_stages(matches)
+    if team_games:
+        print(f"Marked {team_games} team-event games as round-robin.")
+    stage_fixes.apply_date_overrides(matches)
 
     sort_cols = [
         "id1",
