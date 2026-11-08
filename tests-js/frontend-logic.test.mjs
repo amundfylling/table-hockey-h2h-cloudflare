@@ -192,3 +192,60 @@ test("opponent suggestions search any player's opponents, most games first", () 
   assert.deepEqual(buildOpponentSuggestions("", opponents, 1).map((item) => item.totalMatches), [12]);
   assert.deepEqual(buildOpponentSuggestions("", new Map()), []);
 });
+
+test("a URL gives a complete view, so Back and Forward reset what it leaves out", async () => {
+  const { parseViewParams, restoreStateFromUrl } = await import("../public/js/url-state.js");
+  const defaults = parseViewParams(new URLSearchParams(""));
+  assert.equal(defaults.stageTab, "overall");
+  assert.equal(defaults.playoffMode, "series");
+  assert.deepEqual(defaults.filters.bestOf, []);
+  assert.equal(defaults.filters.otOnly, false);
+
+  const view = parseViewParams(new URLSearchParams(
+    "stage=playoff&playoffMode=games&yearFrom=2020&yearTo=2018&ot=true&bestOf=5,7"
+  ));
+  assert.equal(view.stageTab, "playoff");
+  assert.equal(view.playoffMode, "games");
+  assert.deepEqual([view.filters.yearFrom, view.filters.yearTo], ["2018", "2020"]);
+  assert.equal(view.filters.otOnly, true);
+  assert.deepEqual(view.filters.bestOf, ["5", "7"]);
+
+  // The previous view was on the Playoff tab in games mode; the next URL names neither.
+  state.stageTab = "playoff";
+  state.playoffMode = "games";
+  state.filters.tightOnly = true;
+  window.location.search = "?p1=3";
+  restoreStateFromUrl();
+  assert.equal(state.stageTab, "overall");
+  assert.equal(state.playoffMode, "series");
+  assert.equal(state.filters.tightOnly, false);
+  window.location.search = "";
+});
+
+test("a cancelled opponent list loads again instead of failing", async () => {
+  const { loadOpponentsForPlayer, getOpponentBoxStatus } = await import("../public/js/data.js");
+  state.aliasMap.clear();
+  state.playerFileCache.clear();
+  state.playerFileRequests.clear();
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, { signal } = {}) => {
+    if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        player: { id: 7, name: "Seven" },
+        opponents: { 8: { summary: { total_matches: 3 } } },
+      }),
+    };
+  };
+  try {
+    const controller = new AbortController();
+    controller.abort();
+    assert.equal(await loadOpponentsForPlayer(7, [7], controller.signal), true);
+    assert.equal(getOpponentBoxStatus(), "ready");
+    assert.equal(state.opponentsOfA.get(8)?.totalMatches, 3);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

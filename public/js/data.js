@@ -383,43 +383,65 @@ export async function fetchOpponentCounts(playerId, explicitIds = [], signal = n
   return expandedMap;
 }
 
+// The opponent box (player B) is always in one of these states, set only here:
+//   none     no first player yet: disabled, "Pick a player first"
+//   loading  the first player's opponents are loading: disabled and busy
+//   ready    opponents loaded: enabled, "Anyone"
+//   failed   the opponents could not be loaded: disabled, "Could not load opponents"
+const OPPONENT_BOX = {
+  none: { disabled: true, placeholder: "Pick a player first" },
+  loading: { disabled: true, placeholder: "Loading opponents..." },
+  ready: { disabled: false, placeholder: "Anyone" },
+  failed: { disabled: true, placeholder: "Could not load opponents" },
+};
+let opponentBoxStatus = "none";
+
+export function getOpponentBoxStatus() {
+  return opponentBoxStatus;
+}
+
+export function setOpponentBox(status, opponents = null) {
+  const config = OPPONENT_BOX[status];
+  opponentBoxStatus = status;
+  state.opponentsLoading = status === "loading";
+  if (status === "ready") state.opponentsOfA = opponents || state.opponentsOfA;
+  else if (status !== "loading") state.opponentsOfA = new Map();
+  if (elements.playerBLoader) elements.playerBLoader.hidden = status !== "loading";
+  if (!elements.playerB) return;
+  elements.playerB.disabled = config.disabled;
+  elements.playerB.placeholder = config.placeholder;
+  if (status === "loading") elements.playerB.setAttribute("aria-busy", "true");
+  else elements.playerB.removeAttribute("aria-busy");
+}
+
 let opponentsRequestToken = 0;
 
+// Abandons the opponent list that is loading, if any. The caller sets what comes next.
 export function cancelOpponentLoading() {
   opponentsRequestToken += 1;
-  state.opponentsLoading = false;
-  if (elements.playerBLoader) elements.playerBLoader.hidden = true;
-  if (elements.playerB) elements.playerB.removeAttribute("aria-busy");
+  if (opponentBoxStatus === "loading") setOpponentBox("none");
 }
 
 export async function loadOpponentsForPlayer(playerId, explicitIds = [], signal = null) {
   opponentsRequestToken += 1;
   const currentToken = opponentsRequestToken;
-  state.opponentsLoading = true;
-  elements.playerBLoader.hidden = false;
-  elements.playerB.disabled = true;
-  elements.playerB.setAttribute("aria-busy", "true");
-  elements.playerB.placeholder = "Loading opponents...";
+  setOpponentBox("loading");
 
   try {
     const expandedMap = await fetchOpponentCounts(playerId, explicitIds, signal);
     if (currentToken !== opponentsRequestToken) return false;
-    state.opponentsOfA = expandedMap;
-    elements.playerB.placeholder = "Anyone";
-    elements.playerB.disabled = false;
+    setOpponentBox("ready", expandedMap);
     return true;
   } catch (err) {
     if (currentToken !== opponentsRequestToken) return false;
-    console.error("Failed to load opponents:", err);
-    state.opponentsOfA = new Map();
-    elements.playerB.placeholder = "Could not load opponents";
-    elements.playerB.disabled = true;
-    return false;
-  } finally {
-    if (currentToken === opponentsRequestToken) {
-      state.opponentsLoading = false;
-      elements.playerBLoader.hidden = true;
-      elements.playerB.removeAttribute("aria-busy");
+    // The list shared the view's request, and that request was cancelled (say, by clearing the
+    // opponent while the page loaded). The same first player still needs opponents, so load
+    // them again on their own rather than treating the cancel as a failure.
+    if (err?.name === "AbortError" || signal?.aborted) {
+      return loadOpponentsForPlayer(playerId, explicitIds, null);
     }
+    console.error("Failed to load opponents:", err);
+    setOpponentBox("failed");
+    return false;
   }
 }
