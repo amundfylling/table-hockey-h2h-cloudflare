@@ -1,9 +1,13 @@
 """Fixes to tournament stage data that the sources get wrong."""
+import sys
+from pathlib import Path
 from typing import List, Tuple
 
 import pandas as pd
 
-import tournaments as tournament_pages
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import tournaments as tournament_pages  # noqa: E402
 
 # A later round-robin stage is a copy of earlier results when at least this share of the
 # pairs that already met earlier in the tournament show the same score again, over at least
