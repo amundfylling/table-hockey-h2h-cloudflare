@@ -185,10 +185,14 @@ def unescape_text(series: pd.Series) -> pd.Series:
 
 
 def build_unique_player_name_index(players: Iterable[dict]) -> Dict[str, int]:
-    """Return exact normalized names that identify one and only one player."""
+    """Return normalized names that identify one and only one player.
+
+    Keys come from normalize_player_name, so accents and word order don't matter
+    ("Hamacek Filip" finds "Filip Hamáček"); a key two players share is left out.
+    """
     candidates: Dict[str, set[int]] = {}
     for player in players:
-        name_key = normalize_dedupe_text(player.get("name", ""))
+        name_key = normalize_player_name(player.get("name", ""))
         if name_key:
             candidates.setdefault(name_key, set()).add(int(player["id"]))
     return {
@@ -535,7 +539,22 @@ def ensure_string_column(
         df[name] = default
 
 
-def process_matches_df(matches: pd.DataFrame) -> pd.DataFrame:
+# A side with this many goals is a placeholder an organiser typed to move a player on (99-0,
+# 55-0, 77-11, 64-2), not a played game. Real long-format games reach about 30.
+PLACEHOLDER_MIN_GOALS = 50
+# Sportscorpion playoff stages whose 20-10 and 20-0 "games" are series results entered as
+# games (18-й Кубок Северо-Запада, 2018). Only their 20+ goal rows are dropped.
+PLACEHOLDER_STAGE_IDS = {8419, 8421}
+PLACEHOLDER_STAGE_MIN_GOALS = 20
+
+
+def process_matches_df(matches: pd.DataFrame, keep_walkovers: bool = False) -> pd.DataFrame:
+    """Validate and normalize one source's rows.
+
+    Walkovers are dropped, unless keep_walkovers is set: then they stay, marked in an
+    is_walkover column, so the cross-source dedupe can also remove other sources' copies
+    of them (drop_walkovers removes them afterwards).
+    """
     matches = matches.copy()
     input_rows = len(matches)
     player1_ids = to_int(matches["player1_id"])
@@ -555,8 +574,28 @@ def process_matches_df(matches: pd.DataFrame) -> pd.DataFrame:
         & goals_player2.ge(0)
     ).fillna(False)
 
+    most_goals = pd.concat([goals_player1, goals_player2], axis=1).max(axis=1)
+    source_text = (
+        matches["source"].fillna("").astype(str).str.strip()
+        if "source" in matches
+        else pd.Series("", index=matches.index)
+    )
+    stage_ids = to_int(matches["stage_id"]) if "stage_id" in matches else pd.Series(
+        pd.NA, index=matches.index, dtype="Int64"
+    )
+    is_placeholder = (most_goals.ge(PLACEHOLDER_MIN_GOALS) | (
+        source_text.eq("")
+        & stage_ids.isin(PLACEHOLDER_STAGE_IDS)
+        & most_goals.ge(PLACEHOLDER_STAGE_MIN_GOALS)
+    )).fillna(False) & valid_rows
+    placeholder_rows = int(is_placeholder.sum())
+    if placeholder_rows:
+        print(f"Dropped {placeholder_rows} rows with placeholder scores.")
+        valid_rows &= ~is_placeholder
+
     walkover_column = first_existing_column(matches, ["walkover", "Walkover"])
     walkover_rows = 0
+    is_walkover = pd.Series(False, index=matches.index)
     if walkover_column:
         walkover_text = (
             matches[walkover_column].fillna("").astype(str).str.strip().str.casefold()
@@ -564,11 +603,16 @@ def process_matches_df(matches: pd.DataFrame) -> pd.DataFrame:
         is_walkover = walkover_text.isin(
             {"1", "1.0", "true", "yes", "y", "walkover", "wo", "w/o"}
         )
+        is_walkover &= valid_rows
         if is_walkover.any():
             walkover_rows = int(is_walkover.sum())
-            print(f"Dropped {walkover_rows} walkover rows.")
-            valid_rows &= ~is_walkover
-    dropped_rows = int((~valid_rows).sum())
+            if keep_walkovers:
+                print(f"Marked {walkover_rows} walkover rows (dropped after the dedupe).")
+            else:
+                print(f"Dropped {walkover_rows} walkover rows.")
+                valid_rows &= ~is_walkover
+    # Counted as dropped either way: walkovers never reach the site.
+    dropped_rows = int((~valid_rows).sum()) + (walkover_rows if keep_walkovers else 0)
     if dropped_rows:
         print(
             f"Dropped {dropped_rows} match rows with missing, non-integral, "
@@ -580,6 +624,8 @@ def process_matches_df(matches: pd.DataFrame) -> pd.DataFrame:
     matches["player2_id"] = player2_ids.loc[valid_rows].astype("int64")
     matches["goals_player1"] = goals_player1.loc[valid_rows].astype("int64")
     matches["goals_player2"] = goals_player2.loc[valid_rows].astype("int64")
+    if keep_walkovers:
+        matches["is_walkover"] = is_walkover.loc[valid_rows].astype(bool)
 
     ensure_int_column(matches, "stage_id")
     ensure_int_column(matches, "stage_sequence")
@@ -671,9 +717,10 @@ def process_matches_df(matches: pd.DataFrame) -> pd.DataFrame:
 
     matches.attrs["validation"] = {
         "input_rows": input_rows,
-        "accepted_rows": len(matches),
+        "accepted_rows": len(matches) - (walkover_rows if keep_walkovers else 0),
         "dropped_rows": dropped_rows,
         "walkover_rows": walkover_rows,
+        "placeholder_rows": placeholder_rows,
         "unknown_overtime_rows": int(unknown_overtime.sum()),
     }
 
@@ -725,6 +772,21 @@ SHIFTED_DATE_OVERLAP_DEDUPE_COLUMNS = [
     "goals_id2",
     "overtime",
 ]
+# Last, games that differ in both ids and date (one source dates a multi-day event by its
+# first day, and gives a player another id). Without ids or the date this is weak evidence,
+# so it only pairs games inside tournament pairs an earlier pass accepted.
+SHIFTED_NAME_OVERLAP_DEDUPE_COLUMNS = [
+    "name_low",
+    "name_high",
+    "shifted_date",
+    "goals_name_low",
+    "goals_name_high",
+    "overtime",
+]
+# Without matching names, a primary event also needs this share of its own games as
+# evidence, so a 3,000-game event isn't paired on 11 look-alike games (Riga Cup 2018). Real
+# pairs start at about 6% (a world championship bordshockey has only the Swedish games of).
+MIN_CROSSWALK_EVIDENCE_SHARE = 0.02
 
 
 def infer_tournament_crosswalk(
@@ -736,6 +798,8 @@ def infer_tournament_crosswalk(
     min_matches: int = MIN_TOURNAMENT_CROSSWALK_MATCHES,
     use_names: bool = True,
     known_pairs: Iterable[Tuple[int, int]] = (),
+    primary_sizes: Optional[Dict[int, int]] = None,
+    known_only: bool = False,
 ) -> Tuple[
     Dict[Tuple[int, int], int],
     list[Tuple[Tuple[int, int], list[int], list[int]]],
@@ -747,7 +811,11 @@ def infer_tournament_crosswalk(
     Cross-source tournament IDs and names are not always the same. Matching normalized
     names are direct evidence when use_names is set; otherwise, require min_matches
     distinct matching game signatures. Pairs in known_pairs (accepted by an earlier pass)
-    need no more evidence. In all cases the inferred ID mapping must be one-to-one.
+    need no more evidence. With known_only, only those pairs are accepted. In all cases
+    the inferred ID mapping must be one-to-one.
+
+    primary_sizes gives each primary tournament's game count: without matching names a
+    pair needs MIN_CROSSWALK_EVIDENCE_SHARE of the primary event's games as evidence too.
     """
     signature_hashes = pd.util.hash_pandas_object(
         matches[signature_columns], index=False
@@ -821,7 +889,14 @@ def infer_tournament_crosswalk(
     candidates = {
         pair
         for pair, count in evidence.items()
-        if count >= min_matches or pair in matching_name_pairs or pair in known_pairs
+        if pair in known_pairs
+        or (
+            not known_only
+            and (
+                pair in matching_name_pairs
+                or count >= extra_primary_evidence(pair[0], min_matches, primary_sizes)
+            )
+        )
     }
     primary_candidates: Dict[int, set[int]] = {}
     preferred_candidates: Dict[int, set[int]] = {}
@@ -849,7 +924,10 @@ def infer_tournament_crosswalk(
         seen: set = set()
         for primary_id in primaries:
             pair = (primary_id, preferred_id)
-            if evidence[pair] < min_matches or seen & pair_signatures[pair]:
+            needed = extra_primary_evidence(primary_id, min_matches, primary_sizes)
+            if pair in known_pairs:
+                needed = 0
+            if evidence[pair] < needed or seen & pair_signatures[pair]:
                 return False
             seen |= pair_signatures[pair]
         return True
@@ -883,6 +961,14 @@ def infer_tournament_crosswalk(
         )
         overlap_groups.append((pair, primary_indices, preferred_indices))
     return crosswalk, overlap_groups
+
+
+def extra_primary_evidence(
+    primary_id: int, min_matches: int, primary_sizes: Optional[Dict[int, int]]
+) -> int:
+    """Games of evidence needed to pair a primary event without matching names."""
+    size = (primary_sizes or {}).get(primary_id, 0)
+    return max(min_matches, int(np.ceil(size * MIN_CROSSWALK_EVIDENCE_SHARE)))
 
 
 def with_overlap_keys(matches: pd.DataFrame) -> pd.DataFrame:
@@ -933,20 +1019,30 @@ def match_source_pair(
     primary_to_preferred: Dict[int, int] = {}
     preferred_to_primary: Dict[int, set[int]] = {}
     matches = with_overlap_keys(matches)
+    primary_sizes = {
+        int(tournament_id): int(count)
+        for tournament_id, count in tournament_ids.loc[~is_preferred].dropna().value_counts().items()
+    }
+    # (columns, min_matches, use_names, date_shift, known_only)
     passes = [
-        (OVERLAP_DEDUPE_COLUMNS, MIN_TOURNAMENT_CROSSWALK_MATCHES, True, 0),
-        (LOOSE_OVERLAP_DEDUPE_COLUMNS, MIN_LOOSE_TOURNAMENT_CROSSWALK_MATCHES, False, 0),
-        (NAME_OVERLAP_DEDUPE_COLUMNS, MIN_LOOSE_TOURNAMENT_CROSSWALK_MATCHES, False, 0),
+        (OVERLAP_DEDUPE_COLUMNS, MIN_TOURNAMENT_CROSSWALK_MATCHES, True, 0, False),
+        (LOOSE_OVERLAP_DEDUPE_COLUMNS, MIN_LOOSE_TOURNAMENT_CROSSWALK_MATCHES, False, 0, False),
+        (NAME_OVERLAP_DEDUPE_COLUMNS, MIN_LOOSE_TOURNAMENT_CROSSWALK_MATCHES, False, 0, False),
     ]
     if "date_dt" in matches:
         passes += [
             (SHIFTED_DATE_OVERLAP_DEDUPE_COLUMNS, MIN_LOOSE_TOURNAMENT_CROSSWALK_MATCHES, False,
-             shift)
+             shift, False)
+            for shift in (1, -1)
+        ]
+        passes += [
+            (SHIFTED_NAME_OVERLAP_DEDUPE_COLUMNS, MIN_LOOSE_TOURNAMENT_CROSSWALK_MATCHES, False,
+             shift, True)
             for shift in (1, -1)
         ]
     # The exact pass runs first; each later pass only sees rows the earlier ones left
     # unpaired.
-    for signature_columns, min_matches, use_names, date_shift in passes:
+    for signature_columns, min_matches, use_names, date_shift, known_only in passes:
         remaining = matches.index.difference(drop_indices + kept_indices)
         if date_shift:
             # The preferred source's date moved by date_shift days, the other's as is.
@@ -963,6 +1059,8 @@ def match_source_pair(
             min_matches=min_matches,
             use_names=use_names,
             known_pairs=primary_to_preferred.items(),
+            primary_sizes=primary_sizes,
+            known_only=known_only,
         )
         # A primary event keeps the one preferred event it was given. A preferred event
         # mapped earlier can take another primary event only on that event's own
@@ -974,7 +1072,7 @@ def match_source_pair(
             and (
                 preferred_to_primary.get(preferred_id, {primary_id}) == {primary_id}
                 or primary_id in preferred_to_primary[preferred_id]
-                or count >= min_matches
+                or count >= extra_primary_evidence(primary_id, min_matches, primary_sizes)
             )
         }
         for primary_id, preferred_id in tournament_crosswalk:
@@ -1053,12 +1151,201 @@ def deduplicate_overlapping_source_matches(
                 f"Matched {len(pair_drops)} {other_id} games also reported by {preferred_id}."
             )
             backfill_tournament_levels(matches, kept_indices, pair_drops)
+            carry_over_dropped_row_facts(matches, source_ids, kept_indices, pair_drops)
             drop_indices.extend(pair_drops)
             used_indices.extend(kept_indices)
 
     if not drop_indices:
         return matches
     return matches.drop(index=drop_indices).reset_index(drop=True)
+
+
+def carry_over_dropped_row_facts(
+    matches: pd.DataFrame,
+    source_ids: pd.Series,
+    kept_indices: list[int],
+    drop_indices: list[int],
+) -> None:
+    """Copy what the kept row must not lose from the row it replaces, in place.
+
+    A walkover stays a walkover (is_walkover), so drop_walkovers also removes the other
+    source's copy. And a Sportscorpion row's player ids win: the kept row's player who is
+    the same person (by name, else by id) gets the Sportscorpion id, so a game doesn't move
+    to another source's duplicate or synthetic id for that player.
+    """
+    if "is_walkover" in matches:
+        walkover = matches["is_walkover"].fillna(False).astype(bool)
+        hits = [kept for kept, dropped in zip(kept_indices, drop_indices) if walkover.at[dropped]]
+        if hits:
+            matches.loc[hits, "is_walkover"] = True
+    columns = ["player1_id", "player2_id", "player1_name", "player2_name"]
+    if any(column not in matches for column in columns):
+        return
+    primary_id = DATA_SOURCES[0]["id"]
+    changed: list[int] = []
+    for kept, dropped in zip(kept_indices, drop_indices):
+        if source_ids.at[dropped] != primary_id or source_ids.at[kept] == primary_id:
+            continue
+        kept_ids = (int(matches.at[kept, "player1_id"]), int(matches.at[kept, "player2_id"]))
+        primary_ids = (
+            int(matches.at[dropped, "player1_id"]),
+            int(matches.at[dropped, "player2_id"]),
+        )
+        if set(kept_ids) == set(primary_ids):
+            continue
+        kept_names = [normalize_player_name(matches.at[kept, c]) for c in columns[2:]]
+        primary_names = [normalize_player_name(matches.at[dropped, c]) for c in columns[2:]]
+
+        def same(kept_side: int, primary_side: int) -> bool:
+            if kept_ids[kept_side] == primary_ids[primary_side]:
+                return True
+            name = kept_names[kept_side]
+            return bool(name) and name == primary_names[primary_side]
+
+        if same(0, 0) and same(1, 1):
+            new_ids = primary_ids
+        elif same(0, 1) and same(1, 0):
+            new_ids = (primary_ids[1], primary_ids[0])
+        else:
+            continue
+        if new_ids[0] == new_ids[1]:
+            continue
+        matches.at[kept, "player1_id"] = new_ids[0]
+        matches.at[kept, "player2_id"] = new_ids[1]
+        changed.append(kept)
+    if not changed or "goals_player1" not in matches:
+        return
+    rows = matches.loc[changed]
+    p1_low = rows["player1_id"] <= rows["player2_id"]
+    matches.loc[changed, "id1"] = rows["player1_id"].where(p1_low, rows["player2_id"])
+    matches.loc[changed, "id2"] = rows["player2_id"].where(p1_low, rows["player1_id"])
+    matches.loc[changed, "goals_id1"] = rows["goals_player1"].where(p1_low, rows["goals_player2"])
+    matches.loc[changed, "goals_id2"] = rows["goals_player2"].where(p1_low, rows["goals_player1"])
+    print(f"Kept Sportscorpion player ids on {len(changed)} games another source reported.")
+
+
+def drop_walkovers(matches: pd.DataFrame) -> Tuple[pd.DataFrame, int]:
+    """Remove rows marked is_walkover; returns the rest and how many came from other sources.
+
+    Those are the other sources' copies of a walkover, which carry no walkover flag.
+    """
+    if "is_walkover" not in matches:
+        return matches, 0
+    walkover = matches["is_walkover"].fillna(False).astype(bool)
+    copies = int((walkover & classify_sources(matches["source"]).ne(DATA_SOURCES[0]["id"])).sum())
+    if copies:
+        print(f"Dropped {copies} other-source copies of walkovers.")
+    return matches.loc[~walkover].drop(columns="is_walkover").reset_index(drop=True), copies
+
+
+# A source sometimes files the same games under a second tournament (a team cup re-entered
+# as an open championship stage, an event imported twice). Two tournaments of one source are
+# copies when they share this many identical games, and that share of the smaller one's.
+MIN_WITHIN_SOURCE_COPY_MATCHES = 10
+MIN_WITHIN_SOURCE_COPY_SHARE = 0.5
+WITHIN_SOURCE_SIGNATURE = ["id1", "id2", "date", "goals_id1", "goals_id2", "overtime"]
+
+
+def deduplicate_within_source_copies(matches: pd.DataFrame) -> Tuple[pd.DataFrame, int]:
+    """Drop games one source lists in two tournaments; returns the rest and the drop count.
+
+    Of a pair of copied tournaments, the individual one is kept over a team one, else the
+    one with more games, else the lower id. Games pair one-to-one, so a game played twice
+    that day in the kept tournament stays twice.
+    """
+    needed = [*WITHIN_SOURCE_SIGNATURE, "tournament_id", "source"]
+    if matches.empty or any(column not in matches for column in needed):
+        return matches, 0
+    frame = matches[needed].copy()
+    frame["tournament_id"] = to_int(frame["tournament_id"])
+    frame = frame[frame["tournament_id"].notna()]
+    frame["source_id"] = classify_sources(frame["source"])
+    frame["sig"] = pd.util.hash_pandas_object(
+        frame[["source_id", *WITHIN_SOURCE_SIGNATURE]], index=False
+    ).to_numpy()
+    sizes = frame.groupby(["source_id", "tournament_id"]).size()
+    per_event = frame.groupby(["sig", "source_id", "tournament_id"]).size().rename("n").reset_index()
+    multi = per_event[per_event.duplicated("sig", keep=False)]
+    if multi.empty:
+        return matches, 0
+    pairs = multi.merge(multi, on=["sig", "source_id"], suffixes=("_a", "_b"))
+    pairs = pairs[pairs["tournament_id_a"] < pairs["tournament_id_b"]]
+    evidence = pairs.groupby(["source_id", "tournament_id_a", "tournament_id_b"]).size()
+    team_events: set = set()
+    if "TournamentType" in matches:
+        types = matches.loc[frame.index, "TournamentType"].fillna("").astype(str).str.casefold()
+        team_events = set(
+            zip(frame.loc[types.eq("team"), "source_id"], frame.loc[types.eq("team"), "tournament_id"])
+        )
+
+    def rank(source_id: str, tournament_id: int) -> tuple:
+        return ((source_id, tournament_id) not in team_events, sizes[(source_id, tournament_id)],
+                -tournament_id)
+
+    losers: Dict[Tuple[str, int], set] = {}
+    for (source_id, first, second), count in evidence.items():
+        smaller = min(sizes[(source_id, first)], sizes[(source_id, second)])
+        if count < MIN_WITHIN_SOURCE_COPY_MATCHES or count < MIN_WITHIN_SOURCE_COPY_SHARE * smaller:
+            continue
+        keep, lose = (first, second) if rank(source_id, first) >= rank(source_id, second) else (second, first)
+        losers.setdefault((source_id, lose), set()).add(keep)
+    if not losers:
+        return matches, 0
+    drop: list[int] = []
+    taken: set = set()
+    for (source_id, lose), keeps in losers.items():
+        kept_counts = per_event[
+            per_event["source_id"].eq(source_id) & per_event["tournament_id"].isin(keeps)
+        ].groupby("sig")["n"].sum()
+        rows = frame[frame["source_id"].eq(source_id) & frame["tournament_id"].eq(lose)]
+        for sig, group in rows.groupby("sig"):
+            available = int(kept_counts.get(sig, 0))
+            candidates = [index for index in group.index if index not in taken][:available]
+            drop.extend(candidates)
+            taken.update(candidates)
+        print(
+            f"Tournament {lose} ({source_id}) repeats games of {sorted(keeps)}; "
+            "dropped its copies."
+        )
+    return matches.drop(index=drop).reset_index(drop=True), len(drop)
+
+
+def find_id_name_conflicts(matches: pd.DataFrame, limit: int = 50) -> list[dict]:
+    """Ids that carry two unrelated names (no shared word) inside one tournament.
+
+    One id for two people in one event is a source mapping bug; this only reports it.
+    """
+    columns = ["tournament_id", "player1_id", "player2_id", "player1_name", "player2_name"]
+    if matches.empty or any(column not in matches for column in columns):
+        return []
+    long = pd.concat(
+        [
+            matches[["tournament_id", f"player{side}_id", f"player{side}_name"]].set_axis(
+                ["tournament_id", "id", "name"], axis=1
+            )
+            for side in (1, 2)
+        ],
+        ignore_index=True,
+    ).dropna(subset=["tournament_id"]).drop_duplicates()
+    keys = {name: normalize_player_name(name) for name in long["name"].dropna().unique()}
+    long["key"] = long["name"].map(keys).fillna("")
+    long = long[long["key"].ne("")].drop_duplicates(["tournament_id", "id", "key"])
+    multi = long[long.duplicated(["tournament_id", "id"], keep=False)]
+    conflicts = []
+    for (tournament_id, player_id), group in multi.groupby(["tournament_id", "id"], sort=False):
+        token_sets = [set(key.split()) for key in group["key"]]
+        if any(not (a & b) for i, a in enumerate(token_sets) for b in token_sets[i + 1:]):
+            conflicts.append({
+                "tournament_id": int(tournament_id),
+                "player_id": int(player_id),
+                "names": sorted(set(group["name"].astype(str))),
+            })
+    conflicts.sort(key=lambda item: (item["player_id"], item["tournament_id"]))
+    if conflicts:
+        print(f"Warning: {len(conflicts)} tournament ids carry two unrelated player names:")
+        for item in conflicts[:10]:
+            print(f"  id {item['player_id']} in tournament {item['tournament_id']}: {item['names']}")
+    return conflicts[:limit] if limit else conflicts
 
 
 def backfill_tournament_levels(
@@ -1110,7 +1397,7 @@ def read_matches_parquet(matches_path: Path) -> pd.DataFrame:
             "MatchID": "source_match_id",
         }
     )
-    return process_matches_df(matches)
+    return process_matches_df(matches, keep_walkovers=True)
 
 
 def read_extra_matches_parquet(
@@ -1167,7 +1454,7 @@ def read_extra_matches_parquet(
                 continue
             raw_ids = matches[id_column]
             missing_ids = raw_ids.astype("string").fillna("").str.strip().eq("")
-            resolved_ids = matches[name_column].map(normalize_dedupe_text).map(
+            resolved_ids = matches[name_column].map(normalize_player_name).map(
                 player_name_to_id
             )
             resolved_mask = missing_ids & resolved_ids.notna()
@@ -2456,6 +2743,15 @@ def main() -> int:
     if deduped_count:
         print(f"Removed {deduped_count} overlapping source matches.")
     source_validation["cross_source_duplicates_removed"] = deduped_count
+    matches, walkover_copies = drop_walkovers(matches)
+    source_validation["walkover_copies_removed"] = walkover_copies
+    matches, within_source_copies = deduplicate_within_source_copies(matches)
+    source_validation["within_source_copies_removed"] = within_source_copies
+    name_conflicts = find_id_name_conflicts(matches, limit=0)
+    source_validation["id_name_conflicts"] = {
+        "count": len(name_conflicts),
+        "examples": name_conflicts[:50],
+    }
 
     sort_cols = [
         "id1",

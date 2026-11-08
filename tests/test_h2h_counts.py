@@ -8,6 +8,8 @@ from scripts.build_h2h import (  # noqa: E402
     EXTRA_SOURCES,
     build_unique_player_name_index,
     deduplicate_overlapping_source_matches,
+    deduplicate_within_source_copies,
+    drop_walkovers,
     extra_source_url,
     load_players,
     read_extra_matches_parquet,
@@ -113,6 +115,8 @@ class TestH2HCounts(unittest.TestCase):
             matches = pd.concat([matches, *extra_frames], ignore_index=True)
         matches["tournament_level"] = None
         matches = deduplicate_overlapping_source_matches(matches)
+        matches, _ = drop_walkovers(matches)
+        matches, _ = deduplicate_within_source_copies(matches)
 
         eligible = self.player_id_set
         matches = matches[
