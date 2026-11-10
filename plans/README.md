@@ -12,7 +12,7 @@ backlog below, ready to be turned into a plan on request.
 
 | Plan | Title | Category | Priority | Effort | Depends on | Status |
 |------|-------|----------|----------|--------|------------|--------|
-| [001](001-serve-static-assets-without-functions.md) | Static assets are served without invoking Pages Functions | perf | P1 | S | — | TODO |
+| [001](001-serve-static-assets-without-functions.md) | Static assets are served without invoking Pages Functions | perf | P1 | S | — | DONE |
 | [002](002-fail-build-on-broken-aliases.md) | A broken `aliases.json` fails the build instead of silently un-merging players | bug | P1 | S | — | TODO |
 | [003](003-share-dialog-never-shows-previous-card.md) | The share dialog never draws the previous matchup's card | bug | P2 | S | — | TODO |
 | [004](004-typing-opponent-does-not-change-url.md) | Typing in the opponent box no longer writes an unchosen opponent into the URL | bug | P2 | S | — | TODO |
