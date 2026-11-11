@@ -21,6 +21,17 @@
   <link rel="preload" href="fonts/barlow-condensed-latin-600.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="icon" type="image/png" sizes="32x32" href="favicon.png" />
   <link rel="stylesheet" href="styles.css?v=20261104-stage" />
+  <!-- Every module the page script imports, so the browser fetches them at once instead of
+       one import level at a time. tests-js/routes.test.mjs checks this list. -->
+  <link rel="modulepreload" href="js/browse.js" />
+  <link rel="modulepreload" href="js/chrome.js" />
+  <link rel="modulepreload" href="js/constants.js" />
+  <link rel="modulepreload" href="js/date-range.js" />
+  <link rel="modulepreload" href="js/dom.js" />
+  <link rel="modulepreload" href="js/players.js" />
+  <link rel="modulepreload" href="js/state.js" />
+  <link rel="modulepreload" href="js/theme.js" />
+  <link rel="modulepreload" href="js/utils.js" />
 </head>
 
 <body data-home="false" class="browse-page">

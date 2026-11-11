@@ -80,6 +80,7 @@ function pickViews() {
     ["guide", "./guide.html"],
     ["leaderboard", "./leaderboard.html"],
     ["tournaments", "./tournaments.html"],
+    ["not found", "./404.html"],
   ];
 }
 

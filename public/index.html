@@ -28,6 +28,37 @@
   <link rel="preload" href="data/meta.json" as="fetch" crossorigin />
   <link rel="preload" href="data/records.json" as="fetch" crossorigin />
   <link rel="preload" href="data/rivalries.json" as="fetch" crossorigin />
+  <!-- Every module the page script imports, so the browser fetches them at once instead of
+       one import level at a time. tests-js/routes.test.mjs checks this list. -->
+  <link rel="modulepreload" href="js/charts.js" />
+  <link rel="modulepreload" href="js/constants.js" />
+  <link rel="modulepreload" href="js/data.js" />
+  <link rel="modulepreload" href="js/date-range.js" />
+  <link rel="modulepreload" href="js/dom.js" />
+  <link rel="modulepreload" href="js/filters.js" />
+  <link rel="modulepreload" href="js/forecast.js" />
+  <link rel="modulepreload" href="js/game-context.js" />
+  <link rel="modulepreload" href="js/home.js" />
+  <link rel="modulepreload" href="js/insights.js" />
+  <link rel="modulepreload" href="js/nav.js" />
+  <link rel="modulepreload" href="js/opponents.js" />
+  <link rel="modulepreload" href="js/page-title.js" />
+  <link rel="modulepreload" href="js/players.js" />
+  <link rel="modulepreload" href="js/recent.js" />
+  <link rel="modulepreload" href="js/series.js" />
+  <link rel="modulepreload" href="js/share-card.js" />
+  <link rel="modulepreload" href="js/share.js" />
+  <link rel="modulepreload" href="js/state.js" />
+  <link rel="modulepreload" href="js/story-lines.js" />
+  <link rel="modulepreload" href="js/story.js" />
+  <link rel="modulepreload" href="js/summary.js" />
+  <link rel="modulepreload" href="js/switcher.js" />
+  <link rel="modulepreload" href="js/table.js" />
+  <link rel="modulepreload" href="js/theme.js" />
+  <link rel="modulepreload" href="js/tournaments.js" />
+  <link rel="modulepreload" href="js/typeahead.js" />
+  <link rel="modulepreload" href="js/url-state.js" />
+  <link rel="modulepreload" href="js/utils.js" />
 </head>
 
 <body data-home="pending">

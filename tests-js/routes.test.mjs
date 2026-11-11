@@ -76,3 +76,47 @@ test("every folder in public has an exclude rule", () => {
     );
   }
 });
+
+// Without a 404.html, Cloudflare Pages answers every missing address with index.html and status
+// 200. fetchJson then gets HTML for a missing data file and fails to parse it instead of seeing
+// the 404 it handles, and search engines see a copy of the home page at every mistyped address.
+test("missing addresses get a real 404 page", () => {
+  const html = readFileSync(new URL("404.html", publicDir), "utf8");
+  assert.match(html, /<meta name="robots" content="noindex" \/>/);
+  // The page is served at whatever address was missing, e.g. /a/b/c, so relative links would
+  // point into that address instead of at the site's own files.
+  const urls = [...html.matchAll(/\s(?:href|src)="([^"]*)"/g)].map((match) => match[1]);
+  assert.ok(urls.length > 0);
+  for (const url of urls) {
+    assert.match(url, /^(\/|#|https:\/\/)/, `${url} in 404.html must be absolute`);
+  }
+});
+
+// Modules found through imports load one level at a time, and /js/* is revalidated on every
+// visit, so main.js's eight import levels cost eight round trips even with a warm cache. Each
+// page names its whole module graph up front instead; this keeps those lists in step with the
+// imports.
+function importedModules(entry, seen = new Set()) {
+  const source = readFileSync(new URL(`js/${entry}`, publicDir), "utf8");
+  for (const [, dep] of source.matchAll(/(?:from|import)\s+"\.\/([\w-]+\.js)"/g)) {
+    if (seen.has(dep)) continue;
+    seen.add(dep);
+    importedModules(dep, seen);
+  }
+  return seen;
+}
+
+test("every page preloads exactly the modules its script imports", () => {
+  const pages = readdirSync(publicDir).filter((name) => name.endsWith(".html"));
+  assert.ok(pages.includes("index.html"));
+  for (const page of pages) {
+    const html = readFileSync(new URL(page, publicDir), "utf8");
+    const entry = html.match(/<script type="module" src="\/?js\/([\w-]+\.js)/)?.[1];
+    assert.ok(entry, `${page} has no module script`);
+    const expected = [...importedModules(entry)].filter((name) => name !== entry).sort();
+    const preloaded = [...html.matchAll(/<link rel="modulepreload" href="\/?js\/([\w-]+\.js)" \/>/g)]
+      .map((match) => match[1])
+      .sort();
+    assert.deepEqual(preloaded, expected, `${page}: modulepreload links do not match the imports of ${entry}`);
+  }
+});
