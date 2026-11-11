@@ -9260,3 +9260,362 @@ body[data-theme="dark"] .g-shot-dark {
     margin-top: 0;
   }
 }
+
+/* Phone tour (built by guide-page.js). Each note is one screen: the screenshot stays put, the
+   note's card scrolls over its lower part, and the page snaps from card to card. The desktop
+   layout never shows it. */
+.gt-progress,
+.gt-section {
+  display: none;
+}
+
+@media (max-width: 600px) {
+  html.has-guide-tour {
+    --gt-bar: 52px;
+    --gt-h: calc(100vh - var(--gt-bar));
+    scroll-snap-type: y mandatory;
+    scroll-padding-top: var(--gt-bar);
+  }
+
+  @supports (height: 100svh) {
+    html.has-guide-tour {
+      --gt-h: calc(100svh - var(--gt-bar));
+    }
+  }
+
+  .has-guide-tour .topbar {
+    scroll-snap-align: start;
+  }
+
+  .has-guide-tour .guide-map,
+  .has-guide-tour .g-tips {
+    scroll-snap-align: start;
+  }
+
+  .has-guide-tour .g-cta,
+  .has-guide-tour .site-footer {
+    scroll-snap-align: end;
+  }
+
+  .has-guide-tour .guide-step {
+    scroll-margin-top: var(--gt-bar);
+  }
+
+  .has-guide-tour .guide-step.gt-toured {
+    padding-top: 0;
+  }
+
+  .has-guide-tour .guide-step.gt-toured > :not(.gt-section) {
+    display: none;
+  }
+
+  .has-guide-tour .guide-step:not(.gt-toured) {
+    scroll-snap-align: start;
+    padding-top: 24px;
+  }
+
+  .gt-progress {
+    position: sticky;
+    top: 0;
+    z-index: 15;
+    display: grid;
+    align-content: center;
+    gap: 7px;
+    height: var(--gt-bar);
+    margin-top: 32px;
+    padding: 0 16px;
+    background: color-mix(in srgb, var(--bg) 90%, transparent);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .gt-p-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
+    line-height: 1.1;
+  }
+
+  .gt-p-num {
+    font-family: var(--num);
+    font-size: var(--fs-md);
+    font-weight: 600;
+    color: var(--ink-3);
+  }
+
+  .gt-p-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: var(--fs-sm);
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .gt-p-count {
+    font-family: var(--num);
+    font-size: var(--fs-md);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-2);
+  }
+
+  .gt-p-bar {
+    list-style: none;
+    display: flex;
+    gap: 3px;
+    margin: -6px 0;
+    padding: 0;
+  }
+
+  .gt-p-bar li {
+    flex: 1;
+  }
+
+  .gt-p-bar a {
+    display: block;
+    padding: 6px 0;
+  }
+
+  .gt-p-bar i {
+    position: relative;
+    display: block;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--line-2);
+    overflow: hidden;
+  }
+
+  .gt-p-bar i::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--ink);
+    transform: scaleX(var(--fill, 0));
+    transform-origin: left;
+  }
+
+  .gt-p-bar .is-current i::after {
+    background: var(--accent);
+  }
+
+  .gt-section {
+    display: block;
+  }
+
+  .gt-scene {
+    position: relative;
+  }
+
+  .gt-stage {
+    position: sticky;
+    top: var(--gt-bar);
+    display: flex;
+    flex-direction: column;
+    height: var(--gt-h);
+    padding: 10px 0 12px;
+  }
+
+  .gt-frame {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .gt-view {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .gt-view .g-canvas {
+    will-change: transform;
+  }
+
+  .gt-view .g-pin {
+    z-index: 1;
+    cursor: pointer;
+    transition: transform 0.2s ease, opacity 0.3s ease;
+  }
+
+  .gt-view .g-pin.is-dim {
+    opacity: 0.35;
+  }
+
+  .gt-spot {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0;
+    background: radial-gradient(circle at var(--sx, 50%) var(--sy, 50%), transparent 0 52px,
+        rgba(15, 17, 19, 0.3) 96px);
+  }
+
+  .is-spot .gt-spot {
+    opacity: 1;
+  }
+
+  .gt-slot {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: flex-end;
+    height: var(--gt-h);
+    padding: 0 10px 22px;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    pointer-events: none;
+  }
+
+  .gt-stage + .gt-slot {
+    margin-top: calc(-1 * var(--gt-h));
+  }
+
+  .gt-card {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 12px;
+    width: 100%;
+    max-height: 60%;
+    overflow: auto;
+    padding: 14px 16px 16px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface);
+    box-shadow: 0 12px 32px rgba(21, 24, 27, 0.18), 0 2px 6px rgba(21, 24, 27, 0.08);
+    font-size: var(--fs-sm);
+    line-height: 1.5;
+    color: var(--ink-2);
+    pointer-events: auto;
+  }
+
+  body[data-theme="dark"] .gt-card {
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+  }
+
+  .gt-badge {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--ink);
+    color: var(--bg);
+    font-family: var(--num);
+    font-size: var(--fs-md);
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  .gt-text b {
+    display: block;
+    margin-bottom: 2px;
+    font-size: var(--fs-md);
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .gt-text em {
+    font-style: normal;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .gt-card-intro,
+  .gt-card-more {
+    display: block;
+  }
+
+  .gt-kicker {
+    display: block;
+    font-family: var(--num);
+    font-size: var(--fs-2xl);
+    font-weight: 600;
+    line-height: 1;
+    color: var(--accent);
+  }
+
+  .gt-card-intro h2 {
+    margin-top: 6px;
+    font-size: var(--fs-xl);
+    line-height: 1.15;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+
+  .gt-card-intro p {
+    margin-top: 6px;
+    font-size: var(--fs-md);
+  }
+
+  .gt-card-intro a {
+    color: var(--ink);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .gt-card-intro .gt-hint {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 12px;
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  .gt-hint svg {
+    width: 14px;
+    height: 14px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .gt-card-more ul {
+    list-style: none;
+    display: grid;
+    gap: 6px;
+    margin-top: 8px;
+    padding: 0;
+  }
+
+  .gt-card-more b {
+    color: var(--ink);
+    font-weight: 600;
+  }
+}
+
+@media (max-width: 600px) and (prefers-reduced-motion: no-preference) {
+  .gt-view .g-canvas {
+    transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .gt-spot {
+    transition: opacity 0.3s ease, background-position 0.3s ease;
+  }
+
+  .gt-p-bar i::after {
+    transition: transform 0.3s ease;
+  }
+
+  .gt-hint svg {
+    animation: gt-nudge 1.6s ease-in-out 3;
+  }
+}
+
+@keyframes gt-nudge {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}

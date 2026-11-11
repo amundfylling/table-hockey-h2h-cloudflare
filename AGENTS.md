@@ -160,7 +160,9 @@ The frontend is vanilla ES modules under `public/js/`, loaded from `index.html` 
   site (or `GUIDE_BASE_URL`) in light/dark at desktop and phone width into `public/guide/`, and
   rewrites each `<!--figure:id-->` block with the images and numbered markers. Captions live in
   the HTML; what each figure shows and where its markers point live in the script. Re-run it when
-  a pictured view changes noticeably.
+  a pictured view changes noticeably. On phones (600px and below) `guide-page.js` rebuilds each
+  section into a snap-scrolling tour from the same markup (one card per note over a sticky
+  screenshot that pans to the marker), so captions and markers still only live in one place.
 * **Module wiring**: modules that need a callback into `main.js` use dependency injection
   (`initTable(updateView)`, `initFilters(updateView)`, `initRecent({ onCompare })`) instead of
   importing `main.js` - do not introduce import cycles.
