@@ -20,7 +20,7 @@
   <link rel="preload" href="fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="fonts/barlow-condensed-latin-600.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="icon" type="image/png" sizes="32x32" href="favicon.png" />
-  <link rel="stylesheet" href="styles.css?v=20261104-stage" />
+  <link rel="stylesheet" href="styles.css?v=20261111-tour" />
   <!-- Every module the page script imports, so the browser fetches them at once instead of
        one import level at a time. tests-js/routes.test.mjs checks this list. -->
   <link rel="modulepreload" href="js/chrome.js" />
@@ -117,6 +117,21 @@
       <p id="change-filter-status" class="sr-only" aria-live="polite"></p>
 
       <ol class="releases">
+        <li class="release" id="v4.6">
+          <div class="release-tag">
+            <span class="release-version">4.6</span>
+            <time class="release-date" datetime="2026-11-11">11 Nov 2026</time>
+          </div>
+          <div class="release-body">
+            <h2>A guide made for phones</h2>
+            <ul class="changes">
+              <li class="change" data-type="improved"><span class="change-type">Improved</span>
+                <span class="change-text">On a phone, the guide is now a step-by-step tour. Each swipe moves
+                  to the next tip, shown in a card on top of the screenshot, which slides to the spot the tip
+                  is about. A bar at the top shows where you are, and tapping it jumps to any section.</span></li>
+            </ul>
+          </div>
+        </li>
         <li class="release" id="v4.5">
           <div class="release-tag">
             <span class="release-version">4.5</span>
