@@ -105,26 +105,38 @@ function buildTour() {
     });
   };
 
-  // The step whose slot crosses the middle of the screen is the one being read.
-  const io = new IntersectionObserver(
-    (entries) => {
-      for (const entry of entries) {
-        if (!entry.isIntersecting) continue;
-        const step = steps.find((s) => s.slot === entry.target);
-        if (step) activate(step);
-        else showSection(sections.indexOf(entry.target));
-      }
-    },
-    { rootMargin: "-50% 0px -50% 0px" },
-  );
-  for (const s of steps) io.observe(s.slot);
-  for (const section of sections) {
-    if (!section.querySelector(".gt-section")) io.observe(section);
-  }
+  // The step whose slot crosses the middle of the screen is the one being read. Measured on
+  // scroll rather than with an IntersectionObserver, whose percentage rootMargin resolves
+  // against the width in some browsers and so misses the midpoint on landscape phones.
+  const plain = sections.filter((section) => !section.querySelector(".gt-section"));
+  let queued = false;
+  const track = () => {
+    queued = false;
+    if (!progress.offsetParent) return; // desktop layout: the tour is hidden
+    const mid = innerHeight / 2;
+    const within = (node) => {
+      const r = node.getBoundingClientRect();
+      return r.top <= mid && r.bottom > mid;
+    };
+    const step = steps.find((s) => within(s.slot));
+    if (step) return activate(step);
+    const section = plain.find(within);
+    if (section) showSection(sections.indexOf(section));
+  };
+  const schedule = () => {
+    if (queued) return;
+    queued = true;
+    requestAnimationFrame(track);
+  };
+  addEventListener("scroll", schedule, { passive: true });
   if (steps.length) activate(steps[0]);
+  schedule();
 
   // Cards differ in height, so the pan depends on layout: redo it when the screen size changes.
-  addEventListener("resize", () => current?.scene.show(current, true));
+  addEventListener("resize", () => {
+    current?.scene.show(current, true);
+    schedule();
+  });
 }
 
 function buildScene(section, figure, notes, more, withIntro) {
