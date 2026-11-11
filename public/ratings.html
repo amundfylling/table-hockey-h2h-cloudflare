@@ -24,6 +24,12 @@
   <link rel="icon" type="image/png" sizes="32x32" href="favicon.png" />
   <link rel="stylesheet" href="styles.css?v=20261104-stage" />
   <link rel="stylesheet" href="katex/katex.min.css?v=0.19.0" />
+  <!-- Every module the page script imports, so the browser fetches them at once instead of
+       one import level at a time. tests-js/routes.test.mjs checks this list. -->
+  <link rel="modulepreload" href="js/chrome.js" />
+  <link rel="modulepreload" href="js/constants.js" />
+  <link rel="modulepreload" href="js/state.js" />
+  <link rel="modulepreload" href="js/theme.js" />
 </head>
 
 <body data-home="false" class="doc-page">
