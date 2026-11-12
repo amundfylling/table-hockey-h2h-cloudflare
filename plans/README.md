@@ -17,7 +17,7 @@ backlog below, ready to be turned into a plan on request.
 | [003](003-share-dialog-never-shows-previous-card.md) | The share dialog never draws the previous matchup's card | bug | P2 | S | — | TODO |
 | [004](004-typing-opponent-does-not-change-url.md) | Typing in the opponent box no longer writes an unchosen opponent into the URL | bug | P2 | S | — | TODO |
 | [005](005-order-fractional-playoff-rounds-correctly.md) | Records and game lists order fractional playoff rounds the way they were played | bug | P2 | S–M | — | TODO |
-| [006](006-run-fast-tests-before-the-data-build.md) | CI runs the fast tests before the data build, and the agent docs name the right test command | dx | P2 | S | — | TODO |
+| [006](006-run-fast-tests-before-the-data-build.md) | CI runs the fast tests before the data build, and the agent docs name the right test command | dx | P2 | S | — | DONE |
 | [007](007-read-scraper-data-from-a-stable-branch.md) | The build reads the Czech and Latvian sources from a stable branch | migration | P2 | S | maintainer action in the scraper repo | TODO |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale — finding fixed independently or approach abandoned)
