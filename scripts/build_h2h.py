@@ -2365,7 +2365,7 @@ def build_records(matches: pd.DataFrame, player_names: Dict[int, str]) -> dict:
     if games.empty:
         return records
     games = games.sort_values(
-        ["date_dt", "tournament_id", "stage_sequence", "round_number", "playoff_game_number"],
+        ratings.playing_order_columns(games),
         kind="mergesort",
         na_position="last",
     ).reset_index(drop=True)
@@ -2799,15 +2799,7 @@ def main() -> int:
         print(f"Marked {team_games} team-event games as round-robin.")
     stage_fixes.apply_date_overrides(matches)
 
-    sort_cols = [
-        "id1",
-        "id2",
-        "date_dt",
-        "tournament_id",
-        "stage_sequence",
-        "round_number",
-        "playoff_game_number",
-    ]
+    sort_cols = ["id1", "id2", *ratings.playing_order_columns(matches)]
     matches = matches.sort_values(sort_cols, kind="mergesort", na_position="last")
 
     # Records count every game, including those against players below MIN_MATCHES.
