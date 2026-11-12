@@ -51,11 +51,15 @@ export function clearUrlSelection() {
   writeUrl(url);
 }
 
-export function updateUrl(p1, p2 = null, p1Ids = [], p2Ids = []) {
+// p2 === null means "no opponent"; leave p2 out to read it from the opponent box.
+export function updateUrl(p1, p2, p1Ids = [], p2Ids = []) {
   const idA = p1 || resolvePlayerId(elements.playerA);
-  const idB = p2 || (p1 === null ? null : resolvePlayerId(elements.playerB));
+  const fromInputs = p2 === undefined && p1 !== null;
+  const idB = p2 || (fromInputs ? resolvePlayerId(elements.playerB) : null);
   const idsA = (p1Ids && p1Ids.length > 0) ? p1Ids : getSelectionIds(elements.playerA);
-  const idsB = (p2Ids && p2Ids.length > 0) ? p2Ids : (p1 === null ? [] : getSelectionIds(elements.playerB));
+  const idsB = (p2Ids && p2Ids.length > 0)
+    ? p2Ids
+    : (fromInputs ? getSelectionIds(elements.playerB) : []);
 
   const url = new URL(window.location.href);
   if (!idA) {
