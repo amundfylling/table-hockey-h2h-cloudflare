@@ -110,3 +110,9 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy public --project-name=${{ secrets.CLOUDFLARE_PROJECT_NAME }}
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Notify IndexNow of changed pages
+        if: github.event_name != 'pull_request' && steps.build.outputs.changed == 'true'
+        # Search engines only learn sooner; a failure here must not fail the deploy.
+        continue-on-error: true
+        run: python3 scripts/indexnow.py --days 7

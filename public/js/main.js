@@ -944,7 +944,20 @@ async function openView(detail) {
   await onPlayerAViewed({ ...getPlayerById(p1), ids: idsA });
 }
 
+// Player and matchup pages arrive with a plain HTML summary for crawlers that do not run
+// scripts, and with the page heading naming the player (functions/index.js). The app renders
+// its own view, so drop the summary and put the home heading back.
+function removeServerSummary() {
+  document.getElementById("page-summary")?.remove();
+  const title = document.getElementById("home-title");
+  if (title?.dataset.homeTitle) {
+    title.textContent = title.dataset.homeTitle;
+    delete title.dataset.homeTitle;
+  }
+}
+
 export async function init() {
+  removeServerSummary();
   const savedTheme = safeStorageGet(STORAGE_KEYS.theme, null);
   const preferredTheme = savedTheme === "dark" || savedTheme === "light"
     ? savedTheme

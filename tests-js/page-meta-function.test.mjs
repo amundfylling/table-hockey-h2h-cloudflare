@@ -36,6 +36,10 @@ function run(path, options = {}) {
         fetch: async (url) => {
           requestedAssets.push(String(url));
           if (options.assetStatus) return new Response("", { status: options.assetStatus });
+          const id = String(url).match(/\/og\/(\d+)\.json$/)?.[1];
+          if (options.files) {
+            return options.files[id] ? Response.json(options.files[id]) : new Response("", { status: 404 });
+          }
           return Response.json(options.payload || payload);
         },
       },
@@ -116,4 +120,87 @@ test("player and matchup views preload the player index and the player's file", 
   assert.match(html, /<link rel="preload" href="\/data\/h2h\/1\.json" as="fetch" crossorigin \/>\s*<\/head>/);
   const missing = await (await run("/?p1=1", { assetStatus: 404 }).response).text();
   assert.doesNotMatch(missing, /data\/h2h\/1\.json/);
+});
+
+const files = {
+  10: {
+    player: { id: 10, name: "Ann", country: "Norway", rating: 1712, peak: { rating: 1800, date: "2019-03-02" } },
+    opponents: {
+      20: {
+        player: { id: 20, name: "Ben <b>" },
+        summary: {
+          total_matches: 5, wins_player: 3, wins_opponent: 1, draws: 1,
+          goals_for_player: 14, goals_for_opponent: 9,
+          first_meeting_date: "2015-04-01", last_meeting_date: "2024-10-12",
+        },
+      },
+      30: {
+        player: { id: 30, name: "Cy" },
+        summary: { total_matches: 1, wins_player: 0, wins_opponent: 1, draws: 0, last_meeting_date: "2020-01-01" },
+      },
+    },
+  },
+  20: {
+    player: { id: 20, name: "Ben <b>", country: "Sweden", world_rank: 7 },
+    opponents: {
+      10: { player: { id: 10, name: "Ann" }, summary: { total_matches: 5, wins_player: 1, wins_opponent: 3, draws: 1 } },
+      5: { player: { id: 5, name: "Dee" }, summary: { total_matches: 2, wins_player: 2, wins_opponent: 0, draws: 0 } },
+    },
+  },
+};
+
+function jsonLd(html) {
+  const blocks = [...html.matchAll(/<script type="application\/ld\+json">([^<]*)<\/script>/g)];
+  return blocks.map((block) => JSON.parse(block[1]));
+}
+
+test("player pages carry a crawlable summary with links and ProfilePage data", async () => {
+  const { response, requestedAssets } = run("/?p1=10", { files });
+  const html = await (await response).text();
+  assert.deepEqual(requestedAssets, ["https://stats.example/data/og/10.json"]);
+  const summary = html.match(/<section id="page-summary"[^>]*>([\s\S]*?)<\/section>/)[1];
+  assert.match(summary, /Ann \(Norway\) has 3 wins, 1 draw and 2 losses in 6 games against 2 opponents\./);
+  assert.match(summary, /Goals 14–9\. Games from 2015-04-01 to 2024-10-12\. Current rating 1,712 \(peak 1,800 in 2019\)\./);
+  // Most played first; opponent and matchup links use the canonical pair order.
+  assert.match(summary, /<li><a href="\/\?p1=20">Ben &lt;b&gt;<\/a>: <a href="\/\?p1=10&amp;p2=20">3 wins, 1 draw and 1 loss in 5 games<\/a>, last met 2024-10-12<\/li><li><a href="\/\?p1=30">Cy<\/a>/);
+  assert.match(html, /<h1 id="home-title" class="home-title" data-home-title="Every table hockey rivalry, settled\.">Ann<\/h1>/);
+  assert.ok(html.indexOf('id="page-summary"') < html.indexOf("</main>"));
+  const profile = jsonLd(html).find((item) => item["@type"] === "ProfilePage");
+  assert.equal(profile.url, "https://stats.example/?p1=10");
+  assert.deepEqual(profile.mainEntity.nationality, { "@type": "Country", name: "Norway" });
+  assert.equal(profile.dateModified, "2024-10-12");
+});
+
+test("matchup pages summarise the pair from both players' files", async () => {
+  const { response, requestedAssets } = run("/?p1=20&p2=10", { files });
+  const html = await (await response).text();
+  assert.deepEqual(requestedAssets, [
+    "https://stats.example/data/og/20.json",
+    "https://stats.example/data/og/10.json",
+  ]);
+  const summary = html.match(/<section id="page-summary"[^>]*>([\s\S]*?)<\/section>/)[1];
+  assert.match(summary, /Ben &lt;b&gt; vs Ann: head-to-head record/);
+  assert.match(summary, /Ann leads Ben &lt;b&gt; 3–1, with 1 draw, over 5 games\./);
+  assert.match(summary, /\(ITHF world rank 7\)/);
+  assert.match(summary, /Other rivalries of Ben &lt;b&gt;<\/h3><ul><li><a href="\/\?p1=5">Dee<\/a>: <a href="\/\?p1=5&amp;p2=20">/);
+  assert.match(summary, /Other rivalries of Ann<\/h3><ul><li><a href="\/\?p1=30">Cy<\/a>/);
+  assert.doesNotMatch(summary, /<b>/);
+  const page = jsonLd(html).find((item) => item["@type"] === "WebPage");
+  assert.equal(page.url, "https://stats.example/?p1=10&p2=20");
+  assert.deepEqual(page.about.map((person) => person.name), ["Ben <b>", "Ann"]);
+  assert.equal(page.about[1].nationality.name, "Norway");
+  // The raw name only appears escaped inside the JSON-LD script.
+  assert.doesNotMatch(html.split("<body")[0], /Ben <b>/);
+});
+
+test("a matchup still gets its summary when the opponent's file is missing", async () => {
+  const html = await (await run("/?p1=10&p2=20", { files: { 10: files[10] } }).response).text();
+  assert.match(html, /Ann leads Ben &lt;b&gt; 3–1/);
+  assert.doesNotMatch(html, /Other rivalries of Ben/);
+});
+
+test("alias-grouped views get no summary", async () => {
+  const html = await (await run("/?p1=10&p1g=10,11", { files }).response).text();
+  assert.doesNotMatch(html, /page-summary/);
+  assert.match(html, /<h1 id="home-title" class="home-title">Every table hockey rivalry, settled\.<\/h1>/);
 });

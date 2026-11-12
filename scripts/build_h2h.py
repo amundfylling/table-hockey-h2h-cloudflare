@@ -34,11 +34,11 @@ H2H_DIR = DATA_DIR / "h2h"
 OG_H2H_DIR = DATA_DIR / "og"
 DATA_STAGING_DIR = ROOT_DIR / ".data-build"
 DATA_BACKUP_DIR = ROOT_DIR / ".data-previous"
-SITEMAP_PATH = PUBLIC_DIR / "sitemap.xml"
 SITE_URL = os.environ.get("SITE_URL", "https://h2h.puck.no").rstrip("/")
-# One sitemap file holds at most 50,000 URLs. Matchups need this many games to be listed.
+# One sitemap file holds at most 50,000 URLs; build_sitemaps splits each kind of page into as
+# many files as it needs. Every pair that has played has a matchup page, so all are listed.
 SITEMAP_MAX_URLS = 50_000
-SITEMAP_MIN_PAIR_GAMES = 5
+SITEMAP_MIN_PAIR_GAMES = 1
 RANKING_HEADER = "Rank ID_Player Player Club Nation Points Player_Value"
 RANKING_ROW_RE = re.compile(
     r"(?:^|\s)(\d+)\s+(\d+)\s+(.+?)\s+([A-Z]{3})\s+(\d+)\s+(\d+)"
@@ -1670,6 +1670,7 @@ def build_player_files(
     ratings: Optional[Dict[int, dict]] = None,
     forecasts: Optional[Dict[Tuple[int, int], list]] = None,
     pair_stats: Optional[Dict[Tuple[int, int], list]] = None,
+    player_info: Optional[Dict[int, dict]] = None,
 ) -> Dict[int, dict]:
     if h2h_dir.exists():
         shutil.rmtree(h2h_dir)
@@ -2002,27 +2003,53 @@ def build_player_files(
 
     for pid, payload in player_payloads.items():
         write_json(h2h_dir / f"{pid}.json", payload)
-        og_opponents = {
-            opponent_id: {
-                "player": opponent["player"],
-                "summary": {
-                    key: opponent["summary"].get(key, 0)
-                    for key in [
-                        "total_matches",
-                        "wins_player",
-                        "wins_opponent",
-                        "draws",
-                    ]
-                },
-            }
-            for opponent_id, opponent in payload["opponents"].items()
-        }
         write_json(
             og_dir / f"{pid}.json",
-            {"player": payload["player"], "opponents": og_opponents},
+            og_payload(payload, (player_info or {}).get(pid)),
         )
     return player_payloads
 
+
+
+# The small per-player file the Pages Functions read. Besides the page head it feeds the plain
+# HTML summary written into player and matchup pages for crawlers that do not run scripts
+# (functions/index.js), so it carries each pair's goals and first and last meeting too.
+OG_SUMMARY_KEYS = (
+    "total_matches",
+    "wins_player",
+    "wins_opponent",
+    "draws",
+    "goals_for_player",
+    "goals_for_opponent",
+    "first_meeting_date",
+    "last_meeting_date",
+)
+
+
+def og_payload(payload: dict, info: Optional[dict] = None) -> dict:
+    player = dict(payload["player"])
+    info = info or {}
+    if info.get("country"):
+        player["country"] = info["country"]
+    if info.get("world_rank"):
+        player["world_rank"] = info["world_rank"]
+    rating = payload.get("rating") or {}
+    if rating.get("rating") is not None:
+        player["rating"] = rating["rating"]
+        if rating.get("peak"):
+            player["peak"] = rating["peak"]
+    opponents = {}
+    for opponent_id, opponent in payload["opponents"].items():
+        summary = {}
+        for key in OG_SUMMARY_KEYS:
+            value = opponent["summary"].get(key)
+            if key.endswith("_date"):
+                if value:
+                    summary[key] = str(value)[:10]
+            else:
+                summary[key] = value or 0
+        opponents[opponent_id] = {"player": opponent["player"], "summary": summary}
+    return {"player": player, "opponents": opponents}
 
 
 def read_alias_group_records(path: Path) -> list:
@@ -2158,7 +2185,7 @@ def load_alias_group_records(path: Path = PUBLIC_DIR / "aliases.json") -> list:
     return read_alias_group_records(path)
 
 
-def build_sitemap(
+def build_sitemaps(
     player_payloads: Dict[int, dict],
     generated_on: str,
     site_url: str = SITE_URL,
@@ -2166,13 +2193,15 @@ def build_sitemap(
     min_pair_games: int = SITEMAP_MIN_PAIR_GAMES,
     tournament_ids: Iterable[int] = (),
     tournament_dates: Optional[Dict[int, str]] = None,
-) -> str:
-    """sitemap.xml text: the home, ratings, changelog, leaderboard and tournaments pages, every player and tournament, then the most played
-    matchups.
+) -> Dict[str, str]:
+    """Sitemap files by path under public/: the index at sitemap.xml and the files it lists.
 
-    Matchups are listed once, lower id first, most games first, until the file is full. Each page's
-    lastmod is the last day its content can have changed (a player's latest game, the later of the
-    pair's latest games, a tournament's date), not the build date, so crawlers can trust it.
+    The site pages, players, tournaments and matchups each get their own files, split so none
+    holds more than `max_urls` links (the protocol allows 50,000). Every pair with a page and
+    at least `min_pair_games` games is listed once, lower id first, most games first. Each
+    page's lastmod is the last day its content can have changed (a player's latest game, the
+    later of the pair's latest games, a tournament's date), not the build date, so crawlers can
+    trust it. An index entry's lastmod is the latest lastmod in its file.
     """
     base = site_url.rstrip("/")
     tournament_dates = {int(k): v for k, v in (tournament_dates or {}).items()}
@@ -2195,20 +2224,21 @@ def build_sitemap(
             dates.append(str(history[-1][0] or "")[:10])
         last_game[int(pid)] = day(max(dates, default=""))
 
-    urls = [
+    pages = [
         (f"{base}/", generated_on),
         (f"{base}/ratings", generated_on),
         (f"{base}/changelog", generated_on),
         (f"{base}/leaderboard", generated_on),
         (f"{base}/tournaments", generated_on),
+        (f"{base}/guide", generated_on),
     ]
-    urls.extend(
+    players = [
         (f"{base}/?p1={pid}", last_game[pid]) for pid in sorted(int(pid) for pid in player_payloads)
-    )
-    urls.extend(
+    ]
+    tournaments = [
         (f"{base}/tournament?id={tid}", day(tournament_dates.get(tid)))
         for tid in sorted(int(t) for t in tournament_ids)
-    )
+    ]
     pairs = []
     for pid, payload in player_payloads.items():
         for opponent_id, opponent in payload["opponents"].items():
@@ -2218,21 +2248,51 @@ def build_sitemap(
             if games >= min_pair_games:
                 pairs.append((-games, int(pid), int(opponent_id)))
     pairs.sort()
-    room = max(0, max_urls - len(urls))
-    urls.extend(
+    matchups = [
         (f"{base}/?p1={a}&p2={b}", max(last_game.get(a, generated_on), last_game.get(b, generated_on)))
-        for _, a, b in pairs[:room]
-    )
-    urls = urls[:max_urls]
-    entries = "".join(
-        f"<url><loc>{escape(url)}</loc><lastmod>{lastmod}</lastmod></url>\n"
-        for url, lastmod in urls
-    )
-    return (
+        for _, a, b in pairs
+    ]
+
+    files: Dict[str, str] = {}
+    index_entries = []
+    for group, urls in (
+        ("pages", pages),
+        ("players", players),
+        ("tournaments", tournaments),
+        ("matchups", matchups),
+    ):
+        for number, start in enumerate(range(0, len(urls), max_urls), start=1):
+            chunk = urls[start:start + max_urls]
+            path = f"sitemaps/{group}-{number}.xml"
+            entries = "".join(
+                f"<url><loc>{escape(url)}</loc><lastmod>{lastmod}</lastmod></url>\n"
+                for url, lastmod in chunk
+            )
+            files[path] = (
+                '<?xml version="1.0" encoding="UTF-8"?>\n'
+                '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+                f"{entries}</urlset>\n"
+            )
+            lastmod = max(lastmod for _, lastmod in chunk)
+            index_entries.append(
+                f"<sitemap><loc>{escape(f'{base}/{path}')}</loc><lastmod>{lastmod}</lastmod></sitemap>\n"
+            )
+    files["sitemap.xml"] = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
-        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-        f"{entries}</urlset>\n"
+        '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        f"{''.join(index_entries)}</sitemapindex>\n"
     )
+    return files
+
+
+def write_sitemaps(files: Dict[str, str], public_dir: Path = PUBLIC_DIR) -> None:
+    """Replace the sitemap files under public/, removing ones a smaller build no longer lists."""
+    sitemap_dir = public_dir / "sitemaps"
+    if sitemap_dir.exists():
+        shutil.rmtree(sitemap_dir)
+    sitemap_dir.mkdir(parents=True)
+    for path, text in files.items():
+        (public_dir / path).write_text(text, encoding="utf-8")
 
 
 def _rivalry_entry(payload: dict, opponent: dict) -> dict:
@@ -2864,6 +2924,7 @@ def main() -> int:
         ratings=player_ratings,
         forecasts=pair_forecasts,
         pair_stats=pair_stats,
+        player_info={int(player["id"]): player for player in players},
     )
     write_json(DATA_STAGING_DIR / "rivalries.json", build_rivalries(player_payloads, players))
     write_json(
@@ -2911,14 +2972,13 @@ def main() -> int:
 
     print("Publishing complete dataset...")
     publish_staged_data()
-    SITEMAP_PATH.write_text(
-        build_sitemap(
+    write_sitemaps(
+        build_sitemaps(
             player_payloads,
             datetime.now(timezone.utc).date().isoformat(),
             tournament_ids=[entry["id"] for entry in tournament_index],
             tournament_dates={entry["id"]: entry["date"] for entry in tournament_index},
-        ),
-        encoding="utf-8",
+        )
     )
     print("Build completed.")
     return 0
