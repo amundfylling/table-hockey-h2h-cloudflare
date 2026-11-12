@@ -442,7 +442,7 @@ function buildDialog() {
     if (action === "none") return;
     session.theme = button.dataset.theme;
     if (action === "render") generate();
-    else setBusy(true); // Still waiting for the data: only show the new choice as pressed.
+    else markTheme(); // No card data yet: only show the new choice as pressed.
   }));
   shareBtn.addEventListener("click", onShare);
   copyBtn.addEventListener("click", onCopy);
@@ -479,12 +479,16 @@ function flashDone(button, label) {
 }
 
 function setBusy(busy) {
-  const { preview, skeleton, shareBtn, copyBtn, downloadBtn, themeButtons } = session.parts;
+  const { preview, skeleton, shareBtn, copyBtn, downloadBtn } = session.parts;
   preview.setAttribute("aria-busy", busy ? "true" : "false");
   preview.classList.toggle("is-busy", busy);
   skeleton.hidden = !busy;
   [shareBtn, copyBtn, downloadBtn].forEach((button) => { button.disabled = busy; });
-  themeButtons.forEach((button) => {
+  markTheme();
+}
+
+function markTheme() {
+  session.parts.themeButtons.forEach((button) => {
     button.setAttribute("aria-pressed", button.dataset.theme === session.theme ? "true" : "false");
   });
 }
