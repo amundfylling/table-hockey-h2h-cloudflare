@@ -13,8 +13,14 @@ exploration interface with zero runtime database queries.
 * `.cache/` - Local cache directory used by build scripts to store downloaded source files.
 * `design-system/` - Contains design resource directories and specifications.
 * `functions/` - Cloudflare Pages Functions: `index.js` fills in the page head (title,
-  description, canonical, OG tags) for `/?p1=…&p2=…` views, `tournament.js` does the same for
-  tournament pages; `h2h/` serves legacy share links.
+  description, canonical, OG tags) for `/?p1=…&p2=…` views and writes a plain HTML summary with
+  JSON-LD for crawlers that do not run scripts (hidden in browsers; `main.js` removes it on
+  start), reading only the small `data/og/{id}.json` files; `tournament.js` does the same head
+  work for tournament pages; `h2h/` serves legacy share links.
+* Search: the build writes `public/sitemap.xml` as an index of `public/sitemaps/*.xml` (site
+  pages, every player, tournament and pair, at most 50,000 links per file). `public/llms.txt`
+  describes the site for AI tools. After each deploy, `scripts/indexnow.py` submits pages whose
+  lastmod is in the last week to IndexNow (Bing); its key file is `public/<key>.txt`.
 * `prompts/` - Historical feature prompts kept as project records.
 * `public/` - The static web root containing the HTML, CSS, and vanilla JS frontend application.
 * `public/js/` - Frontend ES modules (see "Frontend Module Map" below).

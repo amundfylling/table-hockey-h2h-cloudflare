@@ -1,6 +1,8 @@
 {
   "version": 1,
-  "include": ["/*"],
+  "include": [
+    "/*"
+  ],
   "exclude": [
     "/data/*",
     "/js/*",
@@ -11,7 +13,10 @@
     "/aliases.json",
     "/manifest.webmanifest",
     "/robots.txt",
+    "/llms.txt",
+    "/6091577e091bce087c5693f63fe02326.txt",
     "/sitemap.xml",
+    "/sitemaps/*",
     "/favicon.png",
     "/apple-touch-icon.png",
     "/icon-512.png",

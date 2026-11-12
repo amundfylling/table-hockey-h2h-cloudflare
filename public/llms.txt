@@ -1,0 +1,26 @@
+# Table Hockey H2H
+
+> Head-to-head records, form, ratings and playoff series for competitive table hockey players. Covers about 4,400 players and 1.5 million games from international and national tournaments, refreshed daily from public result sites.
+
+Every player and every pair of players who have met has its own page. The pages render in the browser, but each one also carries a plain summary and the record in its title and description, and the same numbers are available as JSON.
+
+## Pages
+
+- [Home and player search](https://h2h.puck.no/): look up any player or put two side by side.
+- Player page: `https://h2h.puck.no/?p1={player_id}`. Career record against every opponent, rating history, form and tournaments.
+- Matchup page: `https://h2h.puck.no/?p1={player_id}&p2={opponent_id}`. Every game the two have played, the overall record, playoff series and a forecast for their next game. The canonical address puts the lower id first.
+- [Ratings leaderboard](https://h2h.puck.no/leaderboard): every player ranked by a Glicko-2 rating with goal difference.
+- [Tournaments](https://h2h.puck.no/tournaments): every tournament, with each one at `https://h2h.puck.no/tournament?id={tournament_id}`.
+- [How the ratings work](https://h2h.puck.no/ratings): the rating method and how the forecast is tested.
+- [Guide](https://h2h.puck.no/guide): how to read the site.
+- [Sitemap](https://h2h.puck.no/sitemap.xml): an index of every player, matchup and tournament page.
+
+## Data
+
+- [Player index](https://h2h.puck.no/data/players.json): id, name, nation and ITHF world rank for every player.
+- Player summary: `https://h2h.puck.no/data/og/{player_id}.json`. The player's record against each opponent (games, wins, draws, losses, goals, first and last meeting).
+- Full player file: `https://h2h.puck.no/data/h2h/{player_id}.json`. Every game against every opponent with date, tournament, stage and score, plus the rating history. These can be several megabytes.
+
+## Sources
+
+Results come from th.sportscorpion.com, resultat.bordshockey.se, table-hockey.eu, stiga.trefik.cz, escore.live and galdahokejs.lv.

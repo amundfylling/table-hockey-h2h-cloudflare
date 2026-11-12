@@ -6,6 +6,7 @@ node_modules/
 public/data/
 public/h2h/
 public/sitemap.xml
+public/sitemaps/
 .data-build/
 .data-previous/
 .wrangler/
