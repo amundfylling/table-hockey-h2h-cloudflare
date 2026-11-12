@@ -11,7 +11,7 @@ globalThis.window = {
   matchMedia: () => ({ matches: false, addEventListener: () => {} }),
 };
 
-const { shareScope, pickFindings, shortNames } = await import("../public/js/share.js");
+const { shareScope, pickFindings, shortNames, themeChange } = await import("../public/js/share.js");
 const { wrapRuns } = await import("../public/js/share-card.js");
 
 test("share scope names the view and its filters", () => {
@@ -54,4 +54,10 @@ test("headline wraps by words and ends in an ellipsis when it runs out of lines"
   const wide = wrapRuns(measure, parts, 10000, 2);
   assert.equal(wide.length, 1);
   assert.deepEqual(wide[0].map((run) => run.strong), [false, true]);
+});
+
+test("a theme tap before the card data is ready only records the theme", () => {
+  assert.equal(themeChange("light", "light", true), "none");
+  assert.equal(themeChange("light", "dark", true), "render");
+  assert.equal(themeChange("light", "dark", false), "remember");
 });

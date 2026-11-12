@@ -14,7 +14,7 @@ backlog below, ready to be turned into a plan on request.
 |------|-------|----------|----------|--------|------------|--------|
 | [001](001-serve-static-assets-without-functions.md) | Static assets are served without invoking Pages Functions | perf | P1 | S | — | DONE |
 | [002](002-fail-build-on-broken-aliases.md) | A broken `aliases.json` fails the build instead of silently un-merging players | bug | P1 | S | — | TODO |
-| [003](003-share-dialog-never-shows-previous-card.md) | The share dialog never draws the previous matchup's card | bug | P2 | S | — | TODO |
+| [003](003-share-dialog-never-shows-previous-card.md) | The share dialog never draws the previous matchup's card | bug | P2 | S | — | DONE |
 | [004](004-typing-opponent-does-not-change-url.md) | Typing in the opponent box no longer writes an unchosen opponent into the URL | bug | P2 | S | — | TODO |
 | [005](005-order-fractional-playoff-rounds-correctly.md) | Records and game lists order fractional playoff rounds the way they were played | bug | P2 | S–M | — | TODO |
 | [006](006-run-fast-tests-before-the-data-build.md) | CI runs the fast tests before the data build, and the agent docs name the right test command | dx | P2 | S | — | TODO |
