@@ -129,6 +129,13 @@ function playerMeta(player, extra = []) {
   return [enriched.country, rank ? `World #${rank}` : "", ...extra].filter(Boolean).join(" · ");
 }
 
+// What a tap on a theme button should do. Before the card's data is ready, the tap only
+// records the theme; the first render picks it up.
+export function themeChange(current, requested, hasData) {
+  if (requested === current) return "none";
+  return hasData ? "render" : "remember";
+}
+
 // Everything the card shows, read from the page state at the moment of the tap.
 export function collectShareData(updated = "") {
   const single = isSinglePlayerMode();
@@ -431,10 +438,11 @@ function buildDialog() {
   });
   dialog.addEventListener("close", onDialogClose);
   themeButtons.forEach((button) => button.addEventListener("click", () => {
-    if (button.dataset.theme !== session.theme) {
-      session.theme = button.dataset.theme;
-      generate();
-    }
+    const action = themeChange(session.theme, button.dataset.theme, Boolean(session.data));
+    if (action === "none") return;
+    session.theme = button.dataset.theme;
+    if (action === "render") generate();
+    else markTheme(); // No card data yet: only show the new choice as pressed.
   }));
   shareBtn.addEventListener("click", onShare);
   copyBtn.addEventListener("click", onCopy);
@@ -471,12 +479,16 @@ function flashDone(button, label) {
 }
 
 function setBusy(busy) {
-  const { preview, skeleton, shareBtn, copyBtn, downloadBtn, themeButtons } = session.parts;
+  const { preview, skeleton, shareBtn, copyBtn, downloadBtn } = session.parts;
   preview.setAttribute("aria-busy", busy ? "true" : "false");
   preview.classList.toggle("is-busy", busy);
   skeleton.hidden = !busy;
   [shareBtn, copyBtn, downloadBtn].forEach((button) => { button.disabled = busy; });
-  themeButtons.forEach((button) => {
+  markTheme();
+}
+
+function markTheme() {
+  session.parts.themeButtons.forEach((button) => {
     button.setAttribute("aria-pressed", button.dataset.theme === session.theme ? "true" : "false");
   });
 }
@@ -584,6 +596,7 @@ function onDialogClose() {
   if (session.url) URL.revokeObjectURL(session.url);
   session.url = "";
   session.blob = null;
+  session.data = null;
   session.file = null;
   const { img } = session.parts;
   img.hidden = true;
