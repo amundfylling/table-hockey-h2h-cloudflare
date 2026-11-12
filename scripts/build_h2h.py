@@ -2025,13 +2025,49 @@ def build_player_files(
 
 
 
+def read_alias_group_records(path: Path) -> list:
+    """The validated groups in aliases.json; [] only when the file does not exist.
+
+    A malformed file raises ValueError so the build stops instead of silently
+    splitting every alias group.
+    """
+    try:
+        text = path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return []
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as err:
+        raise ValueError(f"{path}: not valid JSON ({err})") from err
+    if not isinstance(data, dict):
+        raise ValueError(f"{path}: top level must be an object")
+    groups = data.get("groups")
+    if not isinstance(groups, list):
+        raise ValueError(f"{path}: 'groups' must be a list")
+    seen = {}
+    for index, group in enumerate(groups):
+        if not isinstance(group, dict):
+            raise ValueError(f"{path}: group {index} must be an object")
+        label = f"group {index} ({group.get('name', 'unnamed')!r})"
+        ids = group.get("ids")
+        if not isinstance(ids, list) or len(ids) < 2:
+            raise ValueError(f"{path}: {label} needs an 'ids' list with at least two ids")
+        for pid in ids:
+            if isinstance(pid, bool) or not isinstance(pid, int) or pid <= 0:
+                raise ValueError(f"{path}: {label} has id {pid!r}, not a positive integer")
+            if pid in seen:
+                where = (
+                    "twice in the same group" if seen[pid] == index
+                    else f"also in group {seen[pid]}"
+                )
+                raise ValueError(f"{path}: id {pid} in {label} appears {where}")
+            seen[pid] = index
+    return groups
+
+
 def load_alias_groups(path: Path = PUBLIC_DIR / "aliases.json") -> list:
     """Id groups from aliases.json that belong to one person."""
-    try:
-        groups = json.loads(path.read_text(encoding="utf-8")).get("groups", [])
-    except (OSError, ValueError, AttributeError):
-        return []
-    return [group["ids"] for group in groups if isinstance(group, dict) and group.get("ids")]
+    return [group["ids"] for group in read_alias_group_records(path)]
 
 
 LEADERBOARD_CHANGE_DAYS = 90
@@ -2119,11 +2155,7 @@ def build_leaderboard(
 
 def load_alias_group_records(path: Path = PUBLIC_DIR / "aliases.json") -> list:
     """The groups in aliases.json with their names ({"name", "ids"})."""
-    try:
-        groups = json.loads(path.read_text(encoding="utf-8")).get("groups", [])
-    except (OSError, ValueError, AttributeError):
-        return []
-    return [group for group in groups if isinstance(group, dict) and group.get("ids")]
+    return read_alias_group_records(path)
 
 
 def build_sitemap(
