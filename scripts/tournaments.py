@@ -12,11 +12,17 @@ from __future__ import annotations
 import html
 import math
 import re
+import sys
 import unicodedata
+from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import ratings  # noqa: E402
 
 ELO_START = 1500.0
 ELO_K = 24.0
@@ -85,12 +91,8 @@ def playoff_round_rank(stage: object, round_value: object) -> float:
 
 def compute_pre_game_ratings(matches: pd.DataFrame) -> pd.DataFrame:
     """Elo rating and games played for both players before each game, in playing order."""
-    round_column = "round_value" if "round_value" in matches else "round_number"
     order = matches.sort_values(
-        ["date_dt", "tournament_id", "stage_sequence", "stage_id", round_column,
-         "playoff_game_number"],
-        kind="mergesort",
-        na_position="last",
+        ratings.playing_order_columns(matches), kind="mergesort", na_position="last"
     ).index
     p1 = matches.loc[order, "player1_id"].astype("int64").tolist()
     p2 = matches.loc[order, "player2_id"].astype("int64").tolist()

@@ -222,6 +222,57 @@ test("a URL gives a complete view, so Back and Forward reset what it leaves out"
   window.location.search = "";
 });
 
+test("typing an exact name in the opponent box does not put that player in the URL", async () => {
+  const { elements } = await import("../public/js/state.js");
+  const { updateUrl } = await import("../public/js/url-state.js");
+  const saved = {
+    players: state.players,
+    playersById: state.playersById,
+    playerA: elements.playerA,
+    playerB: elements.playerB,
+    history: window.history,
+    href: window.location.href,
+    search: window.location.search,
+    hash: window.location.hash,
+  };
+  const anna = { id: 1, name: "Anna" };
+  const bo = { id: 2, name: "Bo" };
+  state.players = [anna, bo];
+  state.playersById = new Map([[1, anna], [2, bo]]);
+  elements.playerA = { dataset: { playerId: "1" }, value: "Anna" };
+  // Typed in full, but no suggestion was picked.
+  elements.playerB = { dataset: {}, value: "Bo" };
+  const written = [];
+  window.history = {
+    replaceState: (s, t, url) => written.push(String(url)),
+    pushState: (s, t, url) => written.push(String(url)),
+  };
+  window.location.href = "https://example.test/?p1=1";
+  window.location.search = "?p1=1";
+  window.location.hash = "";
+  try {
+    // What the opponent box's reset handler calls on every keystroke.
+    updateUrl(1, null, [1], []);
+    let params = new URL(written.at(-1)).searchParams;
+    assert.equal(params.get("p1"), "1");
+    assert.equal(params.has("p2"), false);
+
+    // Leaving the opponent out still reads it from the opponent box.
+    updateUrl();
+    params = new URL(written.at(-1)).searchParams;
+    assert.equal(params.get("p2"), "2");
+  } finally {
+    state.players = saved.players;
+    state.playersById = saved.playersById;
+    elements.playerA = saved.playerA;
+    elements.playerB = saved.playerB;
+    window.history = saved.history;
+    window.location.href = saved.href;
+    window.location.search = saved.search;
+    window.location.hash = saved.hash;
+  }
+});
+
 test("a cancelled opponent list loads again instead of failing", async () => {
   const { loadOpponentsForPlayer, getOpponentBoxStatus } = await import("../public/js/data.js");
   state.aliasMap.clear();

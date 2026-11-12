@@ -197,9 +197,11 @@ standard `unittest` framework.
   matchup, tournament, ratings and changelog views in Chromium and fails on any axe-core WCAG 2.1 A/AA violation
   (`scripts/a11y-check.mjs`). CI runs it before deploying.
 * **CI Pipeline Execution**:
-  The test suite runs automatically in the GitHub Actions `Validate H2H data` job during the `build`
-  workflow. Tests run on every push to the `main` branch, on the daily cron schedule (which stops
-  after the download when the sources match the live site's `meta.json`), or via manual dispatch.
+  On every pull request and push to `main`, the `build` workflow runs the Node tests and the Python
+  tests that need no built data before the data build, so code problems show up in about a minute.
+  The full Python suite, including the count checks against built data, runs after the build in
+  the `Validate H2H data` step (the daily cron run skips it when the sources match the live site's
+  `meta.json`).
   Tests verify:
   1. Match counts match the raw source dataset.
   2. Ranking data and tournament levels match metadata.
@@ -232,8 +234,9 @@ standard `unittest` framework.
   * Avoid reading raw `.cache/` data files directly. If you need to inspect or verify caching
     formats, load only a small preview (e.g., the first 5 rows of a Parquet or CSV file) using a
     custom script, rather than reading the entire file.
-  * Always use the existing Python test suite (`python -m unittest -v`) to verify data builds and
-    sanity instead of checking files manually.
+  * Always use the existing test suites (`python -m unittest discover -s tests -v`, and
+    `node --test tests-js/*.test.mjs` for the frontend and Pages Functions) to verify data builds
+    and sanity instead of checking files manually.
 * **Required Reviews**:
   > TODO: Pull Request review requirements are not explicitly configured.
 * **Rate Limits**:

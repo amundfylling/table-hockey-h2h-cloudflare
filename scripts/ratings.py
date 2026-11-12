@@ -80,13 +80,21 @@ def _new_volatility(sigma: float, phi: float, v: float, delta: float) -> float:
     return math.exp(low / 2.0)
 
 
-def _playing_order(matches: pd.DataFrame) -> pd.Index:
+def playing_order_columns(matches: pd.DataFrame) -> list:
+    """Sort columns that put games in the order they were played.
+
+    Some sources number playoff rounds as fractions (0.125 = 1/8 final, 1 = final), which only
+    round_value keeps; frames built in tests may have neither round_value nor stage_id.
+    """
     round_column = "round_value" if "round_value" in matches else "round_number"
+    columns = ["date_dt", "tournament_id", "stage_sequence", "stage_id", round_column,
+               "playoff_game_number"]
+    return [column for column in columns if column in matches]
+
+
+def _playing_order(matches: pd.DataFrame) -> pd.Index:
     return matches.sort_values(
-        ["date_dt", "tournament_id", "stage_sequence", "stage_id", round_column,
-         "playoff_game_number"],
-        kind="mergesort",
-        na_position="last",
+        playing_order_columns(matches), kind="mergesort", na_position="last"
     ).index
 
 

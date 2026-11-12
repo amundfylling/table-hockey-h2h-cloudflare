@@ -67,25 +67,26 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Validate JavaScript syntax
+        run: find public functions -type f -name '*.js' -print0 | xargs -0 -n1 node --check
+
+      - name: Install Node dev tools
+        # KaTeX (the ratings page formula test), axe-core and Playwright.
+        run: npm ci
+
+      - name: Run frontend and Pages Function tests
+        run: node --test tests-js/*.test.mjs
+
+      - name: Run Python tests that need no built data
+        # test_h2h_counts.py reads public/data and runs after the build, with the full suite.
+        run: python -m unittest discover -s tests -p "test_[!h]*.py"
+
       - name: Build H2H data
         id: build
         env:
           # Only the daily run may skip: code changes always rebuild and deploy.
           SKIP_IF_SOURCES_MATCH_URL: ${{ github.event_name == 'schedule' && 'https://h2h.puck.no/data/meta.json' || '' }}
         run: python scripts/build_h2h.py
-
-      - name: Validate JavaScript syntax
-        if: steps.build.outputs.changed == 'true'
-        run: find public functions -type f -name '*.js' -print0 | xargs -0 -n1 node --check
-
-      - name: Install Node dev tools
-        if: steps.build.outputs.changed == 'true'
-        # KaTeX (the ratings page formula test), axe-core and Playwright.
-        run: npm ci
-
-      - name: Run frontend and Pages Function tests
-        if: steps.build.outputs.changed == 'true'
-        run: node --test tests-js/*.test.mjs
 
       - name: Validate H2H data
         if: steps.build.outputs.changed == 'true'

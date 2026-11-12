@@ -4,6 +4,7 @@ import pandas as pd
 
 from scripts import build_h2h
 from scripts.build_h2h import build_records
+from scripts.ratings import playing_order_columns
 
 NAMES = {1: "Anna", 2: "Bo", 3: "Cy", 4: "Di", 9: "* *"}
 
@@ -54,6 +55,43 @@ class RecordsTest(unittest.TestCase):
         self.assertEqual(records["win_streak"]["end_date"], _day(3))
         self.assertEqual(records["unbeaten_streak"]["games"], 6)
         self.assertEqual(records["unbeaten_streak"]["results"], "WWWWDW")
+
+    def test_a_lost_final_ends_a_streak_when_rounds_are_fractions(self):
+        # A win the day before, then a 1/8 final, quarter-final, semi-final and final on one
+        # day, numbered 0.125, 0.25, 0.5 and 1 as some sources do. The integer round_number
+        # keeps only the final's 1, so sorting by it puts the lost final first.
+        rows = [
+            (1, 2, 3, 1, _day(0)),
+            (1, 2, 3, 1, _day(1)),
+            (1, 3, 3, 1, _day(1)),
+            (1, 4, 3, 1, _day(1)),
+            (2, 1, 3, 1, _day(1)),
+        ]
+        frame = _games(rows)
+        frame["round_value"] = [1.0, 0.125, 0.25, 0.5, 1.0]
+        frame["round_number"] = pd.array([1, pd.NA, pd.NA, pd.NA, 1], dtype="Int64")
+        # Hand the rows over out of order, as the source files do.
+        records = build_records(frame.iloc[::-1].reset_index(drop=True), NAMES)
+        # Played order is W W W W L: four straight wins, ended by the final. Sorting the
+        # final first gives W L W W W, a three-game run that starts after the loss.
+        self.assertEqual(records["win_streak"]["player"]["id"], 1)
+        self.assertEqual(records["win_streak"]["games"], 4)
+        self.assertEqual(records["win_streak"]["start_date"], _day(0))
+
+    def test_playing_order_columns_skip_what_a_frame_lacks(self):
+        frame = pd.DataFrame(columns=["date_dt", "tournament_id", "stage_sequence",
+                                      "round_number", "playoff_game_number"])
+        self.assertEqual(
+            playing_order_columns(frame),
+            ["date_dt", "tournament_id", "stage_sequence", "round_number",
+             "playoff_game_number"],
+        )
+        frame["round_value"] = []
+        self.assertEqual(
+            playing_order_columns(frame),
+            ["date_dt", "tournament_id", "stage_sequence", "round_value",
+             "playoff_game_number"],
+        )
 
     def test_unbeaten_run_is_left_out_when_no_longer_than_the_winning_streak(self):
         rows = [(1, 2, 3, 1, _day(i)) for i in range(4)]
