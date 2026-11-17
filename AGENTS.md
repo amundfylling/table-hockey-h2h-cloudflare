@@ -196,16 +196,35 @@ standard `unittest` framework.
 * **Accessibility check**: after the data build, `npm ci && npm run a11y` loads the home, player,
   matchup, tournament, ratings and changelog views in Chromium and fails on any axe-core WCAG 2.1 A/AA violation
   (`scripts/a11y-check.mjs`). CI runs it before deploying.
+* **Lint**: `ruff check` (Python, `ruff.toml`; install with `pip install -r requirements-dev.txt`)
+  and `npm run lint` (ESLint, `eslint.config.mjs`). Both look for bugs (undefined or unused
+  names, unreachable code), not style.
+* **Pipeline snapshot**: `tests/test_pipeline_snapshot.py` builds a small fixture cut from the
+  real sources (`tests/fixtures/pipeline/`, made by its `make_fixture.py`) end to end with a fixed
+  `BUILD_DATE`, and compares the stats with `tests/snapshots/pipeline.json`. A change that moves
+  any computed number fails it; when that is intended, run
+  `UPDATE_SNAPSHOTS=1 python -m unittest tests.test_pipeline_snapshot` and commit the snapshot,
+  so reviewers see exactly which stats change. `H2H_WORK_DIR` points `build_h2h.py` at another
+  folder's `.cache/` and `public/`.
+* **Built-data invariants**: `tests/test_h2h_integrity.py` reads the whole build and checks that
+  every summary matches its games, both sides of each pair agree, links point at real players and
+  tournaments, standings and playoff series add up, and the leaderboard, rivalries and
+  tournament list agree with the files they summarize.
+* **Drift check**: `python scripts/data_drift.py` compares the build with the live site's data
+  and fails when games, players, tournaments, a source or sampled past games are lost. Its report
+  goes to the run summary. Label a PR `data-drift-ok` (or put `[data-drift-ok]` in the commit
+  message on `main`) when a drop is intended.
+* **Smoke check**: after the data build, `npm run smoke` loads every page on desktop and phone,
+  checks each shows the names and counts the data says it should, with no script errors, console
+  errors or failed requests, and runs the search-and-compare flow (`scripts/smoke-check.mjs`).
 * **CI Pipeline Execution**:
-  On every pull request and push to `main`, the `build` workflow runs the Node tests and the Python
-  tests that need no built data before the data build, so code problems show up in about a minute.
-  The full Python suite, including the count checks against built data, runs after the build in
-  the `Validate H2H data` step (the daily cron run skips it when the sources match the live site's
-  `meta.json`).
-  Tests verify:
-  1. Match counts match the raw source dataset.
-  2. Ranking data and tournament levels match metadata.
-  3. Nested H2H files exist for all eligible players.
+  On every pull request and push to `main`, the `build` workflow first runs the `Lint and tests`
+  job (actionlint, ruff, ESLint, JS syntax, the KaTeX freshness check, Node tests, and the Python
+  tests that need no built data, including the pipeline snapshot), so code problems show up in
+  about a minute. The data build waits for it, then runs `test_h2h_*.py` against the built data
+  (`Validate H2H data`), the drift check, the smoke check and the accessibility check before
+  deploying (the daily cron run skips them when the sources match the live site's `meta.json`).
+  Python test files named `test_h*.py` read the built data; every other name must run without it.
 
 ## Security & Compliance
 

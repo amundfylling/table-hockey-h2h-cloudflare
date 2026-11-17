@@ -32,3 +32,4 @@ dist/
 !public/icon-512.png
 !public/favicon.png
 !public/nbhf-logo.png
+.ruff_cache/

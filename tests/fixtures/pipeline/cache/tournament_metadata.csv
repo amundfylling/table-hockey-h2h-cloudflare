@@ -1,0 +1,10 @@
+TournamentID,Name,Type,Status,Level,SWRMultiplier,Country,City,Address,Date,EndDate,StartTime,RegistrationStart,RegistrationEnd,Participants,MaxParticipants,Email,PhoneNumber,DetailURL,ExtraMetadataJson,ScrapedAt
+2316,Tornaligan #101,Individual,Is being conducted *,5,0.8,Sweden,Lund,,2017-11-15,,,,,15,,,,https://th.sportscorpion.com/eng/tournament/id/2316/,,2026-05-17T12:53:01+00:00
+2243,Tornaligan #99,Individual,Is being conducted *,,,Sweden,Lund,,2017-10-18,,,2017-10-18 00:00,2017-10-18 00:00,10,,,,https://th.sportscorpion.com/eng/tournament/id/2243/,,2026-05-17T12:53:05+00:00
+2241,3Tunaligan #5 - You Were The Chosen One,Individual,Finished,5,0.8,Sweden,Eskilstuna,,2017-10-18,2017-10-18,,2017-10-18 00:00,2017-10-18 00:00,9,,,,https://th.sportscorpion.com/eng/tournament/id/2241/,,2026-05-17T12:53:05+00:00
+2215,O'Learysligan #12,Individual,Finished *,,,Sweden,Stockholm,,2017-10-05,2017-10-05,,,,13,,,,https://th.sportscorpion.com/eng/tournament/id/2215/,,2026-05-17T12:53:06+00:00
+893,XIV World Championship 2015 OPEN,Individual,Finished,1,1.0,Russia,Saint Petersburg,,2015-06-13,2015-06-14,,2015-04-22 00:00,2015-04-23 00:00,108,,,,https://th.sportscorpion.com/eng/tournament/id/893/,,2026-05-17T12:54:19+00:00
+844,Кубок України серед юніорів сезону 2014/2015,Individual,Finished,,,Ukraine,Kiev,,2015-04-04,2015-04-04,,2015-03-09 09:30,2015-04-03 11:00,9,,,,https://th.sportscorpion.com/eng/tournament/id/844/,,2026-05-17T12:54:23+00:00
+843,П'ятий етап відкритого чемпіонату України сезону 2014/2015,Individual,Finished,,,Ukraine,Kiev,,2015-04-04,2015-04-04,,2015-03-09 09:30,2015-04-03 11:00,26,,,,https://th.sportscorpion.com/eng/tournament/id/843/,,2026-05-17T12:54:23+00:00
+8264,Estonian Championships 2026/2027 #1,Individual,Finished,4,0.6,Estonia,Tallinn,"Lindakivi kultuurikeskus, Koorti 22",2026-09-20,2026-09-20,12:00,2026-09-10 00:00,2026-09-18 23:00,7,,,,https://th.sportscorpion.com/eng/tournament/id/8264/,,2026-10-15T03:58:39+00:00
+8417,Микс Тим Баттл #5 (2026/27 г.г.),Team,Finished,6,0.3,Russia,Izhevsk,,2026-11-10,2026-11-10,18:30,,,4,,,,https://th.sportscorpion.com/eng/tournament/id/8417/,,2026-11-13T05:53:29+00:00

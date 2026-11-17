@@ -8,11 +8,11 @@
 //
 // The player, matchup and tournament come from the built data unless A11Y_P1, A11Y_P2 and
 // A11Y_TOURNAMENT name them.
-import { createReadStream, readdirSync, readFileSync, statSync } from "node:fs";
-import { createServer } from "node:http";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
-import { extname, join, normalize } from "node:path";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { serve } from "./static-server.mjs";
 
 const require = createRequire(import.meta.url);
 const { chromium } = require("playwright");
@@ -20,36 +20,6 @@ const AXE_PATH = require.resolve("axe-core/axe.min.js");
 
 const PUBLIC_DIR = fileURLToPath(new URL("../public/", import.meta.url));
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
-const TYPES = {
-  ".html": "text/html; charset=utf-8",
-  ".css": "text/css",
-  ".js": "text/javascript",
-  ".json": "application/json",
-  ".png": "image/png",
-  ".woff2": "font/woff2",
-  ".webmanifest": "application/manifest+json",
-  ".txt": "text/plain",
-  ".xml": "application/xml",
-};
-
-function serve(root) {
-  const server = createServer((req, res) => {
-    const { pathname } = new URL(req.url, "http://localhost");
-    const relative = normalize(decodeURIComponent(pathname)).replace(/^(\.\.[/\\])+/, "");
-    let path = join(root, relative);
-    try {
-      if (statSync(path).isDirectory()) path = join(path, "index.html");
-    } catch {
-      res.writeHead(404).end();
-      return;
-    }
-    res.writeHead(200, { "content-type": TYPES[extname(path)] || "application/octet-stream" });
-    createReadStream(path).on("error", () => res.end()).pipe(res);
-  });
-  return new Promise((resolve) => {
-    server.listen(0, "127.0.0.1", () => resolve(server));
-  });
-}
 
 function pickViews() {
   const data = join(PUBLIC_DIR, "data");

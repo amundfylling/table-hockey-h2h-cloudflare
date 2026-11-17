@@ -62,8 +62,6 @@ function renderList() {
     el("span", { class: "mut" }, "Last played"),
     el("span"));
   const rows = (showAll ? rivalries : rivalries.slice(0, LIST_ROWS)).map((rivalry, index) => {
-    const nameA = playerName(rivalry.p1);
-    const nameB = playerName(rivalry.p2);
     // The accessible name is the visible row text, joined into a sentence by hidden words.
     return el("button", {
       class: "rrow",

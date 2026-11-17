@@ -1,0 +1,150 @@
+Table hockey ranking up to 10.11.2026
+Rank	ID_Player	Player	Club	Nation	Points	Player_Value
+2	659673	Evgeniy Matantsev	THC Nertus	UKR	4617	982
+3	200042	Edgars Caics	BJC Laimite	LAT	4561	965
+7	659909	Artem Matantsev	THC Nertus	UKR	4372	939
+8	280562	Hans Osterman	NUHL8	SWE	4293	895
+10	656663	Oscar Henriksson	Broderna Grym	SWE	4288	947
+11	654753	Sandis Kristaps Lagzdins	BJC Laimite	LAT	4208	886
+12	70409	Patrik Petr	THC Stiga Elites	CZE	4175	912
+18	659773	Uno Osterman	NUHL8	SWE	4025	816
+20	200261	Valts Smagars	Jurmalas GHK	LAT	4010	845
+21	667180	Olof Blume	Bjorkhagen Rangers	SWE	4001	851
+26	201212	Gints Lasmanis	Jurmalas GHK	LAT	3907	852
+29	654721	Kevin Eriksson	Paaskyvuoren Alfat	FIN	3877	930
+39	664291	Niklas Blomberg	NUHL8	SWE	3646	801
+43	661180	Benjamin Suominen	Paaskyvuoren Alfat	FIN	3593	790
+52	280563	Peter Ostlund	Umea HSS	SWE	3501	784
+60	280153	Finn Fries	Avantgarde Lund	SWE	3404	789
+61	79263	Krystof Lebl	Big Band Praha	CZE	3391	717
+62	654245	Anton Umanskyy	THC Nertus	UKR	3385	793
+64	100067	Kristian Iso-Tryykari	Turun Seudun PJK	FIN	3372	768
+81	310300	Mykhaylo Shalomayev	TEHC Black Forest Werewolves	UKR	3190	667
+82	658291	Valentin Dietze	TEHC Black Forest Werewolves	GER	3186	700
+84	650229	Truls Mansson	Bjorkhagen Rangers	SWE	3167	649
+87	280448	Rickard Sjostedt	Rex Oresund	SWE	3132	689
+92	70083	Jan Dryak	Big Band Praha	CZE	3091	753
+96	654760	Jan Pelkonen	Paaskyvuoren Alfat	FIN	3085	755
+106	80004	Bjarne Axelsen	Gladiators Plzen	DEN	2998	673
+107	70248	Martin Zenisek	Gladiators Plzen	CZE	2996	652
+112	70310	Miroslav Cernoch	HCS Zabka Praha	CZE	2962	613
+114	90049	Igor Saveljev	SK Raua	EST	2952	666
+116	666892	Anton Jalneskog	Broderna Grym	SWE	2948	614
+120	310175	Mykhaylo Spivakovskyy	THC Lisovi Haschi	UKR	2935	702
+121	70001	Pavel Plesak	Gladiators Plzen	CZE	2922	735
+125	220035	Yngve Aasheim	Trondheim BHK	NOR	2903	748
+128	120426	Simon Thomas	Big Band Praha	IRL	2879	609
+130	100189	Janne Ollila	Turun Seudun PJK	FIN	2840	680
+133	70053	Vaclav Pikl	THC Stiga Elites	CZE	2836	603
+134	150094	Gergely Regula	Bodicsek Klub	HUN	2836	626
+142	650154	Matti Mansson	Avantgarde Lund	SWE	2782	650
+146	200104	Janis Kalnevics	Incukalns THC	LAT	2768	719
+149	654720	Kimmo Eriksson	Paaskyvuoren Alfat	FIN	2752	582
+153	220135	Arne Johannes Holmin	BHK Graaveir	NOR	2740	619
+162	70057	Zdenek Matousek ml.	HCS Zabka Praha	CZE	2652	670
+166	240037	Maxim Borisov	Legion-NiKi	RUS	2631	808
+172	666349	Stefan Lemming	United Stars	SWE	2578	559
+173	200250	Atis Silis	BJC Laimite	LAT	2565	808
+174	666475	Patriks Strods	Incukalns THC	LAT	2563	568
+183	200313	Jevgenijs Zaharovs	Jurmalas GHK	LAT	2535	673
+210	70064	David Smid	THC Stiga Svitavy 93	CZE	2410	650
+212	663414	Liv Osterman	NUHL8	SWE	2404	556
+226	658200	Ralph Pommerenke	TEHC Black Forest Werewolves	GER	2344	477
+234	240087	Yanis Galuzo	Leningradets	RUS	2333	808
+235	220019	Frode Hagerup	Hodd BHK	NOR	2323	545
+248	660776	Daniil Landa	SK Raua	EST	2250	510
+250	280375	David Nordstrom	DAJM	SWE	2241	642
+264	659672	Dmytro Marmaliuk	THC Nertus	UKR	2201	778
+269	120218	Frank Bruneske "Classic Brunske"	Schlicktown Arctic Veteranos	GER	2181	513
+277	240340	Arseniy Stolyarov	THC Toros	RUS	2165	786
+291	120041	Eike Rompa "Fury"	Schlicktown Arctic Veteranos	GER	2110	484
+297	665760	Denis Andrijashkin	Kharlamov Club	EST	2083	557
+307	240194	Stanislav Lutay	Leningradets	RUS	2052	627
+311	281008	Jimi Mansson	Avantgarde Lund	SWE	2047	464
+314	652046	Grigoriy Dubinin	Alfa-Taktika	RUS	2026	717
+319	90056	Maria Saveljeva	SK Raua	EST	2006	646
+348	661053	Eduard Kuratnik	UZ30	BLR	1912	437
+351	653348	Oleg Ortinov	Legion-NiKi	RUS	1906	733
+358	310339	Ihor Zaporozhets	Katran	UKR	1886	470
+359	665762	Aleksandr Metelitsa	TEHC Black Forest Werewolves	EST	1885	472
+377	660887	Aliaksandr Bartosh	THC K-Marx Nahockers	BLR	1834	408
+385	661052	Aliaksandr Dalgou	UZ30	BLR	1812	386
+396	657073	Nazar Kondrashevskyi	Katran	UKR	1774	477
+420	650230	Jimmy Mardell	Umea HSS	SWE	1702	628
+444	200312	Artjoms Zaharovs	Jurmalas GHK	LAT	1647	771
+445	120427	Thomas Haussknecht "Slow Hand"	Satyrion Berlin	GER	1646	457
+448	660017	August Wegestal	Rex Oresund	SWE	1638	421
+459	654955	German Fokin	Northern Lights	RUS	1610	763
+461	290030	Rolf Locher	Bern	SUI	1604	420
+469	90094	Vafa Hamdamov	SK Raua	EST	1592	468
+474	280205	Lars Henriksson	Broderna Grym	SWE	1562	769
+478	220180	Espen Moe	Trondheim BHK	NOR	1554	571
+484	675559	Asnate Kocere	Incukalns THC	LAT	1540	366
+485	653196	Serhiy Tsyba	THC Shaleni Bdzholy	UKR	1539	484
+501	150083	Magor Papp	Bodicsek Klub	HUN	1491	518
+514	656937	Mikhail Shashkov	Northern Lights	RUS	1464	675
+535	220182	Jorn Moldvar	Hodd BHK	NOR	1395	586
+547	656829	Joan Eriksson Mencl	Avantgarde Lund	SWE	1353	508
+554	80203	Anette Engel	Team Axelsen Bordhockey Koncept	DEN	1341	492
+565	653584	Anastasiya Garkovska	???	UKR	1311	384
+569	672791	Roman Bentsa	Izhevsk	RUS	1295	327
+576	661800	Susanna Possl	FC Europe Juniors	SWE	1277	272
+589	650862	Andreas Roren	Hodd BHK	NOR	1244	554
+632	310027	Oleksii Husak	Svarog	UKR	1176	482
+649	654560	Alen Shekarev	SK Raua	EST	1148	475
+654	280633	Martin Arenlind	DAJM	SWE	1129	596
+663	30005	Andrei Kniaziuk	Tiani-Tolkai	BLR	1103	436
+671	653749	Valentyn Korabel	Devyaty val	UKR	1092	432
+675	281543	Tomas Fagerlind	Inga Luringar Gills	SWE	1084	433
+678	656027	Veniamin Gerasimov	THC Toros	RUS	1081	783
+726	661233	Yuriy Bondarenko	THC Nertus	UKR	971	415
+738	220213	Daniel Remmem	Trondheim BHK	NOR	930	614
+745	660886	Siarhei Vazhnik	THC K-Marx Nahockers	BLR	918	373
+761	662140	Richard Petersson	DAJM	SWE	878	470
+780	289388	Goran Skog	Avantgarde Lund	SWE	840	226
+817	90098	Sergei Sokolov	SK Raua	EST	771	370
+832	656496	Dmytro Derkach	THC Shaleni Bdzholy	UKR	750	404
+850	653399	Dmytro Donets	???	UKR	724	499
+854	672808	Sergey Shitov	Izhevsk	RUS	717	184
+859	90145	Juri Artamonov	TEHC Black Forest Werewolves	EST	710	494
+861	656502	Maksym Peskov	Impuls Kyiv	UKR	701	428
+869	240349	Alexey Titov	Alfa-Taktika	RUS	691	725
+870	280049	Petter Bengtsson	Bjorkhagen Rangers	SWE	691	784
+879	662041	Mattias Kralmark	DAJM	SWE	674	480
+886	280485	Sten Svensson	Avantgarde Lund	SWE	663	364
+910	661888	Bakhtiyar Tileukabylov	Shymkent	KAZ	604	279
+930	658423	Sergiy Krasiuk	Impuls Kyiv	UKR	580	319
+933	310065	Vitaliy Sapozhnikov	Katran	UKR	574	540
+949	220017	Stian Ostrem "Power Gym"	Hodd BHK	NOR	553	577
+962	280819	Markus Nilsson	Spjass Invaders	SWE	532	723
+987	674428	Alexey Svetovidov	???	RUS	500	146
+991	661055	Andrei Khaprou	UZ30	BLR	493	281
+999	652920	Santtu Sainio	Talpelan Taiga	FIN	485	685
+1011	281573	Daniel Setterwall	Inga Luringar Gills	SWE	470	289
+1057	666264	Tomas Rybing	Bjorkhagen Rangers	SWE	416	348
+1102	280061	Carl Bindekrans	BJC Laimite	SWE	387	762
+1240	658722	Oksana Derkach	THC Shaleni Bdzholy	UKR	285	295
+1255	672932	Ivan Bentsa	Izhevsk	RUS	275	93
+1276	150272	Viktor Magyari	Bodicsek Klub	HUN	263	417
+1309	240706	Stepan Korotkiy	Bagira	RUS	249	668
+1323	310039	Mykola Krokhmal	Odesa	UKR	241	364
+1493	100132	Ahti Lampi	Spjalerance	FIN	176	788
+1494	656340	Denys Opara	Impuls Kyiv	UKR	176	212
+1534	661298	Daniil Moshnin	SK Raua	EST	165	484
+1568	658187	Robin Westergren	3Tuna Bordshockey	SWE	156	395
+1602	659257	Aleksandr Tarakanov	Volna	KAZ	148	479
+1705	665239	Lars Soderkvist	3Tuna Bordshockey	SWE	127	254
+1771	240373	Andrey Voskoboynikov	Pyramida	RUS	117	731
+1783	200185	Edgars Mucenieks	Skrunda THC	LAT	116	727
+2017	660853	Baurzhan Ualiev	Plastconstructor	KAZ	86	388
+2090	240384	Alexey Zaharov	THC Toros	RUS	79	793
+2123	676172	Anton Nadeev	???	RUS	75	18
+2187	661395	Eugene Papakul	BSU Rangers	BLR	70	430
+2198	660892	Roman Romanenko	BSU Rangers	BLR	69	301
+2348	676756	Denis Parkulab	???	RUS	61	13
+2456	660845	Gleb Tarakanov	Mastergrad	KAZ	56	393
+2474	663666	Igor Chudin	Almaty	KAZ	55	139
+2989	288082	Rikard Nasselkvist	Bjorkhagen Rangers	SWE	36	199
+3071	659258	Vladimir Tarakanov	Mastergrad	KAZ	34	287
+3403	656495	Tamara Shalomayeva	TEHC Black Forest Werewolves	UKR	27	64
+6199	670035	Dmitri Ossipenko	Kohtla-Jarve	EST	3	5

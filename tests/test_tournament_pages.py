@@ -4,7 +4,6 @@ from pathlib import Path
 import pandas as pd
 
 from scripts.tournaments import (
-    build_brackets,
     build_tournament_files,
     build_standings,
     payload_from_frame,
