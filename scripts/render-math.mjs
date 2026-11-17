@@ -67,7 +67,9 @@ function main() {
     let current = null;
     try {
       current = readFileSync(path, "utf8");
-    } catch {}
+    } catch {
+      // No file yet: write it.
+    }
     if (current === content) return;
     if (check) stale.push(path);
     else writeFileSync(path, content);

@@ -27,13 +27,16 @@ import ratings  # noqa: E402
 import stage_fixes  # noqa: E402
 import tournaments as tournament_pages  # noqa: E402
 
-CACHE_DIR = ROOT_DIR / ".cache"
-PUBLIC_DIR = ROOT_DIR / "public"
+# H2H_WORK_DIR builds in another folder (its .cache/ in, its public/ out): the pipeline
+# snapshot test builds a small committed fixture there.
+WORK_DIR = Path(os.environ.get("H2H_WORK_DIR") or ROOT_DIR)
+CACHE_DIR = WORK_DIR / ".cache"
+PUBLIC_DIR = WORK_DIR / "public"
 DATA_DIR = PUBLIC_DIR / "data"
 H2H_DIR = DATA_DIR / "h2h"
 OG_H2H_DIR = DATA_DIR / "og"
-DATA_STAGING_DIR = ROOT_DIR / ".data-build"
-DATA_BACKUP_DIR = ROOT_DIR / ".data-previous"
+DATA_STAGING_DIR = WORK_DIR / ".data-build"
+DATA_BACKUP_DIR = WORK_DIR / ".data-previous"
 SITE_URL = os.environ.get("SITE_URL", "https://h2h.puck.no").rstrip("/")
 # One sitemap file holds at most 50,000 URLs; build_sitemaps splits each kind of page into as
 # many files as it needs. Every pair that has played has a matchup page, so all are listed.
@@ -45,6 +48,14 @@ RANKING_ROW_RE = re.compile(
     r"(?=\s+\d+\s+\d+\s+|$)",
     re.DOTALL,
 )
+
+
+def build_now() -> datetime:
+    """The build's clock. BUILD_DATE (YYYY-MM-DD) fixes it, so a fixture builds the same twice."""
+    fixed = os.environ.get("BUILD_DATE", "").strip()
+    if fixed:
+        return datetime.strptime(fixed, "%Y-%m-%d").replace(hour=12, tzinfo=timezone.utc)
+    return datetime.now(timezone.utc)
 
 
 def normalize_search_key(value: Optional[str]) -> str:
@@ -2784,7 +2795,7 @@ def main() -> int:
         if len(ranking_dates) != 1:
             raise RuntimeError("Ranking data must contain one unambiguous as-of date.")
         ranking_date = datetime.strptime(ranking_dates.pop(), "%Y-%m-%d").date()
-        ranking_age = datetime.now(timezone.utc).date() - ranking_date
+        ranking_age = build_now().date() - ranking_date
         if ranking_age.days < 0 or ranking_age.days > max_ranking_age_days:
             raise RuntimeError(
                 f"Ranking data is {ranking_age.days} days old; maximum is "
@@ -2910,7 +2921,7 @@ def main() -> int:
         player_names.keys(),
         load_alias_groups(),
         pairs=list(pairs),
-        today=pd.Timestamp(datetime.now(timezone.utc).date()),
+        today=pd.Timestamp(build_now().date()),
         nations=nations,
         pair_stats=pair_stats,
     )
@@ -2932,7 +2943,7 @@ def main() -> int:
         build_leaderboard(
             players,
             player_ratings,
-            datetime.now(timezone.utc).date().isoformat(),
+            build_now().date().isoformat(),
             load_alias_group_records(),
         ),
     )
@@ -2959,7 +2970,7 @@ def main() -> int:
     write_json(
         DATA_STAGING_DIR / "meta.json",
         {
-            "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "generated_at": build_now().isoformat(timespec="seconds"),
             "players": len(players),
             "matches": int(len(matches)),
             "sources": build_source_summary(
@@ -2975,7 +2986,7 @@ def main() -> int:
     write_sitemaps(
         build_sitemaps(
             player_payloads,
-            datetime.now(timezone.utc).date().isoformat(),
+            build_now().date().isoformat(),
             tournament_ids=[entry["id"] for entry in tournament_index],
             tournament_dates={entry["id"]: entry["date"] for entry in tournament_index},
         )

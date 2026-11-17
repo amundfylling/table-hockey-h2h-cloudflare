@@ -1,0 +1,11 @@
+# Lint for bugs, not style: pyflakes (unused or undefined names), syntax errors, pylint errors
+# and bugbear's likely-bug checks.
+target-version = "py311"
+include = ["scripts/**/*.py", "tests/**/*.py"]
+
+[lint]
+select = ["F", "E9", "PLE", "B"]
+ignore = [
+  "B905", # zip() without strict=: the zipped lists are built to the same length
+  "B023", # loop variables in closures: the closures are called inside the same iteration
+]

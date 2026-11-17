@@ -1,0 +1,3 @@
+# Tools CI uses that the build does not need.
+ruff==0.16.9
+actionlint-py==1.7.12.24

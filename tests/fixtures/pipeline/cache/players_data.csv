@@ -1,0 +1,204 @@
+PlayerID,Name,RankingID,Country,City,DateOfBirth,Sex
+7,Andrey Voskoboynikov,240373.0,Russia,Saint Petersburg,31.10.1988,Not set
+142,Maxim Borisov,240037.0,Russia,Saint Petersburg,10.06.1995,Not set
+144,Oleg Ortinov,653348.0,Russia,Saint Petersburg,06.05.1993,Male
+146,Alexey Titov,240349.0,Russia,Saint Petersburg,15.12.1972,Male
+176,Yanis Galuzo,240087.0,Russia,Saint Petersburg,07.05.1988,Male
+184,Igor Saveljev,90049.0,Estonia,Tallinn,15.07.1968,Male
+208,Maria Saveljeva,90056.0,Estonia,Tallinn,18.01.1997,Woman
+225,Dmitriy Koshman,240150.0,Russia,Moscow,31.07.1992,Not set
+232,Alexey Zaharov,240384.0,Russia,Moscow,12.08.1987,Not set
+236,Stepan Korotkiy,240706.0,Russia,Moscow,,Not set
+237,Alexander Miloradov,240220.0,Russia,Moscow,07.04.1991,Not set
+391,Edgars Caics,200042.0,Latvia,Riga,17.07.1989,Not set
+409,Kimmo Eriksson,654720.0,Finland,Turku,01.09.1970,Not set
+419,Santtu Sainio,652920.0,Finland,Lohja,07.04.1980,Not set
+434,Mykhaylo Spivakovskyy,310175.0,Ukraine,Одеса / Київ,10.02.1980,Not set
+456,Andrei Kniaziuk,30005.0,Belarus,Navapolatsk,27.10.1963,Male
+459,Mikhail Shashkov,656937.0,Russia,Saint Petersburg,09.12.1997,Not set
+466,Nazar Kondrashevskyy,657073.0,Ukraine,Kiev,31.12.1978,Male
+467,Mykhaylo Shalomayev,310300.0,Ukraine,Kharkiv,13.05.1972,Male
+470,Igor Zaporojets,310339.0,Ukraine,Kiev,18.03.1974,Male
+478,Valentyn Korabel,653749.0,Ukraine,Irpin,01.04.1976,Male
+480,Dmytro Donets,653399.0,Israel,,20.11.1984,Not set
+482,Vitaliy Sapozhnikov,310065.0,Ukraine,Odesa,02.04.1971,Male
+499,Dmytro Derkach,,Ukraine,Kharkiv,01.01.1965,Not set
+505,Sergii Tsyba,653196.0,Ukraine,Kiev,31.07.1983,Not set
+534,Maksym Peskov,656502.0,Ukraine,Kiev,23.02.1996,Not set
+558,Anastasia Garkovska,653584.0,Ukraine,Kiev,02.09.1996,Woman
+599,Tamara Shalomayeva,656495.0,Ukraine,Kharkiv,15.02.1999,Woman
+622,Jevgeni Lvov,90085.0,Estonia,Tallinn,03.01.1993,Male
+650,Dmytro Derkach,656496.0,Ukraine,Kharkiv,31.01.1967,Male
+664,Grigoriy Dubinin,652046.0,Russia,Tula,19.10.1979,Not set
+671,Viktoriia Zaporojets,657494.0,Ukraine,Kiev,16.09.1999,Not set
+690,Vafa Hamdamov,90094.0,Estonia,Tallinn,23.05.1960,Male
+693,Vladislav Zubel,657695.0,Estonia,Tallinn,27.07.1994,Not set
+711,Artem Valiev,658426.0,Republic of Lithuania,Vilnius,29.04.1995,Not set
+766,Maksym Peskov,,Ukraine,Kiev,23.12.1997,Not set
+801,Maksym Peskov,,Ukraine,Kiev,23.02.1997,Not set
+882,Viktoriya Noselivska,658424.0,Ukraine,Kiev,22.09.1993,Woman
+894,Jevgēnijs Zaharovs,200313.0,Latvia,Riga,16.12.1987,Not set
+895,Valts Smagars,200261.0,Latvia,Riga,15.01.1986,Male
+896,Artjoms Zaharovs,200312.0,Latvia,Skrunda,29.08.1992,Male
+897,Edgars Mucenieks,200185.0,Latvia,Skrunda,15.02.1988,Not set
+904,Atis Sīlis,200250.0,Latvia,Riga,25.05.1989,Not set
+906,Carl Bindekrans,280061.0,Sweden,Norrköping,27.04.1983,Not set
+911,Edgars Saulītis,200241.0,Latvia,Inčukalns,07.05.1982,Not set
+1020,Denys Opara,,Ukraine,Kiev,13.08.1997,Not set
+1021,Oleksii Husak,310027.0,Ukraine,Kyiv,29.11.1979,Male
+1023,German Fokin,654955.0,Russia,Saint Petersburg,18.04.1996,Not set
+1077,Oksana Derkach,,Ukraine,Kharkiv,05.03.1970,Not set
+1120,Vladimir Tarakanov,659258.0,Kazakhstan,Almaty,04.08.1975,Not set
+1206,Peter &#214;stlund,,Sweden,Avesta,26.05.1977,Not set
+1207,Lars Henriksson,280205.0,Sweden,Piteå,26.01.1965,Not set
+1208,Janne Ollila,100189.0,Finland,Naantali,27.04.1984,Not set
+1209,Patrik Petr,70409.0,Czech Republic,Litomyšl,04.12.1994,Not set
+1210,Gints Lasmanis,201212.0,Latvia,Skrunda,26.10.1996,Not set
+1211,Jimmy Mardell,650230.0,Sweden,Stockholm,22.10.1978,Not set
+1213,Stian Ostrem,220017.0,Norway,Drammen,18.04.1984,Not set
+1214,Bjarne Axelsen,80004.0,Denmark,Bronderslev,11.09.1974,Not set
+1216,Daniel Remmem,220213.0,Norway,,05.02.1974,Not set
+1217,Yngve Aasheim,220035.0,Norway,Trondheim,11.01.1968,Not set
+1218,Vaclav Pikl,70053.0,Czech Republic,Pilsen,12.07.1962,Not set
+1220,Filip Hamacek,650204.0,Czech Republic,,06.03.1994,Male
+1223,Jørn Moldvær,220182.0,Norway,Tønsberg,23.11.1972,Male
+1224,Krystof Lebl,79263.0,Czech Republic,Prague,26.05.1987,Not set
+1226,Andreas Røren,650862.0,Norway,Ulsteinvik,15.07.1985,Male
+1230,Espen Moe,220180.0,Norway,Trondheim,17.05.1972,Not set
+1231,Martin Arenlind,280633.0,Sweden,Lund,05.06.1977,Not set
+1235,Miroslav Cernoch,70310.0,Czech Republic,Prague,12.01.1982,Not set
+1241,Martin Zenisek,70248.0,Czech Republic,Pilsen,01.02.1981,Not set
+1243,Arne Johannes Holmin,220135.0,Norway,Bergen,22.03.1979,Not set
+1244,Gergely Regula,,Hungary,Budapest,11.11.1983,Not set
+1246,Magor Papp,150083.0,Hungary,Budapest,02.12.1978,Male
+1252,Anette Engel,80203.0,Denmark,Bronderslev,06.10.1981,Woman
+1253,Frank Bruneske,120218.0,Germany,Wilhelmshaven,19.09.1968,Male
+1254,Thomas Haussknecht,120427.0,Germany,Berlin,02.12.1965,Not set
+1255,Klaus Jean-Claude,,Switzerland,,27.03.1975,Not set
+1264,Rolf Locher,290030.0,Switzerland,Bern,14.07.1975,Male
+1266,Luginbuehl Beat,,Switzerland,,25.01.1974,Not set
+1268,Borsanyi Peter,,Hungary,,10.10.1992,Not set
+1270,Klaus Ramon,,Switzerland,,01.01.1990,Not set
+1289,Magyari Viktor,150272.0,Hungary,Vác,29.08.1992,Not set
+1300,Frode Hagerup,220019.0,Norway,Kvernaland,29.07.1983,Male
+1303,Oscar Henriksson,656663.0,Sweden,Piteå,26.08.1999,Not set
+1355,Aleksandr Tarakanov,659257.0,Kazakhstan,Железнодорожный (РФ),08.09.1981,Not set
+1392,Stanislav Lutay,240194.0,Russia,Tula,13.07.1971,Not set
+1403,Denys Opara,656340.0,Ukraine,Kiev,13.08.1997,Not set
+1406,Artem Matantsev,659909.0,Ukraine,Kropyvnytskyi,27.10.2007,Not set
+1440,Mykola Krokhmal,310039.0,Ukraine,Odesa,19.05.1959,Male
+1454,Sergiy Krasyuk,658423.0,Ukraine,Kiev,06.02.1985,Not set
+1471,Arseniy Stolyarov,240340.0,Russia,Moscow,30.08.1994,Not set
+1483,Anton Umanskyy,654245.0,Ukraine,Kiev,19.03.2002,Not set
+1484,Dmytro Marmaliuk,659672.0,Ukraine,Kropyvnytskyi,01.06.2000,Not set
+1505,Kevin Eriksson,654721.0,Finland,Turku,10.09.1998,Not set
+1528,Siarhei Vazhnik,660886.0,Belarus,Minsk,02.07.1972,Male
+1550,Jan Pelkonen,654760.0,Finland,Naantali,25.03.1997,Not set
+1556,Roman Romanenko,660892.0,Belarus,Minsk,04.06.1994,Male
+1559,Evgeniy Matantsev,659673.0,Ukraine,Kropyvnytskyi,10.01.2006,Not set
+1566,Aliaksandr Bartosh,660887.0,Belarus,Minsk,16.01.1980,Male
+1607,Gleb Tarakanov,660845.0,Kazakhstan,Almaty,14.10.2004,Not set
+1613,Eike Rompa,120041.0,Germany,Wilhelmshaven,31.12.1973,Male
+1621,Valentin Dietze,658291.0,Germany,Freiburg,09.09.2000,Male
+1622,Ralph Pommerenke,658200.0,Germany,Frankfurt am Main,27.05.1973,Male
+1643,Yevhen Rykun,,Ukraine,Kiev,01.12.1995,Not set
+1653,Baurzhan Ualiev,660853.0,Kazakhstan,Astana,02.07.1977,Not set
+1667,Haprou Andrei,661055.0,Belarus,Minsk,08.01.1985,Not set
+1777,Yuriy Bondarenko,661233.0,Ukraine,Kharkiv,16.04.1970,Male
+1786,Eduard Kuratnik,661053.0,Belarus,Minsk,21.07.1968,Male
+1853,Eugene Papakul,661395.0,Belarus,Minsk,03.05.1994,Male
+1951,Bakhtiyar Tileukabylov,661888.0,Kazakhstan,Shymkent,10.10.1961,Male
+1982,Yevhen Rykun,,Ukraine,Kiev,11.04.1995,Not set
+1994,Pavel Plesak,70001.0,Czech Republic,Pilsen,27.03.1965,Not set
+2033,Markus Nilsson,280819.0,Sweden,Stockholm,17.02.1987,Not set
+2035,Mikko Haveri,,Finland,Turku,14.10.1997,Not set
+2042,Hans Osterman,280562.0,Sweden,Stockholm,01.03.1978,Not set
+2070,Uno Osterman,659773.0,Sweden,Stockholm,21.01.2005,Not set
+2124,,,,,,
+2203,Petter Bengtsson,280049.0,Sweden,,01.01.1973,Not set
+2259,Jakob Renvaktar,652784.0,,,,Not set
+2356,Maksym Kuzmich,662761.0,Ukraine,Kiev,21.09.2001,Not set
+2365,Rickard Sjöstedt,280448.0,Sweden,Malmo,,Not set
+2367,Joan Eriksson Mencl,656829.0,Sweden,Lund,,Not set
+2413,Sten Svensson,280485.0,Sweden,Lund,,Not set
+2414,Finn Fries,280153.0,Sweden,Lund,21.04.1971,Not set
+2419,August Wegestål,660017.0,Sweden,Malmo,,Not set
+2425,Espen Moe,,Norway,Trondheim,17.05.1972,Not set
+2457,Mattias Kralmark,662041.0,Sweden,Lund,,Not set
+2583,Jan Dryak,70083.0,Czech Republic,,01.08.1972,Not set
+2584,David Smid,70064.0,Czech Republic,Svitavy,06.08.1975,Male
+2585,Zdenek Matoušek ml.,70057.0,Czech Republic,,16.11.1990,Male
+2681,Liv Osterman,663414.0,Sweden,Stockholm,30.09.2006,Not set
+2789,Igor Chudin,663666.0,Kazakhstan,Temirtau,24.05.1961,Not set
+2874,Dominik Hofer,,Switzerland,,06.03.1985,Not set
+2897,Tomas Aberg,,Sweden,,17.05.1975,Not set
+2920,Peter Östlund,280563.0,Sweden,Avesta,26.05.1977,Male
+2922,David Nordström,280375.0,Sweden,Malmo,,Not set
+2929,Matti Månsson,650154.0,Sweden,Lund,,Not set
+2930,Jimi Månsson,281008.0,Sweden,Lund,,Not set
+2938,Tomas Fägerlind,281543.0,Sweden,,,Not set
+2946,Daniel Setterwall,281573.0,Sweden,,,Not set
+2960,Denys Opara,,Ukraine,Kiev,,Not set
+2965,Maksym Kuzmich,,Ukraine,Kiev,,Not set
+2988,Jānis Kalnevics,200104.0,Latvia,Inčukalns,28.07.1989,Not set
+3080,Veniamin Gerasimov,656027.0,Russia,Moscow,05.07.1998,Not set
+3266,Daniil Landa,660776.0,Estonia,Tallinn,25.05.2003,Male
+3355,Alen Shekarev,654560.0,Estonia,Tallinn,08.04.1976,Not set
+3367,Oksana Derkach,658722.0,Ukraine,Kharkiv,05.03.1970,Woman
+3535,Robin Westergren,658187.0,Sweden,Eskilstuna,04.12.1987,Male
+3538,Richard Petersson,662140.0,Sweden,Lund,,Not set
+3806,Felix Wirstrom,661783.0,Sweden,Katrineholm,28.11.1991,Not set
+3949,Truls Mansson,650229.0,Sweden,Stockholm,05.02.1966,Not set
+3972,Niklas Blomberg,664291.0,Sweden,Stockholm,10.09.2004,Not set
+3977,Daniel Biloglav,,,,,Not set
+4092,Lars Söderkvist,665239.0,Sweden,Eskilstuna,21.07.1983,Male
+4093,Susanna Possl,661800.0,Sweden,Västerås,12.02.1966,Woman
+4133,Mathias Blomquist,661784.0,Sweden,Eskilstuna,,Not set
+4197,Daniil Moshnin,661298.0,Estonia,Tallinn,28.08.2002,Male
+4198,Deniss Andrijashkin,665760.0,Estonia,Narva,27.02.2005,Male
+4200,Aleksandr Metelitsa,665762.0,Estonia,Narva,29.12.1999,Male
+4286,Peter Enderborg,,,,,Not set
+4337,Baurzhan Ualiev,,Kazakhstan,Astana,02.07.1977,Not set
+4503,Magda Milovanovic,,,,,Not set
+4532,Rikard Nässelkvist,288082.0,Sweden,Eskilstuna,08.06.1987,Not set
+4638,Tomas Rybing,666264.0,Sweden,Stockholm,01.01.1980,Not set
+4656,Kent Nyman,280380.0,Sweden,Enköping,,Not set
+4754,Juri Artamonov,90145.0,Estonia,Tallinn,26.02.1976,Not set
+4975,Patriks Strods,666475.0,Latvia,Inčukalns,20.07.2005,Not set
+5078,Baurzhan Ualiev,,Kazakhstan,Astana,02.07.1977,Not set
+5156,Simon Thomas,120426.0,Ireland,Lyon,26.01.1974,Male
+5276,Sandis Kristaps Lagzdiņš,654753.0,Latvia,Riga,19.12.1996,Not set
+5348,Christian Bengtsson,667152.0,Sweden,Staffanstorp,,Not set
+5438,Gergely Regula,150094.0,Hungary,Budapest,11.11.1983,Not set
+5563,Simon Johannesson,,Sweden,Gothenburg,01.01.2002,Not set
+5572,Magnus Falk,,Sweden,Gothenburg,01.01.2003,Not set
+5722,Anton Jalneskog,666892.0,Sweden,Kungälv,31.08.1999,Not set
+5836,Olof Blume,667180.0,Sweden,Stockholm,14.06.2002,Male
+6061,Stefan Lemming,666349.0,Sweden,Örebro,19.04.1985,Male
+6506,Henrik Widing,,,,,Not set
+6509,Axel Lönnqvist,,,,,Not set
+6544,Felix Wirström,,,,,Not set
+7103,Hjalmar Hardestam,668102.0,,,,Not set
+8021,Göran Skog,289388.0,,,,Not set
+9074,Dmitri Ossipenko,670035.0,Estonia,Kohtla-Järve,26.06.1999,Male
+9217,Kristian Iso-Tryykäri,100067.0,Finland,Turku,06.01.1981,Not set
+9575,Sergei Sokolov,90098.0,Estonia,Tallinn,25.12.1969,Male
+9900,Ahti Lampi,100132.0,Finland,Kuopio,24.02.1991,Male
+10471,Alexander Dolgov,661052.0,Belarus,Minsk,22.06.1975,Male
+11263,Roman Bentsa,672791.0,Russia,Izhevsk,21.04.1976,Male
+11270,Sergey Shitov,,Russia,Izhevsk,25.05.1974,Male
+11272,Ivan Bentsa,672932.0,Russia,Izhevsk,31.05.2012,Male
+11605,Sergey Shitov,672808.0,Russia,Izhevsk,25.05.1974,Male
+12665,Alexander Dolgov,,Belarus,Minsk,22.06.1975,Male
+13249,Алексей Световидов,674428.0,Russia,Izhevsk,21.12.1984,Male
+13780,Антон Надеев,676172.0,Russia,Izhevsk,07.05.1978,Male
+14423,Asnate Kocere,675559.0,Latvia,Inčukalns,01.01.2012,Woman
+14545,Benjamin Suominen,661180.0,Finland,Turku,10.11.2002,Male
+14668,Václav Pikl,,Czech Republic,Pilsen,12.07.1962,Male
+14782,Anton Igoshin,,Russia,Izhevsk,18.02.1988,Male
+15202,Andrey Batyrev,,Russia,Izhevsk,03.07.1985,Male
+15415,Денис Паркулаб,676756.0,Russia,Izhevsk,01.05.2014,Male
+15820,Илья Шалавин,,Russia,Izhevsk,27.04.2011,Male
+15849,Диляра Хурматова,,Russia,Izhevsk,26.12.2015,Woman
+16000,Тимур Кузнецов,,Russia,Izhevsk,03.11.2015,Male
+16605,Глеб Матюшин,,Russia,Izhevsk,,Male

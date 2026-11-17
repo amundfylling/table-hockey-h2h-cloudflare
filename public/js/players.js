@@ -1,5 +1,5 @@
 import { state, elements } from "./state.js";
-import { normalizeText, decodeHtmlEntities, toNumber } from "./utils.js";
+import { normalizeText, decodeHtmlEntities } from "./utils.js";
 import { COUNTRY_FLAGS } from "./constants.js";
 
 export function normalizePlayerRecord(player) {
