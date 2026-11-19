@@ -379,28 +379,65 @@ def link_entries(pairs: list, calendar: list, tables: dict) -> dict:
 
 
 def link_new(pages: dict, known: dict, days: int = NEW_DAYS,
-             today: Optional[dt.date] = None) -> dict:
+             today: Optional[dt.date] = None, calendar: Optional[list] = None) -> dict:
     """Links for tournaments of the last `days` days that have none yet.
 
-    Used by the daily build: it reads only the ITHF calendar since then and the final tables
-    of the ITHF tournaments those pages could be, so a run costs a few requests. An ITHF
-    tournament already linked to a page is not offered again. Results reach the ITHF a few
-    days after an event, so a page keeps being tried until it is `days` days old.
+    Used by the daily build: it reads only the ITHF calendar since then (or uses `calendar`,
+    which must reach back that far) and the final tables of the ITHF tournaments those pages
+    could be, so a run costs a few requests. An ITHF tournament already linked to a page is
+    not offered again. Results reach the ITHF a few days after an event, so a page keeps
+    being tried until it is `days` days old.
     """
     today = today or dt.date.today()
     since = today - dt.timedelta(days=days)
     recent = {tid: page for tid, page in pages.items()
-              if str(tid) not in known and int(tid) not in known and page.get("name")
+              if not _is_known(tid, known) and page.get("name")
               and page.get("date", "") >= since.isoformat() and not page.get("part_of")
               and page.get("players")}
     if not recent:
         return {}
-    first = min(_date(page["date"]) for page in recent.values()) - dt.timedelta(days=MAX_DAYS)
-    linked = {int(entry["ithf"]) for entry in known.values() if entry.get("ithf")}
-    calendar = [item for item in fetch_calendar_since(first) if item["id"] not in linked]
+    if calendar is None:
+        first = min(_date(page["date"]) for page in recent.values()) - dt.timedelta(days=MAX_DAYS)
+        calendar = fetch_calendar_since(first)
+    linked = _linked(known)
+    calendar = [item for item in calendar if item["id"] not in linked]
     wanted = {item["id"] for _, item in candidates(recent, calendar)}
     tables = fetch_final_tables(wanted, cache=False)
     return link_entries(match(recent, calendar, tables), calendar, tables)
+
+
+def _is_known(tid, known: dict) -> bool:
+    return str(tid) in known or int(tid) in known
+
+
+def _linked(known: dict) -> set:
+    return {int(entry["ithf"]) for entry in known.values() if entry.get("ithf")}
+
+
+def recent_calendar(today: Optional[dt.date] = None) -> list:
+    """The ITHF calendar as far back as link_new and pending_ids need."""
+    today = today or dt.date.today()
+    return fetch_calendar_since(today - dt.timedelta(days=NEW_DAYS + MAX_DAYS))
+
+
+def pending_ids(tournament_list: dict, known: dict, calendar: list,
+                today: Optional[dt.date] = None) -> list:
+    """Unlinked ITHF tournaments dated near a site tournament of the last NEW_DAYS days
+    that has no link yet: the ones link_new could still match.
+
+    `tournament_list` is the published tournament-list.json. The daily build records these
+    ids and skips an unchanged day only when no new one has appeared, because ITHF results
+    often arrive after the site's own data has stopped changing.
+    """
+    today = today or dt.date.today()
+    since = (today - dt.timedelta(days=NEW_DAYS)).isoformat()
+    fields = tournament_list["fields"]
+    rows = (dict(zip(fields, row)) for row in tournament_list["tournaments"])
+    recent = {row["id"]: row for row in rows
+              if (row.get("date") or "") >= since and not _is_known(row["id"], known)}
+    linked = _linked(known)
+    return sorted({item["id"] for _, item in candidates(recent, calendar)
+                   if item["id"] not in linked})
 
 
 def main() -> None:

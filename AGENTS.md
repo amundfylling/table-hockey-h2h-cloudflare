@@ -29,7 +29,8 @@ exploration interface with zero runtime database queries.
   (`ITHF_LINK_NEW=1`) starts from the links the live site publishes in
   `data/ithf-tournaments.json` plus the committed `data/ithf-tournaments.json`, looks up only
   tournaments of the last 60 days that have no link yet (`link_new`), and publishes all links
-  again. Running the script by hand after a build redoes every link into the committed file.
+  again. meta.json's `ithf_pending` lists the unlinked ITHF tournaments near those pages, and a
+  scheduled run with unchanged sources still builds when a new one appears (`pending_ids`). Running the script by hand after a build redoes every link into the committed file.
   The links let the ITHF final table settle the champion when the page's own games name
   someone else (`apply_ithf`).
   `tournaments.py` builds the per-tournament files (standings, brackets, champion, upsets by a
