@@ -147,7 +147,9 @@ def fetch_calendar(offline: bool) -> list:
 def _final_table(session: requests.Session, ithf_id: int) -> dict:
     for attempt in range(4):
         try:
-            page = session.get(f"{BASE}tournament.aspx?id={ithf_id}", timeout=60).text
+            response = session.get(f"{BASE}tournament.aspx?id={ithf_id}", timeout=60)
+            response.raise_for_status()
+            page = response.text
         except requests.RequestException:
             time.sleep(3 * (attempt + 1))
             continue
@@ -160,6 +162,9 @@ def _final_table(session: requests.Session, ithf_id: int) -> dict:
             place = _text(tds[0]).rstrip(".")
             if place[:1].isdigit():
                 rows.append([place, int(player.group(1)), _text(tds[3])])
+        if not rows and 'id="LabPartic"' not in page:  # not a tournament page; try again
+            time.sleep(3 * (attempt + 1))
+            continue
         return {"id": ithf_id, "rows": rows}
     return {"id": ithf_id, "error": True}
 
