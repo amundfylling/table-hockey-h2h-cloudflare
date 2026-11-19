@@ -250,6 +250,20 @@ class TournamentFilesTest(unittest.TestCase):
         self.assertEqual(pages["71"]["part_of"]["id"], 72)
         self.assertEqual(pages["72"]["champion"], 1)
 
+    def test_tournament_that_gave_away_all_its_games_points_at_the_full_page(self):
+        # 60 lost every game to fragment 70, whose full event is 80; 50 lost them to a
+        # tournament that has no page.
+        pages = {}
+        games = [dict(g, tournament_id=tid) for tid in (70, 80) for g in _bo1_bracket()]
+        index = build_tournament_files(
+            pd.DataFrame(games), {}, set(), {},
+            lambda path, payload: pages.update(payload), Path("t"),
+            merged_into={60: (70, 5), 70: (80, 30), 50: (40, 5)},
+        )
+        self.assertEqual(pages["60"], {"id": 60, "moved_to": 80})
+        self.assertNotIn("50", pages)
+        self.assertEqual(sorted(t["id"] for t in index), [70, 80])
+
 
 if __name__ == "__main__":
     unittest.main()

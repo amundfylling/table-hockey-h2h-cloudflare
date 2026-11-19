@@ -211,6 +211,13 @@ async function init() {
     const response = await fetch(tournamentDataPath(id));
     const bucket = response.ok ? await response.json() : null;
     const data = bucket?.[id];
+    // The tournament's games are now on another source's page of the same event.
+    if (data?.moved_to && ID_RE.test(String(data.moved_to))) {
+      const target = new URL(window.location.href);
+      target.searchParams.set("id", String(data.moved_to));
+      window.location.replace(target);
+      return;
+    }
     if (!data) {
       if (response.ok) markNotFound();
       showError("We have no games recorded for this tournament.");

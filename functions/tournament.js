@@ -24,6 +24,12 @@ export async function onRequest(context) {
     const dataResponse = await env.ASSETS.fetch(new URL(`/${tournamentDataPath(id)}`, url));
     if (!dataResponse.ok) return response;
     const data = (await dataResponse.json())?.[id];
+    // The tournament's games are now on another source's page of the same event.
+    if (String(data?.id) === id && ID_RE.test(String(data.moved_to ?? ""))) {
+      const target = new URL(url);
+      target.searchParams.set("id", String(data.moved_to));
+      return Response.redirect(target.toString(), 301);
+    }
     if (String(data?.id) !== id || !data.name) return response;
     meta = {
       title: pageTitle({ nameA: tournamentLabel(decodeHtmlEntities(data.name), data.date) }),

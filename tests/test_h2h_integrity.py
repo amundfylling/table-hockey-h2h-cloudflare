@@ -294,6 +294,15 @@ class BuiltDataIntegrityTest(unittest.TestCase):
     def test_tournaments_are_in_their_buckets(self):
         self.assertFalse(self.bucket_problems, "\n".join(self.bucket_problems[:MAX_EXAMPLES]))
 
+    def test_moved_tournaments_point_at_full_pages(self):
+        problems = [
+            f"{tid} moved to {tournament['moved_to']}, which is no full page"
+            for tid, tournament in self.tournaments.items()
+            if "moved_to" in tournament
+            and "games" not in self.tournaments.get(tournament["moved_to"], {})
+        ]
+        self.assertFalse(problems, "\n".join(problems[:MAX_EXAMPLES]))
+
     def test_tournament_list_matches_the_tournament_files(self):
         listing = _load(DATA_DIR / "tournament-list.json")
         fields = listing["fields"]
