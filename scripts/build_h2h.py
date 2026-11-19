@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import html
 import json
+import functools
 import hashlib
 import os
 import re
@@ -11,7 +12,7 @@ from collections import deque
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Dict, Iterable, Optional, Tuple
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 from xml.sax.saxutils import escape
 
 import numpy as np
@@ -2649,8 +2650,11 @@ def describe_source_files(paths: Dict[str, Path]) -> Dict[str, dict]:
     }
 
 
-def sources_unchanged(source_files: Dict[str, dict], published_meta_url: str) -> bool:
-    """True when the meta.json at published_meta_url was built from exactly these files.
+def sources_unchanged(
+    source_files: Dict[str, dict], published_meta_url: str, ithf_pending: Optional[list] = None
+) -> bool:
+    """True when the meta.json at published_meta_url was built from exactly these files
+    and, given `ithf_pending` (ithf_match.pending_ids), already saw every one of them.
 
     Scheduled builds use this to skip rebuilding and redeploying unchanged data. Any doubt
     (no URL, a failed request, a malformed file) means build.
@@ -2660,11 +2664,18 @@ def sources_unchanged(source_files: Dict[str, dict], published_meta_url: str) ->
     try:
         response = requests.get(published_meta_url, timeout=30)
         response.raise_for_status()
-        published = response.json().get("source_files")
-    except (requests.RequestException, ValueError, AttributeError) as exc:
+        published_meta = response.json()
+        published = published_meta.get("source_files")
+        seen = set(published_meta.get("ithf_pending") or [])
+    except (requests.RequestException, ValueError, AttributeError, TypeError) as exc:
         print(f"Could not read the published meta.json ({exc}); building.")
         return False
-    return published == source_files
+    if published != source_files:
+        return False
+    if ithf_pending is not None and not set(ithf_pending) <= seen:
+        print("New ITHF tournaments may belong to recent tournament pages; building.")
+        return False
+    return True
 
 
 def write_github_output(name: str, value: str) -> None:
@@ -2672,6 +2683,74 @@ def write_github_output(name: str, value: str) -> None:
     if output_path:
         with open(output_path, "a", encoding="utf-8") as output:
             output.write(f"{name}={value}\n")
+
+
+def load_ithf_links() -> dict:
+    """ITHF links: the live site's (which the daily runs add new tournaments to), then the
+    committed file on top, since a full scripts/ithf_match.py run redoes every link."""
+    links = {}
+    url = os.environ.get("ITHF_LINKS_URL", "").strip()
+    if url:
+        try:
+            response = requests.get(url, timeout=60, headers={"User-Agent": "h2h-build/1.0"})
+            response.raise_for_status()
+            links = tournament_pages.ithf_entries(response.json())
+            print(f"Read {len(links)} ITHF links from {url}.")
+        except (requests.RequestException, ValueError) as error:
+            print(f"Warning: could not read the live ITHF links ({error}); using the committed ones.")
+    links.update(tournament_pages.load_ithf_tournaments(ITHF_TOURNAMENTS_PATH))
+    return links
+
+
+class IthfCheck:
+    """The CI build's ITHF lookup (ITHF_LINK_NEW=1): the recent ITHF calendar, read once,
+    serves both the skip decision (pending ids) and linking new tournaments."""
+
+    def __init__(self):
+        self.enabled = os.environ.get("ITHF_LINK_NEW") == "1"
+        self.calendar = None
+        if not self.enabled:
+            return
+        import ithf_match  # noqa: PLC0415 - needs network and the matching libraries
+
+        self.module = ithf_match
+        try:
+            self.calendar = ithf_match.recent_calendar()
+        except Exception as error:  # the ITHF site is down or changed: link nothing new
+            print(f"Warning: could not read the ITHF calendar ({error}).")
+
+    def link_new(self):
+        """ithf_match.link_new for build_tournament_files, or None outside CI."""
+        if not self.enabled:
+            return None
+        if self.calendar is None:
+            return self.module.link_new
+        return functools.partial(self.module.link_new, calendar=self.calendar)
+
+    def pending(self, tournament_list: Optional[dict], links: dict) -> Optional[list]:
+        """ithf_match.pending_ids, or None when it can't be told."""
+        if self.calendar is None or not tournament_list:
+            return None
+        try:
+            return self.module.pending_ids(tournament_list, links, self.calendar)
+        except (KeyError, TypeError, ValueError) as error:
+            print(f"Warning: could not list the pending ITHF tournaments ({error}).")
+            return None
+
+    def pending_live(self) -> Optional[list]:
+        """pending ids for the live site, before this build."""
+        url = os.environ.get("ITHF_LINKS_URL", "").strip()
+        if self.calendar is None or not url:
+            return None
+        try:
+            response = requests.get(urljoin(url, "tournament-list.json"), timeout=60,
+                                    headers={"User-Agent": "h2h-build/1.0"})
+            response.raise_for_status()
+            tournament_list = response.json()
+        except (requests.RequestException, ValueError) as error:
+            print(f"Warning: could not read the live tournament list ({error}).")
+            return None
+        return self.pending(tournament_list, load_ithf_links())
 
 
 def main() -> int:
@@ -2810,7 +2889,9 @@ def main() -> int:
         ),
         **({"rankings": ranking_path} if ranking_path.exists() else {}),
     })
-    if sources_unchanged(source_files, os.environ.get("SKIP_IF_SOURCES_MATCH_URL", "")):
+    ithf_check = IthfCheck()
+    skip_url = os.environ.get("SKIP_IF_SOURCES_MATCH_URL", "")
+    if sources_unchanged(source_files, skip_url, ithf_check.pending_live() if skip_url else None):
         print("Sources match the published dataset; skipping the build.")
         write_github_output("changed", "false")
         return 0
@@ -2993,7 +3074,8 @@ def main() -> int:
         write_json,
         DATA_STAGING_DIR / "t",
         merged_into=merged_into,
-        ithf=tournament_pages.load_ithf_tournaments(ITHF_TOURNAMENTS_PATH),
+        ithf=load_ithf_links(),
+        link_new=ithf_check.link_new(),
         ranking_ids={
             int(player["ranking_id"]): int(player["id"])
             for player in players
@@ -3001,13 +3083,15 @@ def main() -> int:
         },
     )
     print(f"Wrote {len(tournament_index)} tournament files.")
-    write_json(
-        DATA_STAGING_DIR / "tournament-list.json",
-        tournament_pages.build_tournament_list(
-            tournament_index, all_names, {int(player["id"]) for player in players}
-        ),
+    tournament_list = tournament_pages.build_tournament_list(
+        tournament_index, all_names, {int(player["id"]) for player in players}
     )
+    write_json(DATA_STAGING_DIR / "tournament-list.json", tournament_list)
     write_json(DATA_STAGING_DIR / "records.json", records)
+    ithf_pending = ithf_check.pending(
+        tournament_list,
+        tournament_pages.load_ithf_tournaments(DATA_STAGING_DIR / "ithf-tournaments.json"),
+    )
 
     write_json(
         DATA_STAGING_DIR / "meta.json",
@@ -3020,6 +3104,7 @@ def main() -> int:
             ),
             "source_validation": source_validation,
             "source_files": source_files,
+            **({"ithf_pending": ithf_pending} if ithf_pending is not None else {}),
         },
     )
 

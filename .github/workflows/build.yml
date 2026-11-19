@@ -97,6 +97,10 @@ jobs:
       MIN_TOURNAMENT_LEVELS: "1000"
       MAX_MAIN_REJECTION_RATE: "0.01"
       MAX_EXTRA_REJECTION_RATE: "0.40"
+      # Link tournaments of the last 60 days that have no ITHF ranking link yet, starting from
+      # the links the live site already has (scripts/ithf_match.py link_new).
+      ITHF_LINK_NEW: "1"
+      ITHF_LINKS_URL: https://h2h.puck.no/data/ithf-tournaments.json
       # Print build progress as it happens, so the log timestamps show which phase is slow.
       PYTHONUNBUFFERED: "1"
     steps:

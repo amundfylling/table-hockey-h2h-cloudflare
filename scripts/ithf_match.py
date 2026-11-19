@@ -5,9 +5,11 @@ Writes data/ithf-tournaments.json, which the build reads (tournaments.load_ithf_
 to link each tournament page to its ITHF page and to take the champion from the ITHF final
 table when the site's own games name someone else.
 
-Run it after a build, since it reads the built pages in public/data/t/:
+The daily build links new tournaments itself (link_new, with ITHF_LINK_NEW=1) and publishes
+all links as data/ithf-tournaments.json on the site, which the next run starts from. A full
+run of this script redoes every link; run it after a build, since it reads the built pages
+in public/data/t/, and commit the file:
 
-    pip install rapidfuzz unidecode
     python3 scripts/ithf_match.py            # fetch what is new and rewrite the file
     python3 scripts/ithf_match.py --offline  # only use what is already in .cache/ithf/
 
@@ -28,14 +30,12 @@ import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from typing import Optional
 
 import requests
 
-try:
-    from rapidfuzz import fuzz, process
-    from unidecode import unidecode
-except ImportError:  # pragma: no cover - a tool, not part of the build
-    sys.exit("Install the matching tools first: pip install rapidfuzz unidecode")
+from rapidfuzz import fuzz, process
+from unidecode import unidecode
 
 ROOT = Path(__file__).resolve().parent.parent
 CACHE = ROOT / ".cache" / "ithf"
@@ -44,6 +44,8 @@ OUT = ROOT / "data" / "ithf-tournaments.json"
 BASE = "https://stiga.trefik.cz/ithf/ranking/"
 FIRST_YEAR = 1972
 MAX_DAYS = 5
+# The daily build looks for links for tournaments up to this many days old.
+NEW_DAYS = 60
 HEADERS = {"User-Agent": "h2h-ithf-match/1.0"}
 # Individual World and European Championship series (all classes): always fetched.
 CHAMPIONSHIP_SERIES = {"1", "8", "10", "11", "12", "18", "19", "20", "44", "45", "46", "47",
@@ -125,23 +127,45 @@ def fetch_calendar(offline: bool) -> list:
         time.sleep(1)
     rows = []
     for path in sorted(CACHE.glob("cal_*.html")):
-        page = path.read_text(encoding="utf-8", errors="replace")
-        for tr in re.findall(r'<tr>(<td class="Norm">\d\d\.\d\d\.\d{4}.*?)</tr>', page, re.S):
-            tds = re.findall(r"<td[^>]*>(.*?)</td>", tr, re.S)
-            date = _text(tds[0])
-            place = _text(tds[3])
-            country = re.search(r"\(([A-Z]{3})\)\s*$", place)
-            count = _text(tds[6])
-            rows.append({
-                "id": int(re.search(r"tournament.aspx\?id=(\d+)", tds[1]).group(1)),
-                "date": f"{date[6:10]}-{date[3:5]}-{date[0:2]}",
-                "name": _text(tds[1]),
-                "place": place,
-                "cc": country.group(1) if country else "",
-                "series": re.findall(r'serial.aspx\?id=(\d+)"', tds[4]),
-                "players": int(count) if count.isdigit() else 0,
-            })
+        rows.extend(parse_calendar(path.read_text(encoding="utf-8", errors="replace")))
     return rows
+
+
+def parse_calendar(page: str) -> list:
+    """The tournaments listed on one calendar page."""
+    rows = []
+    for tr in re.findall(r'<tr>(<td class="Norm">\d\d\.\d\d\.\d{4}.*?)</tr>', page, re.S):
+        tds = re.findall(r"<td[^>]*>(.*?)</td>", tr, re.S)
+        date = _text(tds[0])
+        place = _text(tds[3])
+        country = re.search(r"\(([A-Z]{3})\)\s*$", place)
+        count = _text(tds[6])
+        rows.append({
+            "id": int(re.search(r"tournament.aspx\?id=(\d+)", tds[1]).group(1)),
+            "date": f"{date[6:10]}-{date[3:5]}-{date[0:2]}",
+            "name": _text(tds[1]),
+            "place": place,
+            "cc": country.group(1) if country else "",
+            "series": re.findall(r'serial.aspx\?id=(\d+)"', tds[4]),
+            "players": int(count) if count.isdigit() else 0,
+        })
+    return rows
+
+
+def fetch_calendar_since(since: dt.date) -> list:
+    """The calendar from the start of `since`'s month until today, in one request."""
+    session = requests.Session()
+    session.headers.update(HEADERS)
+    page = session.get(BASE + "calendar.aspx", timeout=60)
+    page.raise_for_status()
+    today = dt.date.today()
+    form = _form(page.text)
+    form.update({"DLSinceM": str(since.month), "DLSinceY": str(since.year),
+                 "DLTillM": str(today.month), "DLTillY": str(today.year),
+                 "butDate": "Select period", "DLCountry": "0", "DLSerial": "1,5"})
+    response = session.post(BASE + "calendar.aspx", data=form, timeout=180)
+    response.raise_for_status()
+    return parse_calendar(response.text)
 
 
 def _final_table(session: requests.Session, ithf_id: int) -> dict:
@@ -169,11 +193,12 @@ def _final_table(session: requests.Session, ithf_id: int) -> dict:
     return {"id": ithf_id, "error": True}
 
 
-def fetch_final_tables(ids: set, offline: bool) -> dict:
-    """ITHF final tables by tournament id, cached in details.jsonl."""
+def fetch_final_tables(ids: set, offline: bool = False, cache: bool = True) -> dict:
+    """ITHF final tables by tournament id, cached in .cache/ithf/details.jsonl unless
+    `cache` is off."""
     path = CACHE / "details.jsonl"
     tables = {}
-    if path.exists():
+    if cache and path.exists():
         for line in path.open(encoding="utf-8"):
             item = json.loads(line)
             if not item.get("error"):
@@ -183,9 +208,13 @@ def fetch_final_tables(ids: set, offline: bool) -> dict:
         print(f"Fetching {len(todo)} ITHF final tables...")
         session = requests.Session()
         session.headers.update(HEADERS)
-        with path.open("a", encoding="utf-8") as out, ThreadPoolExecutor(4) as pool:
+        if cache:
+            CACHE.mkdir(parents=True, exist_ok=True)
+        with ThreadPoolExecutor(4) as pool:
             for item in pool.map(lambda i: _final_table(session, i), todo):
-                out.write(json.dumps(item, ensure_ascii=False) + "\n")
+                if cache:
+                    with path.open("a", encoding="utf-8") as out:
+                        out.write(json.dumps(item, ensure_ascii=False) + "\n")
                 if not item.get("error"):
                     tables[item["id"]] = item
     return tables
@@ -329,6 +358,88 @@ def choose_main_pages(pages: dict, pairs: list, tables: dict) -> list:
     return out
 
 
+def link_entries(pairs: list, calendar: list, tables: dict) -> dict:
+    """{site id (str): link entry} for matched pairs, with the ITHF top two."""
+    calendar_by_id = {item["id"]: item for item in calendar}
+    out = {}
+    for page_id, ithf_id, main_page, mapping in pairs:
+        places = []
+        for index, row in enumerate(tables[ithf_id]["rows"]):
+            if row[0] not in ("1", "2"):
+                continue
+            site_pid = mapping.get(index)
+            places.append([int(row[0]), row[1], row[2], int(site_pid) if site_pid else None])
+        out[str(page_id)] = {
+            "ithf": ithf_id,
+            "name": calendar_by_id[ithf_id]["name"],
+            "main": main_page,
+            "places": places,
+        }
+    return out
+
+
+def link_new(pages: dict, known: dict, days: int = NEW_DAYS,
+             today: Optional[dt.date] = None, calendar: Optional[list] = None) -> dict:
+    """Links for tournaments of the last `days` days that have none yet.
+
+    Used by the daily build: it reads only the ITHF calendar since then (or uses `calendar`,
+    which must reach back that far) and the final tables of the ITHF tournaments those pages
+    could be, so a run costs a few requests. An ITHF tournament already linked to a page is
+    not offered again. Results reach the ITHF a few days after an event, so a page keeps
+    being tried until it is `days` days old.
+    """
+    today = today or dt.date.today()
+    since = today - dt.timedelta(days=days)
+    recent = {tid: page for tid, page in pages.items()
+              if not _is_known(tid, known) and page.get("name")
+              and page.get("date", "") >= since.isoformat() and not page.get("part_of")
+              and page.get("players")}
+    if not recent:
+        return {}
+    if calendar is None:
+        first = min(_date(page["date"]) for page in recent.values()) - dt.timedelta(days=MAX_DAYS)
+        calendar = fetch_calendar_since(first)
+    linked = _linked(known)
+    calendar = [item for item in calendar if item["id"] not in linked]
+    wanted = {item["id"] for _, item in candidates(recent, calendar)}
+    tables = fetch_final_tables(wanted, cache=False)
+    return link_entries(match(recent, calendar, tables), calendar, tables)
+
+
+def _is_known(tid, known: dict) -> bool:
+    return str(tid) in known or int(tid) in known
+
+
+def _linked(known: dict) -> set:
+    return {int(entry["ithf"]) for entry in known.values() if entry.get("ithf")}
+
+
+def recent_calendar(today: Optional[dt.date] = None) -> list:
+    """The ITHF calendar as far back as link_new and pending_ids need."""
+    today = today or dt.date.today()
+    return fetch_calendar_since(today - dt.timedelta(days=NEW_DAYS + MAX_DAYS))
+
+
+def pending_ids(tournament_list: dict, known: dict, calendar: list,
+                today: Optional[dt.date] = None) -> list:
+    """Unlinked ITHF tournaments dated near a site tournament of the last NEW_DAYS days
+    that has no link yet: the ones link_new could still match.
+
+    `tournament_list` is the published tournament-list.json. The daily build records these
+    ids and skips an unchanged day only when no new one has appeared, because ITHF results
+    often arrive after the site's own data has stopped changing.
+    """
+    today = today or dt.date.today()
+    since = (today - dt.timedelta(days=NEW_DAYS)).isoformat()
+    fields = tournament_list["fields"]
+    rows = (dict(zip(fields, row)) for row in tournament_list["tournaments"])
+    recent = {row["id"]: row for row in rows
+              if (row.get("date") or "") >= since and not _is_known(row["id"], known)}
+    linked = _linked(known)
+    return sorted({item["id"] for _, item in candidates(recent, calendar)
+                   if item["id"] not in linked})
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--offline", action="store_true", help="use only cached ITHF pages")
@@ -341,22 +452,7 @@ def main() -> None:
     wanted = {item["id"] for page, item in candidates(pages, calendar)}
     wanted |= {item["id"] for item in calendar if set(item["series"]) & CHAMPIONSHIP_SERIES}
     tables = fetch_final_tables(wanted, args.offline)
-    calendar_by_id = {item["id"]: item for item in calendar}
-    out = {}
-    for page_id, ithf_id, main_page, mapping in match(pages, calendar, tables):
-        rows = tables[ithf_id]["rows"]
-        places = []
-        for index, row in enumerate(rows):
-            if row[0] not in ("1", "2"):
-                continue
-            site_pid = mapping.get(index)
-            places.append([int(row[0]), row[1], row[2], int(site_pid) if site_pid else None])
-        out[str(page_id)] = {
-            "ithf": ithf_id,
-            "name": calendar_by_id[ithf_id]["name"],
-            "main": main_page,
-            "places": places,
-        }
+    out = link_entries(match(pages, calendar, tables), calendar, tables)
     OUT.parent.mkdir(parents=True, exist_ok=True)
     ordered = dict(sorted(out.items(), key=lambda kv: int(kv[0])))
     OUT.write_text(json.dumps(ordered, ensure_ascii=False, separators=(",", ":")) + "\n",

@@ -751,8 +751,16 @@ def load_ithf_tournaments(path) -> Dict[int, dict]:
         raw = json.loads(Path(path).read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return {}
+    return ithf_entries(raw)
+
+
+def ithf_entries(raw: object) -> Dict[int, dict]:
+    """The valid entries of a parsed ithf-tournaments.json."""
+    if not isinstance(raw, dict):
+        return {}
     return {int(tid): entry for tid, entry in raw.items()
-            if isinstance(entry, dict) and str(tid).isdigit()}
+            if isinstance(entry, dict) and str(tid).isdigit()
+            and str(entry.get("ithf", "")).isdigit()}
 
 
 def _name_key(name: object) -> str:
@@ -819,11 +827,14 @@ def build_tournament_files(
     merged_into: Optional[Dict[int, Tuple[int, int]]] = None,
     ithf: Optional[Dict[int, dict]] = None,
     ranking_ids: Optional[Dict[int, int]] = None,
+    link_new=None,
 ) -> List[dict]:
     """Write data/t/{bucket}.json files ({id: tournament}); return the index entries.
 
     `ithf` is load_ithf_tournaments' {site id: entry}; `ranking_ids` maps ITHF player ids to
-    site player ids.
+    site player ids. `link_new(payloads, ithf)` (ithf_match.link_new in the daily build)
+    returns links for tournaments that have none yet; a failure there only skips the new
+    links. All links are written to data/ithf-tournaments.json for the next run.
     """
     frame = matches.loc[matches["tournament_id"].notna()]
     frame = prepare_rows(frame.join(compute_pre_game_ratings(frame)))
@@ -833,6 +844,15 @@ def build_tournament_files(
             tournament_id, rows, names, linked_ids, details.get(tournament_id)
         )
     mark_partial_pages(payloads, merged_into or {})
+    ithf = dict(ithf or {})
+    if link_new is not None:
+        try:
+            new = link_new(payloads, ithf)
+        except Exception as error:  # the ITHF site is down or changed: keep the old links
+            print(f"Warning: could not look up new ITHF tournaments: {error}")
+            new = {}
+        ithf.update({int(tid): entry for tid, entry in new.items()})
+        print(f"Linked {len(new)} new tournaments to the ITHF ranking.")
     settled = Counter()
     for tournament_id, payload in payloads.items():
         settled[apply_ithf(payload, (ithf or {}).get(tournament_id), ranking_ids)] += 1
@@ -865,6 +885,9 @@ def build_tournament_files(
         })
     for bucket, payloads_in_bucket in buckets.items():
         write(out_dir / f"{bucket}.json", payloads_in_bucket)
+    if ithf:
+        write(out_dir.parent / "ithf-tournaments.json",
+              {str(tid): ithf[tid] for tid in sorted(ithf)})
     index.sort(key=lambda t: (t["date"] or "", t["id"]), reverse=True)
     return index
 

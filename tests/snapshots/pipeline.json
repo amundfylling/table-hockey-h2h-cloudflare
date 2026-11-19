@@ -4036,6 +4036,7 @@
     [843, "П'ятий етап відкритого чемпіонату України сезону 2014/2015", "2015-04-04", "", null, "Kiev", "Ukraine", 386, 26, 1484, 1559]
   ],
   "output_hashes": {
+    "data/ithf-tournaments.json": "afe3dff629b99b2c",
     "data/leaderboard.json": "552a5f167a5b94da",
     "data/meta.json": "f8e92b05b205e197",
     "data/players.json": "79c04c8d1c88d7ce",

@@ -40,6 +40,18 @@ class SkipUnchangedSourcesTest(unittest.TestCase):
             self.assertFalse(build_h2h.sources_unchanged(self.files, "https://x/meta.json"))
         self.assertFalse(build_h2h.sources_unchanged(self.files, ""))
 
+    def test_a_new_pending_ithf_tournament_builds(self):
+        meta = {"source_files": self.files, "ithf_pending": [900, 901]}
+        with self._published(meta):
+            self.assertTrue(build_h2h.sources_unchanged(self.files, "https://x/meta.json", [901]))
+            self.assertTrue(build_h2h.sources_unchanged(self.files, "https://x/meta.json", None))
+            self.assertFalse(
+                build_h2h.sources_unchanged(self.files, "https://x/meta.json", [901, 902])
+            )
+        with self._published({"source_files": self.files}):
+            self.assertFalse(build_h2h.sources_unchanged(self.files, "https://x/meta.json", [7]))
+            self.assertTrue(build_h2h.sources_unchanged(self.files, "https://x/meta.json", []))
+
     def test_writes_github_output(self):
         output = Path(self.tmp.name) / "out"
         with mock.patch.dict(os.environ, {"GITHUB_OUTPUT": str(output)}):
