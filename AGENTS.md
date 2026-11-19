@@ -99,7 +99,10 @@ graph TD
 
 The backend data-generation pipeline downloads raw tournament results, player profiles, and
 rankings, normalizes names and date structures, and deduplicates matching results across overlapping
-sources. It filters players with at least `MIN_MATCHES` (default 50) and groups all head-to-head
+sources. A shared game keeps the later source's row, unless that would split one event over two
+pages (one source has the whole event, the other only part): then it stays with the bigger page.
+A page left with only a few of an event's games gets `part_of`; a tournament left with none gets a
+`moved_to` entry in `data/t/`, which the page and `functions/tournament.js` redirect. It filters players with at least `MIN_MATCHES` (default 50) and groups all head-to-head
 records into single player-centric files under `public/data/h2h/{playerId}.json`. The frontend is a
 zero-runtime static application served by Cloudflare Pages that dynamically fetches these
 pre-computed JSON files from `public/data/` using standard AJAX requests, preventing database

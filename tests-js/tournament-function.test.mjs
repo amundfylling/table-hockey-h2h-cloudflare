@@ -56,6 +56,16 @@ test("tournament pages get a named, escaped head", async () => {
   assert.equal(requested.at(-1), "https://stats.example/data/t/7.json");
 });
 
+test("a tournament whose games moved to another page redirects there", async () => {
+  const response = await onRequest({
+    request: new Request("https://stats.example/tournament?id=1007"),
+    env: { ASSETS: { fetch: async () => Response.json({ 1007: { id: 1007, moved_to: 7 } }) } },
+    next: async () => new Response(pageHtml, { headers: { "content-type": "text/html" } }),
+  });
+  assert.equal(response.status, 301);
+  assert.equal(response.headers.get("location"), "https://stats.example/tournament?id=7");
+});
+
 test("the description reads naturally", () => {
   assert.equal(
     tournamentDescription(data),

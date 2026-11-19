@@ -298,15 +298,26 @@ class TestBordshockeySourceFields(unittest.TestCase):
                     "tournament_level": None,
                     "source": "bordshockey.net",
                 },
+                # Only on bordshockey.net, so its page is not a fragment of the other.
+                {
+                    **shared,
+                    "id1": 3,
+                    "id2": 4,
+                    "tournament_id": 684751752,
+                    "tournament_level": None,
+                    "source": "bordshockey.net",
+                },
             ]
         )
 
         deduped = deduplicate_overlapping_source_matches(matches)
 
-        self.assertEqual(len(deduped), 2)
-        self.assertEqual((deduped.source == "bordshockey.net").sum(), 1)
+        self.assertEqual(len(deduped), 3)
+        self.assertEqual((deduped.source == "bordshockey.net").sum(), 2)
         self.assertEqual((deduped.source == "").sum(), 1)
-        bordshockey = deduped.loc[deduped.source == "bordshockey.net"].iloc[0]
+        bordshockey = deduped.loc[
+            (deduped.source == "bordshockey.net") & (deduped.id1 == 1)
+        ].iloc[0]
         self.assertEqual(bordshockey.tournament_level, "3")
 
     def test_repeated_overlap_infers_cross_source_tournament_alias(self):
@@ -594,14 +605,87 @@ class TestBordshockeySourceFields(unittest.TestCase):
                 {**game, "tournament_id": 8265, "source": ""},
                 {**game, "tournament_id": 684751752, "source": "bordshockey.net"},
                 {**game, "tournament_id": 2000000040, "source": "table-hockey.eu"},
+                # A game only each of the other sources has, so neither page is a
+                # fragment of the Sportscorpion one.
+                {**game, "id1": 5, "tournament_id": 684751752, "source": "bordshockey.net"},
+                {**game, "id1": 6, "tournament_id": 2000000040, "source": "table-hockey.eu"},
             ]
         )
 
         deduped = deduplicate_overlapping_source_matches(matches)
 
         self.assertEqual(
-            sorted(deduped["source"].tolist()), ["bordshockey.net", "table-hockey.eu"]
+            sorted(deduped["source"].tolist()),
+            ["bordshockey.net"] * 2 + ["table-hockey.eu"] * 2,
         )
+
+    def split_event_rows(self, primary_only, preferred_only):
+        """An event both sources report: 10 shared games, plus games only one source has."""
+        game = {
+            "id2": 2,
+            "date": "2013-06-08",
+            "stage_sequence": 1,
+            "round_number": None,
+            "playoff_game_number": None,
+            "goals_id1": 3,
+            "goals_id2": 1,
+            "overtime": False,
+            "tournament_name": "World Championship 2013 OPEN",
+            "tournament_level": None,
+        }
+        primary = {**game, "tournament_id": 376, "source": ""}
+        preferred = {**game, "tournament_id": 996002594, "source": "bordshockey.net"}
+        rows = []
+        for player in range(10, 20):
+            rows += [{**primary, "id1": player}, {**preferred, "id1": player}]
+        rows += [{**primary, "id1": 100 + player} for player in range(primary_only)]
+        rows += [{**preferred, "id1": 200 + player} for player in range(preferred_only)]
+        return pd.DataFrame(rows)
+
+    def test_shared_games_stay_with_an_event_more_than_twice_as_big(self):
+        # Sportscorpion has the whole event; bordshockey.net only its playoff (and one
+        # placement game Sportscorpion lacks). Moving the playoff would split the event.
+        merged_into = {}
+        deduped = deduplicate_overlapping_source_matches(
+            self.split_event_rows(primary_only=40, preferred_only=1), merged_into
+        )
+
+        self.assertEqual(len(deduped), 51)
+        self.assertEqual((deduped.tournament_id == 376).sum(), 50)
+        self.assertEqual((deduped.tournament_id == 996002594).sum(), 1)
+        self.assertEqual(merged_into, {996002594: (376, 10)})
+
+    def test_shared_games_stay_with_an_event_that_keeps_as_many_as_it_shares(self):
+        merged_into = {}
+        deduped = deduplicate_overlapping_source_matches(
+            self.split_event_rows(primary_only=10, preferred_only=0), merged_into
+        )
+
+        self.assertEqual((deduped.tournament_id == 376).sum(), 20)
+        self.assertEqual((deduped.tournament_id == 996002594).sum(), 0)
+        self.assertEqual(merged_into, {996002594: (376, 10)})
+
+    def test_preferred_source_keeps_an_event_both_sources_report_in_full(self):
+        # Sportscorpion has one game more; moving the rest to bordshockey.net leaves that
+        # game as a fragment of the bordshockey.net page, as before.
+        merged_into = {}
+        deduped = deduplicate_overlapping_source_matches(
+            self.split_event_rows(primary_only=1, preferred_only=0), merged_into
+        )
+
+        self.assertEqual((deduped.tournament_id == 376).sum(), 1)
+        self.assertEqual((deduped.tournament_id == 996002594).sum(), 10)
+        self.assertEqual(merged_into, {376: (996002594, 10)})
+
+    def test_preferred_source_keeps_shared_games_when_both_events_stay_split(self):
+        # Each source has many games the other lacks; neither direction joins the pages.
+        merged_into = {}
+        deduped = deduplicate_overlapping_source_matches(
+            self.split_event_rows(primary_only=15, preferred_only=15), merged_into
+        )
+
+        self.assertEqual((deduped.tournament_id == 376).sum(), 15)
+        self.assertEqual((deduped.tournament_id == 996002594).sum(), 25)
 
 
 if __name__ == "__main__":

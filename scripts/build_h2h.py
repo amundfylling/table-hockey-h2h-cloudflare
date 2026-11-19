@@ -1020,13 +1020,22 @@ def match_source_pair(
 ) -> Tuple[list[int], list[int]]:
     """Pair overlapping games between two sources; returns (kept, dropped) row indices.
 
-    With a pair_counts dict, it counts the dropped games per (primary, preferred)
-    tournament pair.
+    With a pair_counts dict, it counts the dropped games per (lost, kept) tournament pair.
 
-    kept[i] is the preferred-source row that replaces dropped[i].
+    kept[i] is the row that replaces dropped[i]. That is the preferred source's row, unless
+    moving the shared games to the preferred tournament would split the event over two
+    pages: when the other tournament would keep at least as many games as it gave away
+    (say one source has the whole event and the other only its playoff), it stays a page
+    of its own next to the preferred one. If keeping the shared games there instead
+    leaves the preferred tournament a fragment, they stay, and that fragment points at
+    the full page (see mark_partial_pages). Otherwise the preferred source's rows win as
+    before, so events both sources report in full keep their page.
     """
-    drop_indices: list[int] = []
-    kept_indices: list[int] = []
+    # Paired games as (tournament pair, primary rows, preferred rows); which side of each
+    # pair is kept is settled once every pass has run (see keeps_primary).
+    pairings: list[Tuple[Tuple[int, int], list[int], list[int]]] = []
+    paired_indices: list[int] = []
+    shared: Dict[Tuple[int, int], int] = {}
     # Tournament mappings accepted so far, kept one-to-one across the passes.
     primary_to_preferred: Dict[int, int] = {}
     preferred_to_primary: Dict[int, set[int]] = {}
@@ -1034,6 +1043,10 @@ def match_source_pair(
     primary_sizes = {
         int(tournament_id): int(count)
         for tournament_id, count in tournament_ids.loc[~is_preferred].dropna().value_counts().items()
+    }
+    preferred_sizes = {
+        int(tournament_id): int(count)
+        for tournament_id, count in tournament_ids.loc[is_preferred].dropna().value_counts().items()
     }
     # (columns, min_matches, use_names, date_shift, known_only)
     passes = [
@@ -1055,7 +1068,7 @@ def match_source_pair(
     # The exact pass runs first; each later pass only sees rows the earlier ones left
     # unpaired.
     for signature_columns, min_matches, use_names, date_shift, known_only in passes:
-        remaining = matches.index.difference(drop_indices + kept_indices)
+        remaining = matches.index.difference(paired_indices)
         if date_shift:
             # The preferred source's date moved by date_shift days, the other's as is.
             shifted = matches["date_dt"] + pd.Timedelta(days=date_shift)
@@ -1094,10 +1107,29 @@ def match_source_pair(
             if pair not in tournament_crosswalk:
                 continue
             pair_count = min(len(preferred_indices), len(primary_indices))
-            kept_indices.extend(preferred_indices[:pair_count])
-            drop_indices.extend(primary_indices[:pair_count])
-            if pair_counts is not None:
-                pair_counts[pair] = pair_counts.get(pair, 0) + pair_count
+            pairings.append((pair, primary_indices[:pair_count], preferred_indices[:pair_count]))
+            paired_indices.extend(primary_indices[:pair_count] + preferred_indices[:pair_count])
+            shared[pair] = shared.get(pair, 0) + pair_count
+
+    def keeps_primary(pair: Tuple[int, int]) -> bool:
+        # Moving the shared games to the preferred event would leave the primary event as
+        # big as what it gave away or bigger, a page of its own (see mark_partial_pages),
+        # while keeping them there leaves the preferred event a fragment.
+        primary_left = primary_sizes.get(pair[0], 0) - shared[pair]
+        preferred_left = preferred_sizes.get(pair[1], 0) - shared[pair]
+        return primary_left >= shared[pair] > preferred_left
+
+    drop_indices: list[int] = []
+    kept_indices: list[int] = []
+    for pair, primary_indices, preferred_indices in pairings:
+        if keeps_primary(pair):
+            kept, dropped, lost_pair = primary_indices, preferred_indices, pair[::-1]
+        else:
+            kept, dropped, lost_pair = preferred_indices, primary_indices, pair
+        kept_indices.extend(kept)
+        drop_indices.extend(dropped)
+        if pair_counts is not None:
+            pair_counts[lost_pair] = pair_counts.get(lost_pair, 0) + len(kept)
     return kept_indices, drop_indices
 
 
@@ -1108,8 +1140,9 @@ def deduplicate_overlapping_source_matches(
     """Drop games that two sources both report.
 
     Each source in DATA_SOURCES is compared with every source listed before it, and on
-    overlap the later source's row is kept. A kept row stands for one game, so it replaces
-    at most one row from one other source.
+    overlap the later source's row is kept, unless the earlier source's tournament is the
+    bigger one (see match_source_pair). A kept row stands for one game, so it replaces at
+    most one row from one other source.
 
     With a merged_into dict, it is filled with {tournament id: (other tournament id, games)}
     for each tournament that lost games to another source's tournament: the one it lost

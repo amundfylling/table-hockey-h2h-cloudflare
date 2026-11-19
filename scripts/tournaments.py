@@ -654,6 +654,24 @@ def mark_partial_pages(
         }
 
 
+def moved_pages(
+    payloads: Dict[int, dict], merged_into: Dict[int, Tuple[int, int]]
+) -> Dict[int, int]:
+    """{tournament id: page id} for tournaments that gave all their games to another
+    source's page, so a link to the old page can still reach the event."""
+    moved = {}
+    for tournament_id, (full_id, _) in merged_into.items():
+        if tournament_id in payloads:
+            continue
+        seen = {tournament_id}
+        while full_id not in payloads and full_id in merged_into and full_id not in seen:
+            seen.add(full_id)
+            full_id = merged_into[full_id][0]
+        if full_id in payloads:
+            moved[tournament_id] = int((payloads[full_id].get("part_of") or {}).get("id", full_id))
+    return moved
+
+
 def build_tournament_files(
     matches: pd.DataFrame,
     names: Dict[int, str],
@@ -674,6 +692,10 @@ def build_tournament_files(
     mark_partial_pages(payloads, merged_into or {})
     index = []
     buckets: Dict[int, dict] = {}
+    for tournament_id, full_id in moved_pages(payloads, merged_into or {}).items():
+        buckets.setdefault(tournament_bucket(tournament_id), {})[str(tournament_id)] = {
+            "id": tournament_id, "moved_to": full_id,
+        }
     for tournament_id, payload in payloads.items():
         buckets.setdefault(tournament_bucket(tournament_id), {})[str(tournament_id)] = payload
         index.append({

@@ -97,6 +97,9 @@ def summarize(public: Path) -> dict:
     tournament_rows = []
     for path in sorted((data / "t").glob("*.json")):
         for tid, tournament in sorted(_load(path).items(), key=lambda item: int(item[0])):
+            if "moved_to" in tournament:
+                tournament_rows.append([int(tid), "moved to", tournament["moved_to"]])
+                continue
             groups = [
                 len(group)
                 for stage in tournament.get("round_robin", [])
