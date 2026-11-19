@@ -4000,7 +4000,7 @@
     ]
   },
   "tournaments [id, name, date, games, goals, champion, runner_up, group sizes, playoff series, upsets]": [
-    [493844175, "Tornaligan 99 2017/18", "2017-10-18", 108, 630, 2930, 2367, [10], 5, 0],
+    [493844175, "Tornaligan 99 2017/18", "2017-10-18", 108, 630, 2414, 1231, [10], 5, 0],
     [2215, "moved to", 491683938],
     [2241, "moved to", 228664264],
     [2243, "moved to", 493844175],
@@ -4028,7 +4028,7 @@
     [6000000040, "WCC 2025", "2025-09-28", "", null, "", "", 90, 22, 50000376, 50000375],
     [485839677, "Tornaligan 101 2017/18", "2017-11-15", "", "5", "", "", 157, 15, 2922, 2365],
     [946460669, "Göteborgsligan #4 2017/18", "2017-10-18", "", null, "", "", 43, 5, 5722, 2931],
-    [493844175, "Tornaligan 99 2017/18", "2017-10-18", "", null, "", "", 108, 10, 2930, 2367],
+    [493844175, "Tornaligan 99 2017/18", "2017-10-18", "", null, "", "", 108, 10, 2414, 1231],
     [228664264, "3Tunaligan #5 - You Were The Chosen One 2017/18", "2017-10-18", "", "5", "", "", 67, 9, 3806, 3535],
     [491683938, "O'Learysligan #12 2017/18", "2017-10-05", "", null, "", "", 121, 13, 2042, 2203],
     [893, "XIV World Championship 2015 OPEN", "2015-06-13", "2015-06-14", "1", "Saint Petersburg", "Russia", 1902, 108, 142, 904],
@@ -4041,11 +4041,11 @@
     "data/players.json": "79c04c8d1c88d7ce",
     "data/records.json": "b37fdc3348add36f",
     "data/rivalries.json": "c520850225fc7aed",
-    "data/tournament-list.json": "602a023cd7eb8f10",
+    "data/tournament-list.json": "3212889144e31ebf",
     "data/tournaments.json": "cbc3446481421f15",
     "data/h2h/ (235 files)": "1eeebd0499645beb",
     "data/og/ (235 files)": "bcc76bea1af458e3",
-    "data/t/ (17 files)": "ad395304948a95dc",
+    "data/t/ (17 files)": "fb5f81801fd7237e",
     "sitemaps (5 files)": "69ba055398b50c32"
   }
 }

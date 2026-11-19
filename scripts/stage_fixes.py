@@ -32,6 +32,29 @@ def apply_date_overrides(matches: pd.DataFrame) -> int:
     return changed
 
 
+def apply_score_overrides(matches: pd.DataFrame) -> int:
+    """Correct game scores listed in tournaments.SCORE_OVERRIDES. Returns games changed."""
+    needed = {"tournament_id", "source_match_id", "goals_player1", "goals_player2"}
+    if not needed <= set(matches.columns):
+        return 0
+    changed = 0
+    for (tid, match_id), (goals1, goals2) in tournament_pages.SCORE_OVERRIDES.items():
+        rows = (matches["tournament_id"].eq(tid) & matches["source_match_id"].astype("string")
+                .eq(str(match_id))).fillna(False).astype(bool)
+        if not rows.any():
+            continue
+        changed += int(rows.sum())
+        matches.loc[rows, "goals_player1"] = goals1
+        matches.loc[rows, "goals_player2"] = goals2
+        if {"goals_id1", "goals_id2", "player1_id", "id1"} <= set(matches.columns):
+            first = rows & matches["player1_id"].eq(matches["id1"])
+            matches.loc[first, "goals_id1"] = goals1
+            matches.loc[first, "goals_id2"] = goals2
+            matches.loc[rows & ~first, "goals_id1"] = goals2
+            matches.loc[rows & ~first, "goals_id2"] = goals1
+    return changed
+
+
 def mark_team_stages(matches: pd.DataFrame) -> int:
     """Set stage_type to round-robin for games of team events (TournamentType "Team").
 

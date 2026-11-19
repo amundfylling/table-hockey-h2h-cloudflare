@@ -7,6 +7,13 @@ import { formatDateRange, tournamentDataPath, tournamentLabel } from "./date-ran
 import { decodeHtmlEntities, formatNumber, safeExternalUrl } from "./utils.js";
 
 const ID_RE = /^[1-9]\d{0,9}$/;
+const ITHF_TOURNAMENT_URL = "https://stiga.trefik.cz/ithf/ranking/tournament.aspx?id=";
+
+// The tournament's page in the ITHF world ranking, or "" when it has none.
+function ithfTournamentUrl(ithf) {
+  const id = String(ithf?.id ?? "");
+  return ID_RE.test(id) ? ITHF_TOURNAMENT_URL + id : "";
+}
 
 function makePlayerLink(data) {
   const linked = new Set((data.linked || []).map(Number));
@@ -32,14 +39,25 @@ function renderHeader(data) {
     `${formatNumber(data.games)} games`,
   ].filter(Boolean);
   document.getElementById("t-meta").textContent = bits.join(" · ");
+  const links = [];
   const url = safeExternalUrl(data.url);
   if (url) {
-    const source = document.getElementById("t-source");
     let host = data.source || "";
     try { host = new URL(url).hostname; } catch { /* keep the source name */ }
-    source.replaceChildren(el("a", {
+    links.push(el("a", {
       href: url, target: "_blank", rel: "noopener noreferrer external",
     }, `Full results on ${host}`));
+  }
+  const ithfUrl = ithfTournamentUrl(data.ithf);
+  if (ithfUrl) {
+    links.push(el("a", {
+      href: ithfUrl, target: "_blank", rel: "noopener noreferrer external",
+      title: data.ithf.name ? `${decodeHtmlEntities(data.ithf.name)} in the ITHF world ranking` : null,
+    }, "ITHF world ranking"));
+  }
+  if (links.length) {
+    const source = document.getElementById("t-source");
+    source.replaceChildren(...links.flatMap((link, index) => (index ? [" · ", link] : [link])));
     source.hidden = false;
   }
   // Two sources reported this event: the full event (and its champion) is on another page,
@@ -75,6 +93,19 @@ function renderPodium(data, player) {
     el("span", { class: "eyebrow" }, "Goals per game"),
     el("span", { class: "t-podium-num" }, goalsPerGame)));
   podium.replaceChildren(...cards);
+  // The games on this page don't decide the title (a round robin the ITHF tie-breaks
+  // differently, or a source that has the final wrong); the ITHF final table does.
+  const note = document.getElementById("t-result-note");
+  if (note && data.result_source === "ithf") {
+    const ithfUrl = ithfTournamentUrl(data.ithf);
+    note.replaceChildren("Champion and runner-up as in the ",
+      ithfUrl
+        ? el("a", { href: ithfUrl, target: "_blank", rel: "noopener noreferrer external" },
+          "ITHF world ranking's final table")
+        : "ITHF world ranking's final table",
+      ".");
+    note.hidden = false;
+  }
 }
 
 function renderUpsets(data, player) {

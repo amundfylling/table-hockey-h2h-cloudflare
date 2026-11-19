@@ -20,6 +20,8 @@ import requests
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT_DIR = SCRIPT_DIR.parent
+# Site tournament -> ITHF ranking tournament links, written by scripts/ithf_match.py.
+ITHF_TOURNAMENTS_PATH = ROOT_DIR / "data" / "ithf-tournaments.json"
 sys.path.insert(0, str(SCRIPT_DIR))
 
 import download as dl  # noqa: E402
@@ -2902,6 +2904,7 @@ def main() -> int:
     if team_games:
         print(f"Marked {team_games} team-event games as round-robin.")
     stage_fixes.apply_date_overrides(matches)
+    stage_fixes.apply_score_overrides(matches)
 
     sort_cols = ["id1", "id2", *ratings.playing_order_columns(matches)]
     matches = matches.sort_values(sort_cols, kind="mergesort", na_position="last")
@@ -2990,6 +2993,12 @@ def main() -> int:
         write_json,
         DATA_STAGING_DIR / "t",
         merged_into=merged_into,
+        ithf=tournament_pages.load_ithf_tournaments(ITHF_TOURNAMENTS_PATH),
+        ranking_ids={
+            int(player["ranking_id"]): int(player["id"])
+            for player in players
+            if player.get("ranking_id") is not None
+        },
     )
     print(f"Wrote {len(tournament_index)} tournament files.")
     write_json(
