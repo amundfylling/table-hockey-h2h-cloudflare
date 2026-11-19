@@ -2674,6 +2674,32 @@ def write_github_output(name: str, value: str) -> None:
             output.write(f"{name}={value}\n")
 
 
+def load_ithf_links() -> dict:
+    """ITHF links: the live site's (which the daily runs add new tournaments to), then the
+    committed file on top, since a full scripts/ithf_match.py run redoes every link."""
+    links = {}
+    url = os.environ.get("ITHF_LINKS_URL", "").strip()
+    if url:
+        try:
+            response = requests.get(url, timeout=60, headers={"User-Agent": "h2h-build/1.0"})
+            response.raise_for_status()
+            links = tournament_pages.ithf_entries(response.json())
+            print(f"Read {len(links)} ITHF links from {url}.")
+        except (requests.RequestException, ValueError) as error:
+            print(f"Warning: could not read the live ITHF links ({error}); using the committed ones.")
+    links.update(tournament_pages.load_ithf_tournaments(ITHF_TOURNAMENTS_PATH))
+    return links
+
+
+def ithf_link_new():
+    """ithf_match.link_new when ITHF_LINK_NEW=1 (the CI build), else None."""
+    if os.environ.get("ITHF_LINK_NEW") != "1":
+        return None
+    import ithf_match  # noqa: PLC0415 - needs network and the matching libraries
+
+    return ithf_match.link_new
+
+
 def main() -> int:
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -2993,7 +3019,8 @@ def main() -> int:
         write_json,
         DATA_STAGING_DIR / "t",
         merged_into=merged_into,
-        ithf=tournament_pages.load_ithf_tournaments(ITHF_TOURNAMENTS_PATH),
+        ithf=load_ithf_links(),
+        link_new=ithf_link_new(),
         ranking_ids={
             int(player["ranking_id"]): int(player["id"])
             for player in players

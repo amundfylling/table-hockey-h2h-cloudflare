@@ -39,7 +39,8 @@ def build_fixture(work_dir: Path, **extra_env: str) -> Path:
     env = {key: value for key, value in os.environ.items() if not key.startswith("GITHUB_")}
     # Settings the CI build sets must not leak into the fixture build.
     for key in list(env):
-        if key.startswith(("REQUIRE_", "MIN_", "MAX_", "SKIP_IF_")) or key.endswith("_URL"):
+        if (key.startswith(("REQUIRE_", "MIN_", "MAX_", "SKIP_IF_", "ITHF_"))
+                or key.endswith("_URL")):
             del env[key]
     env.update(BUILD_ENV, H2H_WORK_DIR=str(work_dir), **extra_env)
     result = subprocess.run(

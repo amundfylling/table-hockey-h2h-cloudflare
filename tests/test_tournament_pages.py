@@ -297,6 +297,36 @@ class TournamentFilesTest(unittest.TestCase):
         self.assertEqual(sorted(written[Path("t/7.json")]), ["1007", "7"])
         self.assertEqual(len(index), 3)
 
+    def test_new_ithf_links_are_applied_and_published(self):
+        games = [_game(1, 2, 3, 1, stage_name="Final")]
+        written = {}
+
+        def link_new(payloads, known):
+            self.assertEqual(sorted(payloads), [7])
+            self.assertIn(99, known)
+            return {"7": {"ithf": 555, "name": "Test Open", "main": True,
+                          "places": [[1, 900, "B", 2]]}}
+        build_tournament_files(pd.DataFrame(games), {}, set(), {},
+                               lambda path, payload: written.update({path: payload}), Path("t"),
+                               ithf={99: {"ithf": 1, "main": True, "places": []}},
+                               link_new=link_new)
+        page = written[Path("t/7.json")]["7"]
+        self.assertEqual(page["ithf"]["id"], 555)
+        self.assertEqual(page["champion"], 2)  # the ITHF table settles it
+        self.assertEqual(sorted(written[Path("ithf-tournaments.json")]), ["7", "99"])
+
+    def test_failed_ithf_lookup_keeps_the_known_links(self):
+        written = {}
+
+        def link_new(payloads, known):
+            raise OSError("ITHF site down")
+        build_tournament_files(pd.DataFrame([_game(1, 2, 3, 1, stage_name="Final")]), {}, set(),
+                               {}, lambda path, payload: written.update({path: payload}),
+                               Path("t"), ithf={7: {"ithf": 4, "main": False, "places": []}},
+                               link_new=link_new)
+        self.assertEqual(written[Path("t/7.json")]["7"]["ithf"]["id"], 4)
+        self.assertEqual(written[Path("t/7.json")]["7"]["champion"], 1)
+
     def test_fragment_of_another_sources_event_names_no_champion(self):
         # 70 holds the 8 games only one source has; 80 got the 30 games both reported.
         fragment = [dict(g, tournament_id=70) for g in _bo1_bracket()]
