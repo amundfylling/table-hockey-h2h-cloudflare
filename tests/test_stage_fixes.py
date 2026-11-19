@@ -76,5 +76,23 @@ class DateOverridesTest(unittest.TestCase):
         self.assertEqual(frame.loc[0, "date_dt"], pd.Timestamp("2011-01-19"))
 
 
+class ScoreOverridesTest(unittest.TestCase):
+    def test_known_wrong_score_is_corrected_in_both_orders(self):
+        # The source lists Nygård (7510) first; id1 is the lower id, Holmin (1243).
+        frame = pd.DataFrame([{
+            "tournament_id": 7724, "source_match_id": "2002515", "player1_id": 7510,
+            "player2_id": 1243, "id1": 1243, "id2": 7510, "goals_player1": 5,
+            "goals_player2": 34, "goals_id1": 34, "goals_id2": 5,
+        }, {
+            "tournament_id": 7724, "source_match_id": "2002514", "player1_id": 7510,
+            "player2_id": 1243, "id1": 1243, "id2": 7510, "goals_player1": 3,
+            "goals_player2": 4, "goals_id1": 4, "goals_id2": 3,
+        }])
+        self.assertEqual(stage_fixes.apply_score_overrides(frame), 1)
+        self.assertEqual(frame.loc[0, ["goals_player1", "goals_player2"]].tolist(), [5, 3])
+        self.assertEqual(frame.loc[0, ["goals_id1", "goals_id2"]].tolist(), [3, 5])
+        self.assertEqual(frame.loc[1, ["goals_id1", "goals_id2"]].tolist(), [4, 3])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -25,6 +25,10 @@ exploration interface with zero runtime database queries.
 * `public/` - The static web root containing the HTML, CSS, and vanilla JS frontend application.
 * `public/js/` - Frontend ES modules (see "Frontend Module Map" below).
 * `scripts/` - Ingestion, caching, and processing Python scripts used to build the static dataset.
+  `ithf_match.py` (run by hand after a build; needs `rapidfuzz` and `unidecode`) matches the
+  tournament pages to the ITHF world ranking calendar and writes `data/ithf-tournaments.json`;
+  the build reads it to link each page to its ITHF tournament and to let the ITHF final table
+  settle the champion when the page's own games name someone else (`apply_ithf`).
   `tournaments.py` builds the per-tournament files (standings, brackets, champion, upsets by a
   pre-game Elo rating).
   `ratings.py` computes each player's Glicko-2 rating (with goal difference) game by game;

@@ -4,7 +4,9 @@ from pathlib import Path
 import pandas as pd
 
 from scripts.tournaments import (
+    apply_ithf,
     build_tournament_files,
+    load_ithf_tournaments,
     build_standings,
     payload_from_frame,
     classify_stage,
@@ -120,6 +122,86 @@ class BracketTest(unittest.TestCase):
         self.assertEqual(payload["brackets"], [])
         self.assertEqual((payload["champion"], payload["runner_up"]), (1, 2))
         self.assertEqual(payload["round_robin"][0]["name"], "Round-Robin")
+
+
+class MainPlayoffTest(unittest.TestCase):
+    """A and B playoffs of the same size: the one with the round robin's best player wins."""
+
+    def _league(self):
+        # Round robin: 1 and 2 top it, 3 and 4 are at the bottom. The B playoff (3 v 4) is
+        # played before the A playoff (1 v 2), so the older order would have made it main.
+        rr = [_game(1, 3, 4, 0, stage=1, stage_name="Round-Robin", seq=1),
+              _game(2, 4, 4, 0, stage=1, stage_name="Round-Robin", seq=1),
+              _game(1, 4, 4, 1, stage=1, stage_name="Round-Robin", seq=1),
+              _game(2, 3, 4, 1, stage=1, stage_name="Round-Robin", seq=1),
+              _game(1, 2, 2, 2, stage=1, stage_name="Round-Robin", seq=1),
+              _game(3, 4, 2, 2, stage=1, stage_name="Round-Robin", seq=1)]
+        b_final = [_game(3, 4, 3, 1, stage=2, stage_name="Playoff", seq=2)]
+        a_final = [_game(2, 1, 3, 1, stage=3, stage_name="Playoff", seq=3)]
+        return payload_from_frame(7, pd.DataFrame(rr + b_final + a_final), {}, set())
+
+    def test_playoff_of_the_best_round_robin_players_is_main(self):
+        payload = self._league()
+        self.assertEqual((payload["champion"], payload["runner_up"]), (2, 1))
+        self.assertEqual([b["label"] for b in payload["brackets"]], ["Playoff", "Playoff 2"])
+        self.assertEqual(payload["brackets"][1]["champion"], 3)
+
+
+class IthfTest(unittest.TestCase):
+    def _payload(self):
+        return {
+            "players": {"1": "Ann Berg", "2": "Bo Ek", "3": "Cecilia Öst", "4": "Dan Ås"},
+            "champion": 3, "runner_up": 4,
+            "brackets": [
+                {"label": "Playoff", "secondary": False, "champion": 3, "runner_up": 4},
+                {"label": "Playoff 2", "secondary": False, "champion": 1, "runner_up": 2},
+            ],
+        }
+
+    def test_link_without_a_main_entry_changes_nothing_else(self):
+        payload = self._payload()
+        entry = {"ithf": 123, "name": "Test Open", "main": False,
+                 "places": [[1, 900, "Ann Berg", 1]]}
+        self.assertIsNone(apply_ithf(payload, entry))
+        self.assertEqual(payload["ithf"], {"id": 123, "name": "Test Open"})
+        self.assertEqual(payload["champion"], 3)
+
+    def test_ithf_winner_of_another_playoff_makes_it_main(self):
+        payload = self._payload()
+        entry = {"ithf": 5, "main": True, "places": [[1, 900, "Ann Berg", 1],
+                                                     [2, 901, "Bo Ek", 2]]}
+        self.assertEqual(apply_ithf(payload, entry), "bracket")
+        self.assertEqual((payload["champion"], payload["runner_up"]), (1, 2))
+        self.assertEqual([b["champion"] for b in payload["brackets"]], [1, 3])
+        self.assertEqual([b["label"] for b in payload["brackets"]], ["Playoff", "Playoff 2"])
+        self.assertNotIn("result_source", payload)
+
+    def test_ithf_table_sets_the_champion_when_no_playoff_has_them(self):
+        payload = self._payload()
+        payload["brackets"] = []
+        # No site id: found by ranking id, then by name without accents.
+        entry = {"ithf": 5, "main": True, "places": [[1, 900, "Dan As", None],
+                                                     [2, 777, "Someone", None]]}
+        self.assertEqual(apply_ithf(payload, entry, {777: 2}), "ithf")
+        self.assertEqual((payload["champion"], payload["runner_up"]), (4, 2))
+        self.assertEqual(payload["result_source"], "ithf")
+
+    def test_unknown_winner_or_fragment_is_left_alone(self):
+        payload = self._payload()
+        entry = {"ithf": 5, "main": True, "places": [[1, 900, "Not Here", None]]}
+        self.assertIsNone(apply_ithf(payload, entry))
+        self.assertEqual(payload["champion"], 3)
+        payload["part_of"] = {"id": 99}
+        entry["places"] = [[1, 900, "Ann Berg", 1]]
+        self.assertIsNone(apply_ithf(payload, entry))
+        self.assertEqual(payload["champion"], 3)
+
+    def test_committed_links_load(self):
+        path = Path(__file__).resolve().parent.parent / "data" / "ithf-tournaments.json"
+        links = load_ithf_tournaments(path)
+        self.assertGreater(len(links), 5000)
+        self.assertTrue(all(isinstance(entry["ithf"], int) for entry in links.values()))
+        self.assertEqual(load_ithf_tournaments(path.with_name("missing.json")), {})
 
 
 class SeparateStagesTest(unittest.TestCase):

@@ -10,10 +10,12 @@ brackets are rebuilt from who beat whom rather than from round numbers.
 from __future__ import annotations
 
 import html
+import json
 import math
 import re
 import sys
 import unicodedata
+from collections import Counter
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple
 
@@ -310,6 +312,64 @@ def build_brackets(
     return brackets
 
 
+_PLAIN_PLAYOFF_RE = re.compile(r"^Playoff(?: \d+)?$")
+
+
+def _bracket_players(bracket: dict) -> set:
+    return {p for rnd in bracket["rounds"] for s in rnd["series"] for p in s[:2]}
+
+
+def _relabel_playoffs(brackets: List[dict]) -> None:
+    """Number plain "Playoff" brackets in their current order (Playoff, Playoff 2, ...)."""
+    plain = [b for b in brackets if not b["secondary"]]
+    if len(plain) > 1 and all(_PLAIN_PLAYOFF_RE.match(b["label"]) for b in plain):
+        for index, bracket in enumerate(plain, start=1):
+            bracket["label"] = "Playoff" if index == 1 else f"Playoff {index}"
+
+
+def move_to_front(brackets: List[dict], bracket: dict) -> None:
+    """Make `bracket` the main one (first) and renumber the plain playoffs."""
+    brackets.remove(bracket)
+    brackets.insert(0, bracket)
+    _relabel_playoffs(brackets)
+
+
+def promote_main_bracket(brackets: List[dict], round_robin: List[dict]) -> None:
+    """Put the playoff of the round robin's best players first.
+
+    Leagues often split the field into an A and a B playoff (or more) of the same size,
+    which the sources label alike, so size alone can't tell which one decides the
+    tournament. The main playoff is the one with the player who scored the most points per
+    game over all round-robin stages (goal difference per game breaks ties). Checked
+    against the ITHF ranking, this picks the right playoff in 95% of tournaments with
+    several, against 82% for the largest-first rule.
+    """
+    contenders = [b for b in brackets if not b["secondary"] and b["champion"] is not None]
+    if len(contenders) < 2 or not round_robin:
+        return
+    totals: Dict[int, list] = {}
+    for stage in round_robin:
+        for group in stage["groups"]:
+            for row in group:
+                total = totals.setdefault(row["id"], [0, 0, 0])
+                total[0] += row["pts"]
+                total[1] += row["gf"] - row["ga"]
+                total[2] += row["p"]
+    if not totals:
+        return
+    order = sorted(totals, key=lambda p: (-totals[p][0] / max(1, totals[p][2]),
+                                          -totals[p][1] / max(1, totals[p][2])))
+    rank = {pid: index for index, pid in enumerate(order)}
+
+    def best_seed(bracket: dict) -> int:
+        return min((rank[p] for p in _bracket_players(bracket) if p in rank),
+                   default=len(rank))
+
+    best = min(contenders, key=best_seed)  # min keeps the current order on ties
+    if best is not contenders[0]:
+        move_to_front(brackets, best)
+
+
 def _series_out(s: dict) -> list:
     """[player a, player b, wins a, wins b, [[goals a, goals b, overtime], ...]]."""
     return [s["a"], s["b"], s["wins_a"], s["wins_b"],
@@ -499,6 +559,7 @@ def build_tournament_payload(
         min(round_robin_seqs) if round_robin_seqs else None,
     )
 
+    promote_main_bracket(brackets, round_robin)
     champion = runner_up = None
     main_bracket = next((b for b in brackets if not b["secondary"]), None)
     if main_bracket:
@@ -581,6 +642,14 @@ def payload_from_frame(tournament_id, frame, names, linked_ids, details=None) ->
 DATE_OVERRIDES: Dict[int, str] = {
     75: "2010-12-22",
     80: "2011-01-19",
+}
+
+# Game scores the sources have wrong: {(tournament id, source match id): (goals player 1,
+# goals player 2)}, in the source's player order.
+SCORE_OVERRIDES: Dict[Tuple[int, str], Tuple[int, int]] = {
+    # Bergensliga Spring 2026 #1, final game 3: entered as 5–34 (Nygård–Holmin). The ITHF
+    # final table has Daniel Nygård as winner, so it was his game; 5–3 is the likely score.
+    (7724, "2002515"): (5, 3),
 }
 
 
@@ -672,6 +741,74 @@ def moved_pages(
     return moved
 
 
+ITHF_TOURNAMENT_URL = "https://stiga.trefik.cz/ithf/ranking/tournament.aspx?id={}"
+
+
+def load_ithf_tournaments(path) -> Dict[int, dict]:
+    """{site tournament id: ITHF link entry} from data/ithf-tournaments.json, which
+    scripts/ithf_match.py writes. A missing or broken file means no links."""
+    try:
+        raw = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return {int(tid): entry for tid, entry in raw.items()
+            if isinstance(entry, dict) and str(tid).isdigit()}
+
+
+def _name_key(name: object) -> str:
+    text = unicodedata.normalize("NFKD", str(name or "")).encode("ascii", "ignore").decode()
+    return " ".join(sorted(re.sub(r"[^a-z ]", " ", text.lower()).split()))
+
+
+def _ithf_player(place: Optional[list], payload: dict,
+                 ranking_ids: Dict[int, int]) -> Optional[int]:
+    """The site player id of an ITHF final-table entry [place, ITHF id, name, site id]."""
+    if not place:
+        return None
+    _, ithf_id, name, site_id = (list(place) + [None] * 4)[:4]
+    players = payload["players"]
+    for pid in (site_id, ranking_ids.get(ithf_id)):
+        if pid is not None and str(pid) in players:
+            return int(pid)
+    key = _name_key(name)
+    found = [int(pid) for pid, player in players.items() if key and _name_key(player) == key]
+    return found[0] if len(found) == 1 else None
+
+
+def apply_ithf(payload: dict, entry: Optional[dict],
+               ranking_ids: Optional[Dict[int, int]] = None) -> Optional[str]:
+    """Link the page to its ITHF ranking tournament and let the ITHF final table settle
+    the champion.
+
+    When the ITHF winner won another playoff on the page, that playoff becomes the main
+    one. When the ITHF winner won no playoff here (a round robin the ITHF tie-breaks
+    differently, or a source with the final the wrong way round), the champion and
+    runner-up come from the ITHF table and `result_source` says so. Only the event's main
+    page is settled this way, never a page that holds part of an event. Returns "bracket",
+    "ithf" or None for what changed.
+    """
+    if not entry or not str(entry.get("ithf", "")).isdigit():
+        return None
+    payload["ithf"] = {"id": int(entry["ithf"]), "name": str(entry.get("name") or "")}
+    if not entry.get("main") or payload.get("part_of"):
+        return None
+    ranking_ids = ranking_ids or {}
+    places = {p[0]: p for p in entry.get("places") or [] if p}
+    winner = _ithf_player(places.get(1), payload, ranking_ids)
+    if winner is None or winner == payload["champion"]:
+        return None
+    for bracket in payload["brackets"]:
+        if bracket["champion"] == winner and not bracket["secondary"]:
+            move_to_front(payload["brackets"], bracket)
+            payload["champion"], payload["runner_up"] = winner, bracket["runner_up"]
+            return "bracket"
+    runner_up = _ithf_player(places.get(2), payload, ranking_ids)
+    payload["champion"] = winner
+    payload["runner_up"] = runner_up if runner_up != winner else None
+    payload["result_source"] = "ithf"
+    return "ithf"
+
+
 def build_tournament_files(
     matches: pd.DataFrame,
     names: Dict[int, str],
@@ -680,8 +817,14 @@ def build_tournament_files(
     write,
     out_dir,
     merged_into: Optional[Dict[int, Tuple[int, int]]] = None,
+    ithf: Optional[Dict[int, dict]] = None,
+    ranking_ids: Optional[Dict[int, int]] = None,
 ) -> List[dict]:
-    """Write data/t/{bucket}.json files ({id: tournament}); return the index entries."""
+    """Write data/t/{bucket}.json files ({id: tournament}); return the index entries.
+
+    `ithf` is load_ithf_tournaments' {site id: entry}; `ranking_ids` maps ITHF player ids to
+    site player ids.
+    """
     frame = matches.loc[matches["tournament_id"].notna()]
     frame = prepare_rows(frame.join(compute_pre_game_ratings(frame)))
     payloads: Dict[int, dict] = {}
@@ -690,6 +833,14 @@ def build_tournament_files(
             tournament_id, rows, names, linked_ids, details.get(tournament_id)
         )
     mark_partial_pages(payloads, merged_into or {})
+    settled = Counter()
+    for tournament_id, payload in payloads.items():
+        settled[apply_ithf(payload, (ithf or {}).get(tournament_id), ranking_ids)] += 1
+    if ithf:
+        linked = sum(1 for payload in payloads.values() if payload.get("ithf"))
+        print(f"Linked {linked} tournaments to the ITHF ranking; the ITHF final table moved "
+              f"the main playoff on {settled['bracket']} and set the champion on "
+              f"{settled['ithf']}.")
     index = []
     buckets: Dict[int, dict] = {}
     for tournament_id, full_id in moved_pages(payloads, merged_into or {}).items():
