@@ -37,6 +37,13 @@ class LostGamesTest(unittest.TestCase):
         self.assertEqual(lost, keys(("7", "2019-12-02", 3680, 3, 2)))
         self.assertEqual(moved, 1)
 
+    def test_nearby_dates_are_matched_as_a_whole(self):
+        old = keys(("7", "2019-12-01", 1, 3, 2), ("7", "2019-12-04", 1, 3, 2))
+        new = keys(("7", "2019-12-02", 2, 3, 2), ("7", "2019-11-28", 2, 3, 2))
+        lost, moved = data_drift.lost_games(old, new)
+        self.assertEqual(lost, Counter())
+        self.assertEqual(moved, 2)
+
 
 class SourceRowsTest(unittest.TestCase):
     def test_reads_accepted_rows_per_source(self):

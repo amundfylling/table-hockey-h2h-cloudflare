@@ -132,24 +132,38 @@ def lost_games(old_keys: Counter, new_keys: Counter) -> Tuple[Counter, int]:
         spare.setdefault((opponent_id, goals_for, goals_against), Counter())[
             date.fromisoformat(day)
         ] += count
-    lost = Counter()
-    moved = 0
     # Exact dates first, so a nearby date never takes a game an exact one needs.
-    for max_shift in (0, MOVED_DATE_DAYS):
-        for key in sorted(gone):
-            opponent_id, day, _tournament, goals_for, goals_against = key
-            days = spare.get((opponent_id, goals_for, goals_against), Counter())
-            when = date.fromisoformat(day)
-            for shift in sorted(range(-max_shift, max_shift + 1), key=abs):
-                candidate = when + timedelta(days=shift)
-                take = min(gone[key], days[candidate])
-                if take:
-                    days[candidate] -= take
-                    gone[key] -= take
-                    moved += take
+    for key in list(gone):
+        opponent_id, day, _tournament, goals_for, goals_against = key
+        days = spare.get((opponent_id, goals_for, goals_against), Counter())
+        take = min(gone[key], days[date.fromisoformat(day)])
+        days[date.fromisoformat(day)] -= take
+        gone[key] -= take
+    moved = sum((old_keys - new_keys).values()) - sum(gone.values())
+    # Then nearby dates. Every window is equally wide, so pairing each old game, earliest
+    # first, with the earliest spare game still in its window matches as many as possible.
+    by_group: dict = {}
     for key, count in gone.items():
         if count > 0:
-            lost[key] = count
+            opponent_id, day, _tournament, goals_for, goals_against = key
+            by_group.setdefault((opponent_id, goals_for, goals_against), []).append(
+                (date.fromisoformat(day), key)
+            )
+    window = timedelta(days=MOVED_DATE_DAYS)
+    for group, olds in by_group.items():
+        days = spare.get(group, Counter())
+        pool = sorted(day for day, count in days.items() for _ in range(max(count, 0)))
+        position = 0
+        for when, key in sorted(olds):
+            while gone[key] > 0:
+                while position < len(pool) and pool[position] < when - window:
+                    position += 1
+                if position == len(pool) or pool[position] > when + window:
+                    break
+                position += 1
+                gone[key] -= 1
+                moved += 1
+    lost = Counter({key: count for key, count in gone.items() if count > 0})
     return lost, moved
 
 
