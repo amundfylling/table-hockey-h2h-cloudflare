@@ -20,7 +20,7 @@
   <link rel="preload" href="fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="fonts/barlow-condensed-latin-600.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="icon" type="image/png" sizes="32x32" href="favicon.png" />
-  <link rel="stylesheet" href="styles.css?v=20261112-seo" />
+  <link rel="stylesheet" href="styles.css?v=20261123-past-vs-today" />
   <!-- Every module the page script imports, so the browser fetches them at once instead of
        one import level at a time. tests-js/routes.test.mjs checks this list. -->
   <link rel="modulepreload" href="js/chrome.js" />
@@ -178,21 +178,21 @@
           <div class="g-canvas">
         <!--figure:matchup-->
         <picture class="g-shot g-shot-light">
-          <source media="(max-width: 600px)" srcset="guide/matchup-light-phone.webp" width="780" height="1808" />
-          <img src="guide/matchup-light-desk.webp" width="1280" height="665" alt="" loading="lazy" decoding="async" />
+          <source media="(max-width: 600px)" srcset="guide/matchup-light-phone.webp" width="780" height="1742" />
+          <img src="guide/matchup-light-desk.webp" width="1280" height="636" alt="" loading="lazy" decoding="async" />
         </picture>
         <picture class="g-shot g-shot-dark">
-          <source media="(max-width: 600px)" srcset="guide/matchup-dark-phone.webp" width="780" height="1808" />
-          <img src="guide/matchup-dark-desk.webp" width="1280" height="665" alt="" loading="lazy" decoding="async" />
+          <source media="(max-width: 600px)" srcset="guide/matchup-dark-phone.webp" width="780" height="1742" />
+          <img src="guide/matchup-dark-desk.webp" width="1280" height="636" alt="" loading="lazy" decoding="async" />
         </picture>
-        <span class="g-pin" data-pin="1" style="--x:50.0%;--y:13.5%;--px:50.0%;--py:17.3%" aria-hidden="true">1</span>
-        <span class="g-pin" data-pin="2" style="--x:24.5%;--y:27.4%;--px:4.1%;--py:6.4%" aria-hidden="true">2</span>
-        <span class="g-pin" data-pin="3" style="--x:28.3%;--y:43.0%;--px:6.7%;--py:32.5%" aria-hidden="true">3</span>
-        <span class="g-pin" data-pin="4" style="--x:1.7%;--y:55.6%;--px:5.9%;--py:45.2%" aria-hidden="true">4</span>
-        <span class="g-pin" data-pin="5" style="--x:1.7%;--y:75.3%;--px:4.1%;--py:70.0%" aria-hidden="true">5</span>
-        <span class="g-pin" data-pin="6" style="--x:1.7%;--y:88.4%;--px:4.1%;--py:83.5%" aria-hidden="true">6</span>
-        <span class="g-pin" data-pin="7" style="--x:67.4%;--y:85.4%;--px:28.4%;--py:92.4%" aria-hidden="true">7</span>
-        <span class="g-pin" data-pin="8" style="--x:96.9%;--y:85.7%;--px:95.9%;--py:92.6%" aria-hidden="true">8</span>
+        <span class="g-pin" data-pin="1" style="--x:50.0%;--y:17.3%;--px:50.0%;--py:19.3%" aria-hidden="true">1</span>
+        <span class="g-pin" data-pin="2" style="--x:27.1%;--y:29.7%;--px:7.9%;--py:8.2%" aria-hidden="true">2</span>
+        <span class="g-pin" data-pin="3" style="--x:4.3%;--y:42.1%;--px:10.5%;--py:31.6%" aria-hidden="true">3</span>
+        <span class="g-pin" data-pin="4" style="--x:4.3%;--y:60.5%;--px:9.6%;--py:48.1%" aria-hidden="true">4</span>
+        <span class="g-pin" data-pin="5" style="--x:50.5%;--y:56.6%;--px:7.9%;--py:71.6%" aria-hidden="true">5</span>
+        <span class="g-pin" data-pin="6" style="--x:1.7%;--y:87.9%;--px:4.1%;--py:82.9%" aria-hidden="true">6</span>
+        <span class="g-pin" data-pin="7" style="--x:67.4%;--y:84.7%;--px:28.4%;--py:92.1%" aria-hidden="true">7</span>
+        <span class="g-pin" data-pin="8" style="--x:96.9%;--y:85.1%;--px:95.9%;--py:92.3%" aria-hidden="true">8</span>
         <!--/figure-->
           </div>
         </div>
@@ -204,10 +204,12 @@
           <span class="sw sw-b">orange</span>, everywhere on the page.</li>
         <li data-pin="2"><b>Swap a player</b> Tap a name to switch to another opponent without starting over, or to
           open that player's career.</li>
-        <li data-pin="3"><b>If they met today</b> The chance of a win, a draw or a loss in one game played now,
-          from both players' ratings. The <span class="kbd-icon">i</span> button explains it.</li>
-        <li data-pin="4"><b>Record so far</b> The share of all their games each player has won, and the draws in
-          between. Under it, one sentence sums up the rivalry.</li>
+        <li data-pin="3"><b>The verdict</b> One sentence sums up the rivalry: who leads, and what has
+          changed lately.</li>
+        <li data-pin="4"><b>Past vs today</b> The ring is the share of points each player has taken so far, the
+          dot what they can expect from a game today, with a line for how sure that is. The closer a marker
+          is to a name, the better for that player. The <span class="kbd-icon">i</span> button explains
+          it.</li>
         <li data-pin="5"><b>Last 10 games</b> Newest on the left. Tap a chip to see when and where it was played.</li>
         <li data-pin="6"><b>All, round-robin or playoff</b> Look at group games and knockout games on their own.
           Playoff games are grouped into series.</li>
@@ -407,7 +409,7 @@
             <li data-pin="2"><b>The shaded band</b> How sure the rating is. It narrows as they play and widens
               during a break.</li>
             <li data-pin="3"><b>Against each nation</b> How they did against players from each country, next to what
-              their ratings predicted.</li>
+              their ratings predicted. The line is the likely range; a hollow dot could be chance.</li>
             <li data-pin="4"><b>The verdict</b> Names the nations they beat more, or less, than expected, when the
               gap is big enough to mean something.</li>
           </ol>

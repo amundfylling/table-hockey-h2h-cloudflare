@@ -38,7 +38,9 @@ exploration interface with zero runtime database queries.
   `ratings.py` computes each player's Glicko-2 rating (with goal difference) game by game;
   the history is stored as `rating` in `data/h2h/{id}.json` and drawn on player pages, and each
   opponent entry gets a `forecast` ([win, draw, loss] if they met today, ratings plus how the
-  pair has done against them) shown on matchup pages. The rating also carries `nations`: the
+  pair has done against them) and a `forecast_range` ([low, high], a 90% range for the owner's
+  expected points per game from both rating deviations and the spread of the pair's results),
+  drawn as "Past vs today" on matchup pages next to the record's points share. The rating also carries `nations`: the
   player's results against each opponent nation next to the ratings' pre-game expectation, drawn
   as "Against each nation" on player pages (`nationEdges` in `insights.js` names the clear gaps).
 * `tests/` - Automated Python integration and validation tests verifying match counts and data sanity.
@@ -141,7 +143,8 @@ The frontend is vanilla ES modules under `public/js/`, loaded from `index.html` 
   share `browse.js` (compact "fields + rows" JSON, filters kept in the URL).
 * `recent.js` - Recent-matchup chips + first-visit suggestions (`initRecent({ onCompare })`).
 * `filters.js` - Filter bar, advanced panel, active-filter chips.
-* `summary.js` - H2H scoreboard + highlight cards.
+* `summary.js` - H2H scoreboard card (score, verdict, "Past vs today" strip; the last 10 from
+  `form.js` sits in the same `.hero-card`) + tale of the tape + the player hero.
 * `switcher.js` - Matchup hero name popover: swap one player for another opponent, or open their career.
 * `opponents.js` - Single-player opponents table (sortable, min-games slider).
 * `charts.js` - SVG charts + the chart tooltip system.
@@ -228,6 +231,9 @@ standard `unittest` framework.
 * **Smoke check**: after the data build, `npm run smoke` loads every page on desktop and phone,
   checks each shows the names and counts the data says it should, with no script errors, console
   errors or failed requests, and runs the search-and-compare flow (`scripts/smoke-check.mjs`).
+* **PR previews**: a pull request from a branch of this repository deploys its build to a
+  Cloudflare Pages preview (`--branch=<head ref>`, so a stable alias per branch); the run summary
+  and the PR's deployments link it. Only `main` deploys the live site.
 * **CI Pipeline Execution**:
   On every pull request and push to `main`, the `build` workflow first runs the `Lint and tests`
   job (actionlint, ruff, ESLint, JS syntax, the KaTeX freshness check, Node tests, and the Python

@@ -313,6 +313,7 @@ export function nationEdges(rows, { minGames = NATION_MIN_GAMES, maxRows = 12, z
       losses,
       points,
       expected,
+      variance,
       score: games ? points / games : 0,
       expectedScore: games ? expected / games : 0,
       // Percentage points of score above (or below) what the ratings expected.
@@ -349,6 +350,7 @@ export function nationEdges(rows, { minGames = NATION_MIN_GAMES, maxRows = 12, z
     games,
     points: overallPoints,
     expected: overallExpected,
+    variance: overallSpread ** 2,
     score: games ? overallPoints / games : 0,
     expectedScore: games ? overallExpected / games : 0,
     diff: games ? ((overallPoints - overallExpected) / games) * 100 : 0,
@@ -400,4 +402,32 @@ export function opponentRatingEdges(entries, { minGames = OPPONENT_MIN_GAMES, li
   const over = pool.filter((row) => row.excess > 0).sort((x, y) => y.excess - x.excess).slice(0, limit);
   const under = pool.filter((row) => row.excess < 0).sort((x, y) => x.excess - y.excess).slice(0, limit);
   return { over, under, pool: pool.length, minGames };
+}
+
+// "a", "b" or "even": who a share of points favours, as it reads when rounded to a percent.
+export function sideOf(shareA) {
+  const pctA = Math.round(shareA * 100);
+  return pctA === 50 ? "even" : pctA > 50 ? "a" : "b";
+}
+
+// One sentence for the matchup card on whether the record and today's forecast agree.
+// past/today are player A's share of points; range is today's 90% range, or null.
+export function tensionSentence({ past, today, range, nameA, nameB, filtered }) {
+  const name = (side) => (side === "a" ? nameA : nameB);
+  const pastSide = sideOf(past);
+  const todaySide = sideOf(today);
+  const lead = (side) => (filtered ? `${name(side)} is ahead in this view` : `${name(side)} has the better record`);
+  const level = filtered ? "Level in this view" : "Level on the record";
+  const open = range && range[0] < 0.5 && range[1] > 0.5;
+  const tail = open ? ", though an even game is within the likely range" : "";
+  if (todaySide === "even") {
+    return pastSide === "even" ? `${level} and level today.` : `${lead(pastSide)}, but today it is a coin flip.`;
+  }
+  if (pastSide === "even") return `${level}, but ${name(todaySide)} is the favourite today${tail}.`;
+  if (pastSide !== todaySide) return `${lead(pastSide)}, but ${name(todaySide)} is the favourite today${tail}.`;
+  const pastEdge = Math.abs(past - 0.5);
+  const todayEdge = Math.abs(today - 0.5);
+  if (todayEdge > pastEdge + 0.05) return `${lead(todaySide)} and is an even bigger favourite today.`;
+  if (todayEdge < pastEdge - 0.05) return `${lead(todaySide)}, but today would be closer${tail}.`;
+  return `${lead(todaySide)} and is the favourite today too.`;
 }

@@ -334,6 +334,8 @@ export function renderIdleState(phase = "home") {
   }
   if (elements.summaryGrid) elements.summaryGrid.replaceChildren();
   if (elements.summaryHero) elements.summaryHero.replaceChildren();
+  document.getElementById("summary-crumbs")?.replaceChildren();
+  document.getElementById("summary-tension")?.replaceChildren();
   if (elements.summaryScope) elements.summaryScope.textContent = "";
   if (elements.formChips) elements.formChips.replaceChildren();
   if (elements.recordChart) elements.recordChart.replaceChildren();

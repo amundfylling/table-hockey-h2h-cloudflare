@@ -206,6 +206,29 @@ body[data-theme="dark"] {
   }
 }
 
+/* Player pages: orange and teal belong to the two players of a matchup. On a career page
+   the "other side" is every opponent, so losses and below-par results use slate instead of
+   orange, and teal stays the player's own colour. */
+body[data-comparison-mode="single"] {
+  --b: #4A525B;
+  --b-tint: #D9DDE1;
+  --b-text: #4A525B;
+}
+
+body[data-theme="dark"][data-comparison-mode="single"] {
+  --b: #9AA3AC;
+  --b-tint: #2C3238;
+  --b-text: #B3BBC3;
+}
+
+@media (prefers-color-scheme: dark) {
+  body:not([data-theme])[data-comparison-mode="single"] {
+    --b: #9AA3AC;
+    --b-tint: #2C3238;
+    --b-text: #B3BBC3;
+  }
+}
+
 /* ── Components kept from the previous design ──────────────────────── */
 .table-link {
   display: inline;
@@ -4574,6 +4597,15 @@ button.rrow:hover {
 .dot.band { background: var(--b); opacity: 0.3; }
 .dot.aband { background: var(--a); opacity: 0.25; }
 .dot.faint { background: var(--draw); opacity: 0.6; }
+.dot.open { background: transparent; border: 2px solid var(--ink-3); box-sizing: border-box; }
+.dot.range {
+  width: 16px;
+  border-radius: 0;
+  background: linear-gradient(var(--ink-2), var(--ink-2)) center / 100% 2px no-repeat;
+  border-left: 2px solid var(--ink-2);
+  border-right: 2px solid var(--ink-2);
+  box-sizing: border-box;
+}
 
 .chart {
   position: relative;
@@ -4848,18 +4880,6 @@ button.rrow:hover {
   text-align: center;
 }
 
-.share {
-  margin-top: 28px;
-}
-
-/* "If they met today": rating forecast between the names and the record bar. */
-.forecast {
-  max-width: 520px;
-  margin: 22px auto 0;
-  font-size: 13px;
-  color: var(--ink-2);
-}
-
 .forecast-title {
   margin: 0 0 6px;
   text-align: center;
@@ -4954,63 +4974,6 @@ button.rrow:hover {
   height: 14px;
 }
 
-.share-title {
-  margin-bottom: 8px;
-}
-
-.forecast-bar {
-  display: flex;
-  height: 8px;
-  gap: 2px;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.forecast-bar span {
-  display: block;
-  height: 8px;
-}
-
-.forecast-labels {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 6px;
-}
-
-.forecast-labels b {
-  color: var(--ink);
-  font-weight: 700;
-}
-
-.share-bar {
-  display: flex;
-  height: 10px;
-  gap: 2px;
-}
-
-.share-bar span {
-  display: block;
-  height: 10px;
-}
-
-.share-bar span:first-child { border-radius: 5px 0 0 5px; }
-.share-bar span:last-child { border-radius: 0 5px 5px 0; }
-
-.share-labels {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 8px;
-  font-size: 13px;
-  color: var(--ink-2);
-}
-
-.share-labels b {
-  color: var(--ink);
-  font-weight: 700;
-}
-
 .verdict {
   margin-top: 24px;
   font-size: 18px;
@@ -5020,6 +4983,265 @@ button.rrow:hover {
 
 .verdict strong {
   font-weight: 700;
+}
+
+/* ── Matchup top card: the record, the verdict, past vs today and the last 10 in one card,
+   so a phone gets the answer before the filters. The player page keeps its open layout. ── */
+body[data-comparison-mode="matchup"] .hero-card {
+  margin-top: 16px;
+  padding: 28px 32px 24px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+body[data-comparison-mode="matchup"] .hero-card .board {
+  margin-top: 0;
+}
+
+body[data-comparison-mode="matchup"] .hero-card .verdict {
+  margin-top: 20px;
+}
+
+body[data-comparison-mode="matchup"] .hero-card .form-strip {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+body[data-comparison-mode="matchup"] .hero-card .form-head {
+  flex-direction: row;
+  gap: 12px;
+  align-items: baseline;
+}
+
+body[data-comparison-mode="matchup"] .hero-card .form-latest {
+  display: none;
+}
+
+body[data-comparison-mode="matchup"] .hero-card .score {
+  font-size: 96px;
+  line-height: 84px;
+}
+
+body[data-comparison-mode="matchup"] .hero-card .score .dash {
+  font-size: 68px;
+}
+
+body[data-comparison-mode="matchup"] .hero-card .chip.is-latest {
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px var(--ink);
+}
+
+@media (min-width: 900px) {
+  body[data-comparison-mode="matchup"] .hero-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 48px;
+    align-items: start;
+  }
+
+  body[data-comparison-mode="matchup"] .hero-card .summary-hero {
+    grid-column: 1 / -1;
+  }
+
+  body[data-comparison-mode="matchup"] .hero-card .summary-tension:empty + .record + .form-strip {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Past vs today. The strip runs from player A (left) to player B (right): the closer a
+   marker is to a name, the better for that player. */
+.tension {
+  margin-top: 24px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.tension .forecast-head {
+  justify-content: flex-start;
+  margin-bottom: 4px;
+}
+
+.tension .forecast-info {
+  left: 0;
+  transform: none;
+}
+
+.db-ends {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.db-end.a { color: var(--a); }
+.db-end.b { color: var(--b-text); text-align: right; }
+
+.db-end-mid {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-3);
+}
+
+.dumbbell {
+  position: relative;
+  padding: 24px 0;
+}
+
+.db-label {
+  position: absolute;
+  font-size: 12px;
+  line-height: 18px;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+.db-label.is-start { transform: translateX(-10px); }
+.db-label.is-end { transform: translateX(calc(-100% + 10px)); }
+.db-label--past { top: 0; }
+.db-label--today { bottom: 0; }
+
+.db-word {
+  color: var(--ink-3);
+}
+
+.db-label b {
+  font-weight: 700;
+}
+
+.db-label.tone-a b { color: var(--a); }
+.db-label.tone-b b { color: var(--b-text); }
+.db-label.tone-even b { color: var(--ink); }
+
+.db-track {
+  position: relative;
+  height: 20px;
+}
+
+.db-half {
+  position: absolute;
+  top: 7px;
+  height: 6px;
+  width: 50%;
+}
+
+.db-half--a {
+  left: 0;
+  border-radius: 3px 0 0 3px;
+  background: var(--a-tint);
+}
+
+.db-half--b {
+  right: 0;
+  border-radius: 0 3px 3px 0;
+  background: var(--b-tint);
+}
+
+.db-even {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--line-2);
+}
+
+.db-link {
+  position: absolute;
+  top: 8px;
+  height: 4px;
+  background: var(--ink-3);
+  opacity: 0.3;
+}
+
+.tone-a { color: var(--a); }
+.tone-b { color: var(--b); }
+.tone-even { color: var(--ink-2); }
+
+.db-whisker {
+  position: absolute;
+  top: 4px;
+  height: 12px;
+  border-left: 2px solid currentColor;
+  border-right: 2px solid currentColor;
+  background: linear-gradient(currentColor, currentColor) center / 100% 2px no-repeat;
+  box-sizing: border-box;
+  min-width: 4px;
+  transform: translateX(-1px);
+}
+
+.db-ring,
+.db-dot {
+  position: absolute;
+  top: 50%;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.db-ring {
+  width: 20px;
+  height: 20px;
+  border: 3px solid currentColor;
+  background: var(--surface);
+  box-sizing: border-box;
+}
+
+.db-dot {
+  width: 12px;
+  height: 12px;
+  background: currentColor;
+  box-shadow: 0 0 0 2px var(--surface);
+}
+
+.db-key {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.db-key > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.db-key-ring {
+  width: 11px;
+  height: 11px;
+  border: 2px solid var(--ink-2);
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+
+.db-key-dot {
+  width: 18px;
+  height: 10px;
+  background:
+    radial-gradient(circle, var(--ink-2) 3.5px, transparent 4px),
+    linear-gradient(var(--ink-2), var(--ink-2)) center / 100% 2px no-repeat;
+}
+
+.db-key .db-badge {
+  margin-left: auto;
+  padding: 0 8px;
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  background: var(--sunk);
+  line-height: 20px;
+  color: var(--ink-2);
+}
+
+.db-note {
+  margin: 10px 0 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--ink);
 }
 
 /* Last 10 games, newest first */
@@ -7953,16 +8175,54 @@ body[data-comparison-mode="matchup"] .player-only {
   background: var(--line-2);
 }
 
-.nation-bar {
+/* Each nation is a dot (score minus expected) with a whisker for its 90% range. A solid dot's
+   whisker clears zero; a hollow one could be chance. */
+.nation-whisker {
   position: absolute;
-  top: 0;
-  height: 14px;
-  border-radius: 2px;
+  top: 6px;
+  height: 2px;
+  background: currentColor;
+  opacity: 0.55;
 }
 
-.nation-bar.a { background: var(--a); }
-.nation-bar.b { background: var(--b); }
-.nation-bar.faint { opacity: 0.35; }
+.nation-whisker::before,
+.nation-whisker::after {
+  content: "";
+  position: absolute;
+  top: -4px;
+  width: 2px;
+  height: 10px;
+  background: currentColor;
+}
+
+.nation-whisker::before { left: 0; }
+.nation-whisker::after { right: 0; }
+.nation-whisker.is-cut-low::before,
+.nation-whisker.is-cut-high::after { display: none; }
+
+.nation-dot {
+  position: absolute;
+  top: 1px;
+  width: 12px;
+  height: 12px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  background: currentColor;
+  box-sizing: border-box;
+  transform: translateX(-50%);
+}
+
+.nation-dot.is-open {
+  background: var(--surface);
+}
+
+.nation-row.is-active .nation-dot.is-open {
+  background: var(--sunk);
+}
+
+.nation-mark.a { color: var(--a); }
+.nation-mark.b { color: var(--b); }
+.nation-mark.is-open { color: var(--ink-3); }
 
 .nation-scale {
   height: auto;
@@ -8040,6 +8300,85 @@ body[data-comparison-mode="matchup"] .player-only {
 
   .nation-home {
     display: none;
+  }
+}
+
+/* Matchup card on phones: tighter, and the last 10 on one row. */
+@media (max-width: 600px) {
+  body[data-comparison-mode="matchup"] .hero-card {
+    margin-top: 12px;
+    padding: 16px 14px 14px;
+  }
+
+  body[data-comparison-mode="matchup"] .hero-card .board {
+    row-gap: 12px;
+  }
+
+  body[data-comparison-mode="matchup"] .hero-card .score {
+    font-size: 64px;
+    line-height: 56px;
+  }
+
+  body[data-comparison-mode="matchup"] .hero-card .score .dash {
+    font-size: 44px;
+  }
+
+  body[data-comparison-mode="matchup"] .hero-card .facts {
+    margin-top: 8px;
+  }
+
+  body[data-comparison-mode="matchup"] .hero-card .verdict {
+    margin-top: 12px;
+    font-size: 15px;
+    line-height: 22px;
+  }
+
+  .tension {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--line);
+  }
+
+  .db-note {
+    font-size: 13px;
+    line-height: 19px;
+  }
+
+  body[data-comparison-mode="matchup"] .hero-card .form-strip {
+    align-items: stretch;
+    margin-top: 14px;
+    gap: 8px;
+  }
+
+  body[data-comparison-mode="matchup"] .hero-card .form-head {
+    justify-content: space-between;
+  }
+
+  body[data-comparison-mode="matchup"] .hero-card .form-chips {
+    grid-template-columns: repeat(10, minmax(0, 1fr));
+    gap: 3px;
+  }
+
+  body[data-comparison-mode="matchup"] .hero-card .chip {
+    height: 36px;
+    border-radius: 6px;
+  }
+
+  body[data-comparison-mode="matchup"] .hero-card .chip b {
+    font-size: 14px;
+    letter-spacing: -0.02em;
+  }
+
+  body[data-comparison-mode="matchup"] .hero-card .chip-letter {
+    display: none;
+  }
+}
+
+/* Too narrow for ten scores in a row: back to two rows of five. */
+@media (max-width: 359px) {
+  body[data-comparison-mode="matchup"] .hero-card .form-chips {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 4px;
   }
 }
 

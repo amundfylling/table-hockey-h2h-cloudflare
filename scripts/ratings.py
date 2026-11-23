@@ -36,6 +36,10 @@ FORECAST_BETA = 2.1396
 FORECAST_CUT = 0.2933
 H2H_WEIGHT = 1.0947
 H2H_PRIOR_GAMES = 20.0
+# The forecast range: a 90% band (z = 1.645) on x from the combined rating deviation and the
+# spread of the pair's past results, turned into the expected points (win + draw / 2) at each
+# end. The matchup page draws it as the whisker on "today".
+RANGE_Z = 1.645
 _PHI_MAX = START_RD / SCALE
 _EPSILON = 1e-6
 _PI2 = math.pi ** 2
@@ -121,6 +125,7 @@ def compute_ratings_and_forecasts(
     today: Optional[pd.Timestamp] = None,
     nations: Optional[Dict[int, str]] = None,
     pair_stats: Optional[Dict[Tuple[int, int], List[float]]] = None,
+    forecast_ranges: Optional[Dict[Tuple[int, int], List[float]]] = None,
 ) -> Tuple[Dict[int, dict], Dict[Tuple[int, int], List[float]]]:
     """Rating history for each id in player_ids, one point per tournament they played, and
     a [win, draw, loss] forecast (first player's side) for each (a, b) in pairs if they met
@@ -136,6 +141,10 @@ def compute_ratings_and_forecasts(
     With a `pair_stats` dict, it is filled for each (a, b) in pairs with a's results against b
     next to what the ratings expected: [games, points, expected points, variance], points
     counting a win as 1 and a draw as 0.5 (the same terms as the nation rows).
+
+    With a `forecast_ranges` dict, it is filled for each (a, b) in pairs with [low, high]: a
+    90% range for a's expected points per game (win + draw / 2) if they met today, from both
+    players' rating deviation and how much the pair's results have varied (see RANGE_Z).
     """
     canonical: Dict[int, int] = {}
     for group in alias_groups:
@@ -295,9 +304,20 @@ def compute_ratings_and_forecasts(
                 int(meetings), round(expected + (total if a < b else -total), 2),
                 round(expected, 2), round(variance, 2),
             ]
-        x = _g(math.sqrt(rd_today(a) ** 2 + rd_today(b) ** 2)) * (mu[a] - mu[b])
+        combined = math.sqrt(rd_today(a) ** 2 + rd_today(b) ** 2)
+        x = _g(combined) * (mu[a] - mu[b])
         win, draw, loss = _outcome_probabilities(x + H2H_WEIGHT * edge)
         forecasts[(int(pair[0]), int(pair[1]))] = [round(win, 3), round(draw, 3), round(loss, 3)]
+        if forecast_ranges is not None:
+            spread = math.hypot(
+                _g(combined) * combined,
+                H2H_WEIGHT * math.sqrt(max(variance, 0.0)) / (meetings + H2H_PRIOR_GAMES),
+            )
+            ends = []
+            for shift in (-RANGE_Z * spread, RANGE_Z * spread):
+                w, d, _ = _outcome_probabilities(x + H2H_WEIGHT * edge + shift)
+                ends.append(round(w + d / 2, 3))
+            forecast_ranges[(int(pair[0]), int(pair[1]))] = ends
     return result, forecasts
 
 
