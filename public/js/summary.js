@@ -288,9 +288,11 @@ function createTension(summary) {
   let drawChance = null;
   if (series) {
     today = seriesWinChance(playoffGameChance(forecast), 4);
-    // A drawn game goes to overtime, which splits like decided games, so expected points
-    // per game work as the single-game chance at the range's ends.
-    if (rawRange) range = [seriesWinChance(rawRange[0], 4), seriesWinChance(rawRange[1], 4)];
+    // Like playoffGameChance, a draw is split in proportion to win and loss: holding the draw
+    // chance fixed, expected points E give a game chance of (E - draw / 2) / (1 - draw).
+    const draw = forecast[1];
+    const gameChance = (points) => Math.min(1, Math.max(0, (points - draw / 2) / Math.max(1 - draw, 1e-9)));
+    if (rawRange) range = rawRange.map((points) => seriesWinChance(gameChance(points), 4));
   } else {
     const [win, draw] = forecast;
     today = win + draw / 2;

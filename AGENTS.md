@@ -231,6 +231,9 @@ standard `unittest` framework.
 * **Smoke check**: after the data build, `npm run smoke` loads every page on desktop and phone,
   checks each shows the names and counts the data says it should, with no script errors, console
   errors or failed requests, and runs the search-and-compare flow (`scripts/smoke-check.mjs`).
+* **PR previews**: a pull request from a branch of this repository deploys its build to a
+  Cloudflare Pages preview (`--branch=<head ref>`, so a stable alias per branch); the run summary
+  and the PR's deployments link it. Only `main` deploys the live site.
 * **CI Pipeline Execution**:
   On every pull request and push to `main`, the `build` workflow first runs the `Lint and tests`
   job (actionlint, ruff, ESLint, JS syntax, the KaTeX freshness check, Node tests, and the Python
