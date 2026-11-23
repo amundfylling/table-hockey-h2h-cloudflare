@@ -119,6 +119,10 @@ The palette is a restrained sports-stat palette: warm rink neutrals, one puck-or
 
 **The Two-Player Color Rule.** Orange and teal must carry matchup meaning first. Do not spend them on unrelated decoration when a player comparison is present.
 
+**The Career Page Slate Rule.** On a player's own page there is no second player, so losses, opponents and below-par results use slate (`--b` is redefined under `body[data-comparison-mode="single"]`), and teal stays the player's colour. Orange only appears where a second player does.
+
+**The Honest Uncertainty Rule.** A number from a small sample or a forecast carries its range: a whisker for the 90% range, and a hollow marker when the range includes "no difference". Show uncertainty as shapes, not z-scores or p-values.
+
 **The Small Orange Text Rule.** Bright puck orange (`#ef6c44`) measures ~3:1 on white — fine for large text, fills, and graphics, but below WCAG AA for small text. Orange text under ~18px bold (winner badges, score values, chips, links) uses Deep Puck Orange (`#cc5132`, `var(--accent-dark)`) instead. Dark mode redefines `--accent-dark` to a lighter orange, so the same variable keeps both themes compliant.
 
 **The Neutral Chrome Rule.** UI chrome (focus rings, active tabs, selected options, toggles, links, hover borders) uses ink via `--ui` and `--ui-soft`, never orange. Orange is reserved for Player B, the logo, and the one primary action, so it always means something when it appears.

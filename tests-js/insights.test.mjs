@@ -112,3 +112,31 @@ test("opponent rating edges rank by points above or below expected", async () =>
   assert.equal(edges.pool, 4);
   assert.equal(Math.round(edges.under[0].excess), -8);
 });
+
+test("tensionSentence says when the record and today's forecast disagree", async () => {
+  const { tensionSentence, sideOf } = await import("../public/js/insights.js");
+  const names = { nameA: "Fateev", nameB: "Dudkin", filtered: false };
+  assert.equal(sideOf(0.504), "even");
+  assert.equal(sideOf(0.51), "a");
+  assert.equal(sideOf(0.3), "b");
+  assert.equal(
+    tensionSentence({ ...names, past: 0.64, today: 0.38, range: [0.3, 0.46] }),
+    "Fateev has the better record, but Dudkin is the favourite today.",
+  );
+  assert.equal(
+    tensionSentence({ ...names, past: 0.64, today: 0.4, range: [0.3, 0.55] }),
+    "Fateev has the better record, but Dudkin is the favourite today, though an even game is within the likely range.",
+  );
+  assert.equal(
+    tensionSentence({ ...names, past: 0.4, today: 0.08, range: null }),
+    "Dudkin has the better record and is an even bigger favourite today.",
+  );
+  assert.equal(
+    tensionSentence({ ...names, past: 0.8, today: 0.6, range: [0.52, 0.7], filtered: true }),
+    "Fateev is ahead in this view, but today would be closer.",
+  );
+  assert.equal(
+    tensionSentence({ ...names, past: 0.5, today: 0.5, range: null }),
+    "Level on the record and level today.",
+  );
+});

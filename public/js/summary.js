@@ -21,6 +21,8 @@ import {
   longestStreak,
   monthYear,
   opponentRecords,
+  sideOf,
+  tensionSentence,
 } from "./insights.js";
 
 const DASH = "—";
@@ -176,6 +178,22 @@ export function forecastFor(playerA, playerB) {
   return null;
 }
 
+// [low, high]: a 90% range for player A's expected points per game (win 1, draw ½) if they
+// met today, from both ratings' uncertainty and how much the pair's results have varied.
+export function forecastRangeFor(playerA, playerB) {
+  const idsA = getAliasGroup(playerA.id);
+  const idsB = getAliasGroup(playerB.id);
+  for (const a of idsA) {
+    for (const b of idsB) {
+      const own = state.playerFileCache.get(a)?.opponents?.[String(b)]?.forecast_range;
+      if (Array.isArray(own) && own.length === 2) return own;
+      const other = state.playerFileCache.get(b)?.opponents?.[String(a)]?.forecast_range;
+      if (Array.isArray(other) && other.length === 2) return [1 - other[1], 1 - other[0]];
+    }
+  }
+  return null;
+}
+
 // Closes the open forecast explainer on Escape or a click elsewhere. Bound once.
 let forecastInfoBound = false;
 function bindForecastInfoDismiss() {
@@ -198,17 +216,22 @@ function bindForecastInfoDismiss() {
   });
 }
 
-function createForecastInfo(series) {
+function createForecastInfo(series, filtered) {
   bindForecastInfoDismiss();
   const id = "forecast-info";
+  const past = series
+    ? `The ring is the share of ${filtered ? "the series in this view" : "their playoff series"} each player has won, a tied series counting half. `
+    : `The ring is the share of points each player has taken from ${filtered ? "the games in this view" : "all their games"}, a draw counting half. `;
+  const today = series
+    ? "The dot is the chance of winning a best-of-7 series (first to four wins) if they met today. "
+    : "The dot is the share of points each player can expect from one game played today. ";
   const basis = "It comes from both players' ratings, which count every game and its goal "
-    + "difference, and how their earlier meetings went compared with what the ratings expected.";
-  const intro = series
-    ? "The chance of winning a best-of-7 playoff series (first to four wins) if the two met today. "
-      + "Each game's chance has no draws, since a drawn game goes to overtime. "
-    : "The chance of each result if the two played one game today. ";
+    + "difference, and how their earlier meetings went compared with what the ratings expected. "
+    + "The line through the dot is the range it could reasonably be in (90% likely), since "
+    + "ratings are never exact.";
   const panel = el("div", { id, class: "forecast-info", hidden: true },
-    el("p", {}, intro, basis),
+    el("p", {}, past),
+    el("p", {}, today, basis),
     el("a", { href: "ratings", class: "forecast-info-link" }, "How the ratings and forecast work",
       icon(ICONS.right)));
   const button = el("button", {
@@ -224,57 +247,118 @@ function createForecastInfo(series) {
     },
   }, icon(ICONS.info));
   return el("div", { class: "forecast-head" },
-    el("h2", { class: "forecast-title" },
-      series ? "If they met in a best-of-7 series today" : "If they met today"),
+    el("h2", { class: "forecast-title" }, series ? "Series: past vs today" : "Past vs today"),
     button,
     panel);
 }
 
-function createForecast() {
+// A side's share as "Steen 61%", or "Even" when it rounds to 50%.
+function shareLabel(shareA, nameA, nameB) {
+  const pctA = Math.round(shareA * 100);
+  if (pctA === 50) return "Even";
+  // A near-certain series still isn't certain.
+  const shown = (value) => (value >= 100 ? "99%+" : `${value}%`);
+  return pctA > 50 ? `${nameA} ${shown(pctA)}` : `${nameB} ${shown(100 - pctA)}`;
+}
+
+// Where a share sits on the strip: the closer to a name, the better for that player.
+// A on the left (0%), B on the right (100%), so the position is B's share.
+const at = (shareA) => `${((1 - shareA) * 100).toFixed(2)}%`;
+
+// Label placement that keeps text inside the strip near either end.
+function edgeAlign(shareA) {
+  const x = 1 - shareA;
+  return x < 0.18 ? "start" : x > 0.82 ? "end" : "mid";
+}
+
+// Past vs today: a hollow ring for the record so far (points share, draws half) and a solid
+// dot for today's forecast, with a whisker for its 90% range. Replaces the two look-alike bars.
+function createTension(summary) {
   const forecast = forecastFor(state.playerA, state.playerB);
-  if (!forecast) return null;
-  const pct = (value) => `${Math.round(value * 100)}%`;
+  if (!forecast || !summary.total) return null;
+  const series = isSeriesMode();
+  const filtered = getActiveFilterCount() > 0;
   const nameA = lastName(state.playerA.name);
   const nameB = lastName(state.playerB.name);
-  if (isSeriesMode()) {
-    const win = seriesWinChance(playoffGameChance(forecast), 4);
-    const loss = 1 - win;
-    return el("div", { class: "forecast" },
-      createForecastInfo(true),
-      el("div", {
-        class: "forecast-bar",
-        role: "img",
-        "aria-label": `Chance of winning a best-of-7 series if they met today: ${nameA} ${pct(win)}, ${nameB} ${pct(loss)}.`,
-      },
-      el("span", { style: { width: `${win * 100}%`, background: "var(--a)" } }),
-      el("span", { style: { width: `${loss * 100}%`, background: "var(--b)" } })),
-      el("div", { class: "forecast-labels", "aria-hidden": "true" },
-        el("span", {}, el("b", {}, pct(win)), ` ${nameA} wins the series`),
-        el("span", {}, `${nameB} wins the series `, el("b", {}, pct(loss)))));
+  const pct = (value) => `${Math.round(value * 100)}%`;
+  const past = (summary.winsA + summary.draws / 2) / summary.total;
+  const rawRange = forecastRangeFor(state.playerA, state.playerB);
+  let today;
+  let range = null;
+  let drawChance = null;
+  if (series) {
+    today = seriesWinChance(playoffGameChance(forecast), 4);
+    // A drawn game goes to overtime, which splits like decided games, so expected points
+    // per game work as the single-game chance at the range's ends.
+    if (rawRange) range = [seriesWinChance(rawRange[0], 4), seriesWinChance(rawRange[1], 4)];
+  } else {
+    const [win, draw] = forecast;
+    today = win + draw / 2;
+    drawChance = draw;
+    if (rawRange) range = rawRange;
   }
-  const [win, draw, loss] = forecast;
-  return el("div", { class: "forecast" },
-    createForecastInfo(false),
-    el("div", {
-      class: "forecast-bar",
-      role: "img",
-      "aria-label": `Forecast for one game if they met today: ${nameA} ${pct(win)}, draw ${pct(draw)}, ${nameB} ${pct(loss)}.`,
-    },
-    el("span", { style: { width: `${win * 100}%`, background: "var(--a)" } }),
-    el("span", { style: { width: `${draw * 100}%`, background: "var(--draw)" } }),
-    el("span", { style: { width: `${loss * 100}%`, background: "var(--b)" } })),
-    el("div", { class: "forecast-labels", "aria-hidden": "true" },
-      el("span", {}, el("b", {}, pct(win)), ` ${nameA}`),
-      el("span", {}, `Draw ${pct(draw)}`),
-      el("span", {}, `${nameB} `, el("b", {}, pct(loss)))));
+  if (range) range = [Math.min(range[0], today), Math.max(range[1], today)];
+
+  const pastWord = filtered ? "This view"
+    : series ? "Series so far"
+      : { "round-robin": "Round-robin", playoff: "Playoff games" }[state.stageTab] || "All games";
+  const todayWord = series ? "Series today" : "Today";
+  const pastSide = sideOf(past);
+  const todaySide = sideOf(today);
+  const tone = (side) => (side === "even" ? "even" : side);
+  const left = Math.min(1 - past, 1 - today) * 100;
+  const width = Math.abs(past - today) * 100;
+
+  const label = (kind, word, shareA, side) => el("span", {
+    class: `db-label db-label--${kind} is-${edgeAlign(shareA)} tone-${tone(side)}`,
+    style: { left: at(shareA) },
+  }, el("span", { class: "db-word" }, word), " ", el("b", {}, shareLabel(shareA, nameA, nameB)));
+
+  const rangeText = range
+    ? ` (likely between ${shareLabel(range[0], nameA, nameB)} and ${shareLabel(range[1], nameA, nameB)})`
+    : "";
+  const unitPast = series ? "of their playoff series" : "of the points";
+  const unitToday = series ? "chance of winning a best-of-7 series today" : "of the points in one game today";
+  const aria = `Past vs today. ${pastWord}: ${shareLabel(past, nameA, nameB)} ${unitPast}. `
+    + `${todayWord}: ${shareLabel(today, nameA, nameB)} ${unitToday}${rangeText}.`
+    + (drawChance != null ? ` Chance of a draw ${pct(drawChance)}.` : "");
+
+  const strip = el("div", { class: "dumbbell", role: "img", "aria-label": aria },
+    label("past", pastWord, past, pastSide),
+    el("div", { class: "db-track", "aria-hidden": "true" },
+      el("span", { class: "db-half db-half--a" }),
+      el("span", { class: "db-half db-half--b" }),
+      el("span", { class: "db-even" }),
+      el("span", { class: "db-link", style: { left: `${left.toFixed(2)}%`, width: `${width.toFixed(2)}%` } }),
+      range ? el("span", {
+        class: `db-whisker tone-${tone(todaySide)}`,
+        style: { left: at(range[1]), width: `${((range[1] - range[0]) * 100).toFixed(2)}%` },
+      }) : null,
+      el("span", { class: `db-ring tone-${tone(pastSide)}`, style: { left: at(past) } }),
+      el("span", { class: `db-dot tone-${tone(todaySide)}`, style: { left: at(today) } })),
+    label("today", todayWord, today, todaySide));
+
+  const ends = el("div", { class: "db-ends", "aria-hidden": "true" },
+    el("span", { class: "db-end a" }, nameA),
+    el("span", { class: "db-end-mid" }, "50/50"),
+    el("span", { class: "db-end b" }, nameB));
+
+  const key = el("p", { class: "db-key", "aria-hidden": "true" },
+    el("span", {}, el("i", { class: "db-key-ring" }), series ? "Series won" : "Points so far"),
+    el("span", {}, el("i", { class: "db-key-dot" }), range ? "Today, with likely range" : "Today"),
+    drawChance != null ? el("span", { class: "db-badge" }, `Draw ${pct(drawChance)}`) : null);
+
+  return el("div", { class: "tension" },
+    createForecastInfo(series, filtered),
+    ends,
+    strip,
+    key,
+    el("p", { class: "db-note" }, tensionSentence({ past, today, range, nameA, nameB, filtered })));
 }
 
 function createMatchupHero(items, summary) {
   const series = isSeriesMode();
   const { winsA, winsB, draws, total } = summary;
-  const pctA = total ? (winsA / total) * 100 : 0;
-  const pctD = total ? (draws / total) * 100 : 0;
-  const pctB = total ? (winsB / total) * 100 : 0;
   const ordered = getChronologicalItems(items);
   const first = ordered[0];
   const last = ordered[ordered.length - 1];
@@ -291,20 +375,10 @@ function createMatchupHero(items, summary) {
 
   const facts = el("p", { class: "facts" }, [
     series ? plural(total, "playoff series", "playoff series") : plural(total, "game", "games"),
+    draws ? (series ? plural(draws, "tied", "tied") : plural(draws, "draw", "draws")) : "",
     formatSpan(first?.date, last?.end_date || last?.date),
     plural(tournaments, "tournament", "tournaments"),
   ].filter(Boolean).join(" · "));
-
-  const bar = el("div", { class: "share-bar", "aria-hidden": "true" },
-    el("span", { style: { width: `${pctA}%`, background: "var(--a)" } }),
-    draws ? el("span", { style: { width: `${pctD}%`, background: "var(--draw)" } }) : null,
-    el("span", { style: { width: `${pctB}%`, background: "var(--b)" } }));
-  const drawWord = series ? "tied" : draws === 1 ? "draw" : "draws";
-  const winWord = series ? "series won" : "wins";
-  const labels = el("div", { class: "share-labels" },
-    el("span", {}, el("b", {}, PCT(pctA)), ` ${winWord}`),
-    el("span", {}, `${formatNumber(draws)} ${drawWord} · ${PCT(pctD)}`),
-    el("span", {}, el("b", {}, PCT(pctB)), ` ${winWord}`));
 
   const groups = series ? [] : groupTournaments(items);
   const verdictParts = buildVerdict({
@@ -318,20 +392,10 @@ function createMatchupHero(items, summary) {
     verdictParts.map((part) => (part.strong ? el("strong", {}, part.text) : part.text)));
 
   return el("div", { class: "matchup-hero" },
-    crumbs([
-      { label: "Head-to-head", nav: "home" },
-      { label: `${lastName(state.playerA.name)} vs ${lastName(state.playerB.name)}` },
-    ]),
     el("div", { class: "board", dataset: { lead: winsA === winsB ? "tie" : winsA > winsB ? "a" : "b" } },
       createWho(state.playerA, "a"),
       el("div", { class: "mid" }, score, facts),
       createWho(state.playerB, "b")),
-    createForecast(),
-    el("div", { class: "share" },
-      el("h2", { class: "forecast-title share-title" },
-        series ? "Series record so far" : "Record so far"),
-      bar,
-      labels),
     verdict);
 }
 
@@ -467,7 +531,6 @@ function createPlayerHero(items, summary) {
       records.length > 2 && total ? `${Math.round((topTwo / total) * 100)}% of ${series ? "series" : "games"} against two of them` : ""));
 
   return el("div", { class: "player-hero" },
-    crumbs([{ label: "Players", nav: "players" }, { label: player.name }]),
     el("div", { class: "p-top" },
       el("div", {},
         // The page heading is the hidden #headline, which already names the player.
@@ -573,10 +636,20 @@ export function renderSummary(items) {
     : "No games for this filter.";
 
   closePlayerSwitcher();
+  const crumbsSlot = document.getElementById("summary-crumbs");
+  const tensionSlot = document.getElementById("summary-tension");
   if (single) {
+    crumbsSlot?.replaceChildren(crumbs([{ label: "Players", nav: "players" }, { label: state.playerA.name }]));
+    tensionSlot?.replaceChildren();
     elements.summaryHero.replaceChildren(createPlayerHero(items, summary));
     elements.summaryGrid.replaceChildren();
   } else {
+    crumbsSlot?.replaceChildren(crumbs([
+      { label: "Head-to-head", nav: "home" },
+      { label: `${lastName(state.playerA.name)} vs ${lastName(state.playerB.name)}` },
+    ]));
+    const tension = createTension(summary);
+    tensionSlot?.replaceChildren(...(tension ? [tension] : []));
     const hero = createMatchupHero(items, summary);
     elements.summaryHero.replaceChildren(hero);
     animateHeroNumbers(hero, summary.winsA, summary.winsB);

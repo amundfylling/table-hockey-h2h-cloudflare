@@ -38,7 +38,9 @@ exploration interface with zero runtime database queries.
   `ratings.py` computes each player's Glicko-2 rating (with goal difference) game by game;
   the history is stored as `rating` in `data/h2h/{id}.json` and drawn on player pages, and each
   opponent entry gets a `forecast` ([win, draw, loss] if they met today, ratings plus how the
-  pair has done against them) shown on matchup pages. The rating also carries `nations`: the
+  pair has done against them) and a `forecast_range` ([low, high], a 90% range for the owner's
+  expected points per game from both rating deviations and the spread of the pair's results),
+  drawn as "Past vs today" on matchup pages next to the record's points share. The rating also carries `nations`: the
   player's results against each opponent nation next to the ratings' pre-game expectation, drawn
   as "Against each nation" on player pages (`nationEdges` in `insights.js` names the clear gaps).
 * `tests/` - Automated Python integration and validation tests verifying match counts and data sanity.
@@ -141,7 +143,8 @@ The frontend is vanilla ES modules under `public/js/`, loaded from `index.html` 
   share `browse.js` (compact "fields + rows" JSON, filters kept in the URL).
 * `recent.js` - Recent-matchup chips + first-visit suggestions (`initRecent({ onCompare })`).
 * `filters.js` - Filter bar, advanced panel, active-filter chips.
-* `summary.js` - H2H scoreboard + highlight cards.
+* `summary.js` - H2H scoreboard card (score, verdict, "Past vs today" strip; the last 10 from
+  `form.js` sits in the same `.hero-card`) + tale of the tape + the player hero.
 * `switcher.js` - Matchup hero name popover: swap one player for another opponent, or open their career.
 * `opponents.js` - Single-player opponents table (sortable, min-games slider).
 * `charts.js` - SVG charts + the chart tooltip system.

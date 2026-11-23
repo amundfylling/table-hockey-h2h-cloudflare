@@ -58,12 +58,12 @@ const FIGURES = [
   {
     id: "matchup",
     path: `./?p1=${P1}&p2=${P2}`,
-    clip: ["#summary-hero", "#controls-bar"],
+    clip: ["#summary-crumbs", "#controls-bar"],
     markers: [
       [".board .score", [0.5, 0.05]],
       [".who.a .switch-trigger", { desk: [1.02, 0.5], phone: [0, 0, 0, -4] }],
-      [".forecast", { desk: [0, 0.62, -18, 0], phone: [0, 0, 10, 6] }],
-      [".share-bar", { desk: [0, 0.5, -18, 0], phone: [0.02, 0.5] }],
+      [".verdict", { desk: [0, 0.5, -18, 0], phone: [0, 0, 10, 6] }],
+      [".dumbbell", { desk: [0, 0.5, -18, 0], phone: [0.02, 0.5] }],
       [{ desk: ".form-strip", phone: "#form-chips" }, { desk: [0, 0.5, -18, 0], phone: [0, 0.5] }],
       [".stage-card", { desk: [0, 0.5, -18, 0], phone: [0, 0.5] }],
       ["#more-filters-toggle", [1, 0]],
@@ -111,7 +111,7 @@ const FIGURES = [
   {
     id: "player",
     path: `./?p1=${P1}`,
-    clip: ["#summary-hero", "#controls-bar"],
+    clip: ["#summary-crumbs", "#controls-bar"],
     markers: [
       [".p-name", { desk: [0, 0.5, -20, 0], phone: [1, 0.5, -14, 0] }],
       [".player-hero .btn.primary", [0, 0]],

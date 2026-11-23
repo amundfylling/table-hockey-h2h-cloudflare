@@ -75,6 +75,24 @@ class RatingsTest(unittest.TestCase):
         self.assertAlmostEqual(win + draw + loss, 1.0, places=2)
         self.assertEqual(forecasts[(2, 1)], [loss, draw, win])
 
+    def test_forecast_range_holds_the_forecast_and_narrows_with_games(self):
+        few = [(1, 3, 5, 1, "2024-01-01", 10), (2, 3, 1, 5, "2024-01-01", 10)] * 2
+        many = [(1, 3, 5, 1, "2024-01-01", 10), (2, 3, 1, 5, "2024-01-01", 10)] * 40
+        widths = []
+        for games in (few, many):
+            ranges = {}
+            _, forecasts = compute_ratings_and_forecasts(
+                _frame(games), [1, 2, 3], pairs=[(1, 2), (2, 1)], forecast_ranges=ranges
+            )
+            win, draw, _ = forecasts[(1, 2)]
+            low, high = ranges[(1, 2)]
+            self.assertLessEqual(low, win + draw / 2)
+            self.assertGreaterEqual(high, win + draw / 2)
+            # The other side's range mirrors this one.
+            self.assertAlmostEqual(ranges[(2, 1)][0], 1 - high, places=2)
+            widths.append(high - low)
+        self.assertLess(widths[1], widths[0])
+
     def test_head_to_head_edge_shifts_the_forecast(self):
         # 2 keeps beating 1 by more than the ratings expect, so the edge lowers 1's chances
         # beyond what the rating gap alone gives.

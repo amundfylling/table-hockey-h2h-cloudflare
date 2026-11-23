@@ -20,7 +20,7 @@
   <link rel="preload" href="fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="fonts/barlow-condensed-latin-600.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="icon" type="image/png" sizes="32x32" href="favicon.png" />
-  <link rel="stylesheet" href="styles.css?v=20261112-seo" />
+  <link rel="stylesheet" href="styles.css?v=20261123-past-vs-today" />
   <!-- Every module the page script imports, so the browser fetches them at once instead of
        one import level at a time. tests-js/routes.test.mjs checks this list. -->
   <link rel="modulepreload" href="js/chrome.js" />
@@ -117,6 +117,32 @@
       <p id="change-filter-status" class="sr-only" aria-live="polite"></p>
 
       <ol class="releases">
+        <li class="release" id="v4.8">
+          <div class="release-tag">
+            <span class="release-version">4.8</span>
+            <time class="release-date" datetime="2026-11-23">23 Nov 2026</time>
+          </div>
+          <div class="release-body">
+            <h2>Past vs today on every matchup</h2>
+            <ul class="changes">
+              <li class="change" data-type="new"><span class="change-type">New</span>
+                <span class="change-text">Matchup pages show the record and today's forecast on one strip: a
+                  ring for the share of points each player has taken so far and a dot for what they can expect
+                  today, with a line for how sure the forecast is. When the two disagree, the page says
+                  so.</span></li>
+              <li class="change" data-type="improved"><span class="change-type">Improved</span>
+                <span class="change-text">The score, the one-line verdict, past vs today and the last 10 games
+                  now sit together in one card, so on a phone the answer is on screen before the
+                  filters.</span></li>
+              <li class="change" data-type="improved"><span class="change-type">Improved</span>
+                <span class="change-text">"Against each nation" on player pages shows a dot and a range for
+                  each nation. A hollow dot means the gap could be chance.</span></li>
+              <li class="change" data-type="improved"><span class="change-type">Improved</span>
+                <span class="change-text">Player pages show losses in slate grey instead of orange, so orange
+                  and teal always mean the two players of a matchup.</span></li>
+            </ul>
+          </div>
+        </li>
         <li class="release" id="v4.7">
           <div class="release-tag">
             <span class="release-version">4.7</span>

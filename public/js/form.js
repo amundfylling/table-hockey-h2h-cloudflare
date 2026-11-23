@@ -404,9 +404,14 @@ export function renderForm(matches, canonicalItems = matches) {
     chip.classList.add(match.result === "A" ? "win" : match.result === "B" ? "loss" : "draw");
     const scoreEl = document.createElement("b");
     scoreEl.textContent = score;
-    chip.append(scoreEl, letter);
-    // Visible score first, then the details, so the name contains what is on screen.
-    appendTextPart(chip, "sr-only", `, ${index === 0 ? "latest, " : ""}${chip.title}`);
+    const letterEl = document.createElement("span");
+    letterEl.className = "chip-letter";
+    letterEl.textContent = letter;
+    chip.append(scoreEl, letterEl);
+    // Visible score first, then the details, so the name contains what is on screen. The
+    // result is spelled out because phones hide the letter.
+    const resultWord = match.result === "A" ? "win" : match.result === "B" ? "loss" : "draw";
+    appendTextPart(chip, "sr-only", `, ${resultWord}, ${index === 0 ? "latest, " : ""}${chip.title}`);
     const showDetail = () => {
       if (!elements.formDetail) return;
       elements.formDetail.textContent = chip.title;

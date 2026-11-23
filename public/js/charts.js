@@ -13,6 +13,7 @@ import {
   listNames,
   monthYear,
   NATION_MIN_GAMES,
+  NATION_Z,
   NATION_MIN_GAP,
   nationEdges,
   opponentExtremes,
@@ -763,6 +764,12 @@ function signedPoints(value) {
   return "0";
 }
 
+// "−4 to +12": the 90% range of a row's gap in percentage points.
+function rangeText(row) {
+  const half = nationHalfWidth(row);
+  return `${signedPoints(row.diff - half)} to ${signedPoints(row.diff + half)}`;
+}
+
 function nationLabel(nation) {
   const flag = getCountryFlag(nation);
   const frag = document.createDocumentFragment();
@@ -782,6 +789,33 @@ function nationLabel(nation) {
 
 function nationTone(row) {
   return row.diff >= 0 ? "a" : "b";
+}
+
+// Half the 90% range of a nation row's gap, in percentage points (the same z as NATION_Z).
+function nationHalfWidth(row) {
+  return row.games ? (NATION_Z * Math.sqrt(Math.max(row.variance || 0, 0)) / row.games) * 100 : 0;
+}
+
+// Dot for the gap plus a whisker for its 90% range, on a ±limit scale. The dot is solid when the
+// whole range is on one side of zero, hollow (and grey) when the gap could be chance.
+function nationMark(row, limit) {
+  const half = nationHalfWidth(row);
+  const open = Math.abs(row.diff) <= half;
+  const pos = (value) => 50 + (50 * Math.max(-limit, Math.min(limit, value))) / limit;
+  const mark = document.createElement("span");
+  mark.className = `nation-mark ${nationTone(row)}${open ? " is-open" : ""}`;
+  mark.setAttribute("aria-hidden", "true");
+  const low = row.diff - half;
+  const high = row.diff + half;
+  const whisker = document.createElement("i");
+  whisker.className = `nation-whisker${low < -limit ? " is-cut-low" : ""}${high > limit ? " is-cut-high" : ""}`;
+  whisker.style.left = `${pos(low)}%`;
+  whisker.style.width = `${Math.max(pos(high) - pos(low), 0)}%`;
+  const dot = document.createElement("i");
+  dot.className = `nation-dot${open ? " is-open" : ""}`;
+  dot.style.left = `${pos(row.diff)}%`;
+  mark.append(whisker, dot);
+  return mark;
 }
 
 function renderNations() {
@@ -808,12 +842,16 @@ function renderNations() {
   setLegend("nations-legend", [
     ["a", "Better than expected"],
     ["b", "Worse than expected"],
-    ["faint", "Faded: small or could be chance"],
+    ["open", "Hollow: could be chance"],
+    ["range", "90% likely range"],
   ]);
 
-  // Symmetric scale in percentage points, at least ±10.
+  // Symmetric scale in percentage points, at least ±10, with room for the ranges. A small
+  // sample's range can be very wide, so the scale stops at twice the widest gap (or ±20) and
+  // longer whiskers run off the edge.
   const widest = Math.max(...edges.rows.map((row) => Math.abs(row.diff)));
-  const limit = Math.max(10, Math.ceil(widest / 5) * 5);
+  const reach = Math.max(...edges.rows.map((row) => Math.abs(row.diff) + nationHalfWidth(row)));
+  const limit = Math.max(10, Math.ceil(Math.min(reach, Math.max(widest * 2, 20)) / 5) * 5);
   const list = document.createElement("div");
   list.className = "nation-rows";
   list.setAttribute("role", "table");
@@ -865,17 +903,10 @@ function renderNations() {
     const zero = document.createElement("i");
     zero.className = "nation-zero";
     zero.setAttribute("aria-hidden", "true");
-    const bar = document.createElement("i");
-    const clipped = Math.max(-limit, Math.min(limit, row.diff));
-    const half = 50 * Math.abs(clipped) / limit;
-    bar.className = `nation-bar ${nationTone(row)}${row.clear ? "" : " faint"}`;
-    bar.setAttribute("aria-hidden", "true");
-    bar.style.left = `${clipped >= 0 ? 50 : 50 - half}%`;
-    bar.style.width = `${Math.max(half, 0.6)}%`;
     const sr = document.createElement("span");
     sr.className = "sr-only";
-    sr.textContent = `Scored ${pct(row.score)}, ratings expected ${pct(row.expectedScore)}${row.clear ? "" : ", small or could be chance"}`;
-    track.append(zero, bar, sr);
+    sr.textContent = `Scored ${pct(row.score)}, ratings expected ${pct(row.expectedScore)}, likely range ${rangeText(row)}${row.clear ? "" : ", small or could be chance"}`;
+    track.append(zero, nationMark(row, limit), sr);
     const value = cell(`nation-value${row.clear ? ` ${nationTone(row)}` : ""}`, signedPoints(row.diff));
     line.append(nameCell, cell("nation-games", fmt(row.games)), cell("nation-score", pct(row.score)), track, value);
     body.append(line);
@@ -896,17 +927,10 @@ function renderNations() {
   const totalZero = document.createElement("i");
   totalZero.className = "nation-zero";
   totalZero.setAttribute("aria-hidden", "true");
-  const totalBar = document.createElement("i");
-  const totalClipped = Math.max(-limit, Math.min(limit, o.diff));
-  const totalHalf = 50 * Math.abs(totalClipped) / limit;
-  totalBar.className = `nation-bar ${o.diff >= 0 ? "a" : "b"}${o.clear ? "" : " faint"}`;
-  totalBar.setAttribute("aria-hidden", "true");
-  totalBar.style.left = `${totalClipped >= 0 ? 50 : 50 - totalHalf}%`;
-  totalBar.style.width = `${Math.max(totalHalf, 0.6)}%`;
   const totalSr = document.createElement("span");
   totalSr.className = "sr-only";
-  totalSr.textContent = `Scored ${pct(o.score)}, ratings expected ${pct(o.expectedScore)}`;
-  totalTrack.append(totalZero, totalBar, totalSr);
+  totalSr.textContent = `Scored ${pct(o.score)}, ratings expected ${pct(o.expectedScore)}, likely range ${rangeText(o)}`;
+  totalTrack.append(totalZero, nationMark(o, limit), totalSr);
   total.append(
     totalCell("nation-name", "All games"),
     totalCell("nation-games", fmt(o.games)),
@@ -941,7 +965,8 @@ function renderNations() {
     const html = `<div class="tooltip-title">${escapeHtml(row.nation)}</div>
       <div class="tooltip-kv"><strong>${row.wins}–${row.draws}–${row.losses}</strong> in ${fmt(row.games)} games</div>
       <div class="tooltip-kv">Scored <strong>${pct(row.score)}</strong> · expected ${pct(row.expectedScore)}</div>
-      <div class="tooltip-kv">${gap >= 0 ? "+" : "−"}${Math.abs(gap).toFixed(1)} points vs the ratings${row.clear ? "" : " (small or could be chance)"}</div>`;
+      <div class="tooltip-kv">${gap >= 0 ? "+" : "−"}${Math.abs(gap).toFixed(1)} points vs the ratings${row.clear ? "" : " (small or could be chance)"}</div>
+      <div class="tooltip-kv">Likely range ${rangeText(row)} pts</div>`;
     const box = chart.getBoundingClientRect();
     const trackBox = line.querySelector(".nation-track").getBoundingClientRect();
     const lineBox = line.getBoundingClientRect();
