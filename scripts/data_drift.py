@@ -6,8 +6,16 @@ changes (to stdout and, in GitHub Actions, the job summary) and fails when the c
 like lost data rather than new results:
 
 * fewer games, players or tournaments than the live site by more than a small margin,
-* a source that disappeared or lost more than a few percent of its games,
+* a source that disappeared or whose file lost more than a few percent of its games,
 * past games that vanished from a sample of player files.
+
+A game another source also reports is shown once, under one source and one tournament (see
+deduplicate_overlapping_source_matches in build_h2h.py). When a source starts covering events
+an earlier source already had, those games move to it: the earlier source's shown count falls
+and the old tournament id becomes a `moved_to` page. Neither is lost data, so the source check
+uses the rows each source file supplied (meta.json source_validation), and a past game counts
+as kept when the same game (opponent, score, date within a few days, since sources can date
+a multi-day event differently) is still there under another tournament.
 
 New results only ever add games, so on the daily run these numbers should only grow. On a code
 change with unchanged sources, every difference in the report comes from the code, so it shows
@@ -33,10 +41,16 @@ import sys
 from collections import Counter
 from datetime import date, timedelta
 from pathlib import Path
+from typing import Tuple
 
 import requests
 
-ROOT_DIR = Path(__file__).resolve().parents[1]
+SCRIPTS_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(SCRIPTS_DIR))
+
+from build_h2h import DATA_SOURCES, EXTRA_SOURCES  # noqa: E402
+
+ROOT_DIR = SCRIPTS_DIR.parent
 DATA_DIR = ROOT_DIR / "public" / "data"
 TIMEOUT = 60
 # Games in the last few weeks may still be corrected upstream; older ones should be stable.
@@ -76,7 +90,16 @@ def drop(new: float, old: float) -> float:
     return (old - new) / old if old else 0.0
 
 
+# meta.json source_validation key of each source id: "primary" for Sportscorpion, else the
+# EXTRA_SOURCES "key".
+VALIDATION_KEYS = {
+    DATA_SOURCES[0]["id"]: "primary",
+    **{source["id"]: source["key"] for source in EXTRA_SOURCES},
+}
+
+
 def game_keys(payload: dict, before: str) -> Counter:
+    """(opponent, date, tournament, goals for, goals against) of each game before a date."""
     keys = Counter()
     for opponent_id, opponent in payload.get("opponents", {}).items():
         for game in opponent.get("matches", []):
@@ -86,6 +109,73 @@ def game_keys(payload: dict, before: str) -> Counter:
                     game["goals_for_player"], game["goals_for_opponent"],
                 )] += 1
     return keys
+
+
+# Two sources can date a multi-day event differently, so a game that moved to another
+# source's tournament may also have moved by a day or two.
+MOVED_DATE_DAYS = 3
+
+
+def lost_games(old_keys: Counter, new_keys: Counter) -> Tuple[Counter, int]:
+    """Games of old_keys that new_keys no longer has, and how many others only moved to
+    another tournament (one source's copy of the game replaced by another's), possibly
+    dated up to MOVED_DATE_DAYS apart.
+
+    Keys are game_keys tuples: (opponent, date, tournament, goals for, goals against).
+    """
+    gone = old_keys - new_keys
+    # Games this build has that live doesn't, by (opponent, goals for, goals against).
+    spare: dict = {}
+    for (opponent_id, day, _tournament, goals_for, goals_against), count in (
+        new_keys - old_keys
+    ).items():
+        spare.setdefault((opponent_id, goals_for, goals_against), Counter())[
+            date.fromisoformat(day)
+        ] += count
+    # Exact dates first, so a nearby date never takes a game an exact one needs.
+    for key in list(gone):
+        opponent_id, day, _tournament, goals_for, goals_against = key
+        days = spare.get((opponent_id, goals_for, goals_against), Counter())
+        take = min(gone[key], days[date.fromisoformat(day)])
+        days[date.fromisoformat(day)] -= take
+        gone[key] -= take
+    moved = sum((old_keys - new_keys).values()) - sum(gone.values())
+    # Then nearby dates. Every window is equally wide, so pairing each old game, earliest
+    # first, with the earliest spare game still in its window matches as many as possible.
+    by_group: dict = {}
+    for key, count in gone.items():
+        if count > 0:
+            opponent_id, day, _tournament, goals_for, goals_against = key
+            by_group.setdefault((opponent_id, goals_for, goals_against), []).append(
+                (date.fromisoformat(day), key)
+            )
+    window = timedelta(days=MOVED_DATE_DAYS)
+    for group, olds in by_group.items():
+        days = spare.get(group, Counter())
+        pool = sorted(day for day, count in days.items() for _ in range(max(count, 0)))
+        position = 0
+        for when, key in sorted(olds):
+            while gone[key] > 0:
+                while position < len(pool) and pool[position] < when - window:
+                    position += 1
+                if position == len(pool) or pool[position] > when + window:
+                    break
+                position += 1
+                gone[key] -= 1
+                moved += 1
+    lost = Counter({key: count for key, count in gone.items() if count > 0})
+    return lost, moved
+
+
+def source_rows(meta: dict) -> dict:
+    """{source id: rows its file supplied before the cross-source dedupe}, where known."""
+    validation = meta.get("source_validation") or {}
+    out = {}
+    for source_id, key in VALIDATION_KEYS.items():
+        accepted = (validation.get(key) or {}).get("accepted_rows")
+        if isinstance(accepted, int):
+            out[source_id] = accepted
+    return out
 
 
 def sample_players(live_board: dict, new_ids: set, count: int) -> list:
@@ -167,11 +257,17 @@ def main() -> int:
     total("Tournaments", len(live_list), len(tournament_list), "tournaments")
     live_sources = {s["id"]: s["matches"] for s in live_meta.get("sources", [])}
     new_sources = {s["id"]: s["matches"] for s in meta.get("sources", [])}
+    live_rows, new_rows = source_rows(live_meta), source_rows(meta)
     for source_id in sorted(set(live_sources) | set(new_sources)):
         old, new = live_sources.get(source_id, 0), new_sources.get(source_id, 0)
-        total(f"Games from {source_id}", old, new, "source")
+        # Shown games move between sources when two report the same event, so judge a
+        # source by what its file supplied when both builds recorded that.
+        by_rows = source_id in live_rows and source_id in new_rows
+        total(f"Games from {source_id}", old, new, None if by_rows else "source")
         if old and not new:
             failures.append(f"Source {source_id} has no games in this build.")
+    for source_id in sorted(set(live_rows) & set(new_rows) & (set(live_sources) | set(new_sources))):
+        total(f"Rows in the {source_id} file", live_rows[source_id], new_rows[source_id], "source")
     out.append("")
 
     # Players
@@ -249,7 +345,7 @@ def main() -> int:
 
     # Past games, game by game, for a sample of players
     sample = sample_players(live_board, set(new_ids), sample_size)
-    lost_total = checked_total = 0
+    lost_total = checked_total = moved_total = 0
     lost_examples = []
     for pid in sample:
         try:
@@ -259,16 +355,18 @@ def main() -> int:
             continue
         old_keys = game_keys(live_payload, settled)
         new_keys = game_keys(load(f"h2h/{pid}.json"), settled)
-        lost = old_keys - new_keys
+        lost, moved = lost_games(old_keys, new_keys)
         checked_total += sum(old_keys.values())
         lost_total += sum(lost.values())
+        moved_total += moved
         for key in list(lost)[:2]:
             lost_examples.append(f"{new_ids.get(pid, pid)} v {key[0]} on {key[1]} "
                                  f"(tournament {key[2]}, {key[3]}-{key[4]})")
     share = lost_total / checked_total if checked_total else 0.0
     out.append(
         f"**Past games** (before {settled}) in {len(sample)} sampled player files: "
-        f"{checked_total:,} checked, {lost_total:,} missing from this build ({share:.2%})."
+        f"{checked_total:,} checked, {lost_total:,} missing from this build ({share:.2%}); "
+        f"{moved_total:,} more are now listed under another source's tournament."
     )
     for example in lost_examples[:10]:
         out.append(f"- missing: {example}")
