@@ -94,5 +94,16 @@ class ScoreOverridesTest(unittest.TestCase):
         self.assertEqual(frame.loc[1, ["goals_id1", "goals_id2"]].tolist(), [4, 3])
 
 
+class LevelOverridesTest(unittest.TestCase):
+    def test_open_world_and_european_championships_become_level_1(self):
+        # WC 2023 open (source says 2), EC 2024 open (no level), WC 2023 open teams (6).
+        frame = pd.DataFrame({
+            "tournament_id": [601081923, 6000000022, 5861],
+            "tournament_level": ["2", None, "6"],
+        })
+        self.assertEqual(stage_fixes.apply_level_overrides(frame), 2)
+        self.assertEqual(frame["tournament_level"].tolist(), ["1", "1", "6"])
+
+
 if __name__ == "__main__":
     unittest.main()

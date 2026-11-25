@@ -653,6 +653,50 @@ SCORE_OVERRIDES: Dict[Tuple[int, str], Tuple[int, int]] = {
 }
 
 
+# Open-class World and European Championships are level 1 whatever level their source gives
+# (the sources leave most of them blank and some say 2 or 3). Individual open events only:
+# team, women, junior, veteran, 55+ and kids events and side tournaments keep their level.
+# Events that two sources both list carry both page ids, so the level holds whichever page
+# keeps the games after deduplication.
+LEVEL_OVERRIDES: Dict[int, str] = {
+    tid: "1"
+    for tid in (
+        # World Championships
+        608986931,  # 1989 Stockholm, VM 1988/89 Öppen
+        12485137,  # 1992 Brno, VM 1991/92 Öppen
+        656020053,  # 1993 Paris, VM 1993/94 Öppen
+        886256885,  # 1995 Stockholm, VM 1994/95 Öppen
+        159492969,  # 1997 Helsinki, VM 1996/97 Öppen
+        717404252,  # 1999 Wilhelmshaven, VM 1998/99 Öppen
+        868027884,  # 2001 Plzen, VM 2000/01 Öppen
+        759572697,  # 2003 Zurich, VM 2002/03 Öppen
+        95548115,  # 2005 Riga, VM 2004/05 Öppen
+        879799439,  # 2007 Moscow, VM 2006/07 Öppen
+        30561533,  # 2009 Budapest, VM 2008/09 Öppen
+        857421270,  # 2011 Turku, VM 2010/11 Öppen
+        376, 996002594,  # 2013 Stavanger (sportscorpion, bordshockey.net)
+        893, 992619043,  # 2015 St Petersburg (sportscorpion, bordshockey.net)
+        986967259,  # 2017 Liberec, VM 2016/17 Öppen
+        41204007, 3382,  # 2019 Raubichi (bordshockey.net, sportscorpion)
+        676880167, 4439,  # 2021 Tallinn (bordshockey.net, sportscorpion)
+        601081923, 5857,  # 2023 Bryne (bordshockey.net, sportscorpion)
+        742220984,  # 2025 Umeå, World Championships Open 2024/25 Öppen
+        # European Championships
+        37895951,  # 1990 Lund, EM 1990/91 Öppen
+        895807194,  # 1992 Brno, EM 1991/92 Öppen
+        414843228,  # 2006 Skalica, EM 2005/06 Öppen
+        947320603,  # 2008 Riga, EM 2007/08 Öppen
+        771391102,  # 2010 Västervik, EM 2009/10 Öppen
+        564630976,  # 2012 Riga, EM 2011/12 Öppen
+        593, 437237746, 606,  # 2014 Riga (sportscorpion, bordshockey.net)
+        1267, 910409626,  # 2016 Tallinn (sportscorpion, bordshockey.net)
+        491756190,  # 2018 Eskilstuna, EM 2017/18 Öppen
+        997769417, 5133,  # 2022 Kranj (bordshockey.net, sportscorpion)
+        6000000022,  # 2024 Valmiera (galdahokejs.lv)
+        564473990, 8070,  # 2026 Lahr (bordshockey.net, sportscorpion)
+    )
+}
+
 def load_tournament_details(metadata_path) -> Dict[int, dict]:
     """Date, place and source link per tournament from the scraper's metadata CSV."""
     try:

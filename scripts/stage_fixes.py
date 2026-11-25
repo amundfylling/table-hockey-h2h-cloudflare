@@ -32,6 +32,21 @@ def apply_date_overrides(matches: pd.DataFrame) -> int:
     return changed
 
 
+def apply_level_overrides(matches: pd.DataFrame) -> int:
+    """Set the tournament level of games in tournaments.LEVEL_OVERRIDES. Returns games changed."""
+    if "tournament_id" not in matches:
+        return 0
+    if "tournament_level" not in matches:
+        matches["tournament_level"] = None
+    ids = pd.to_numeric(matches["tournament_id"], errors="coerce")
+    changed = 0
+    for tid, level in tournament_pages.LEVEL_OVERRIDES.items():
+        rows = ids.eq(tid).fillna(False).astype(bool)
+        if rows.any():
+            changed += int(rows.sum())
+            matches.loc[rows, "tournament_level"] = level
+    return changed
+
 def apply_score_overrides(matches: pd.DataFrame) -> int:
     """Correct game scores listed in tournaments.SCORE_OVERRIDES. Returns games changed."""
     needed = {"tournament_id", "source_match_id", "goals_player1", "goals_player2"}
