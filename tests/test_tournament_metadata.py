@@ -42,7 +42,7 @@ class TestTournamentMetadata(unittest.TestCase):
         by_id = {tournament["id"]: tournament for tournament in tournaments}
         self.assertEqual(by_id[10]["level"], "1")
         self.assertEqual(by_id[11]["level"], "6")
-        self.assertIsNone(by_id[12]["level"])
+        self.assertEqual(by_id[12]["level"], "10")  # team events are level 10
 
 
 if __name__ == "__main__":

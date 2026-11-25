@@ -47,6 +47,34 @@ def apply_level_overrides(matches: pd.DataFrame) -> int:
             matches.loc[rows, "tournament_level"] = level
     return changed
 
+def team_tournament_ids(matches: pd.DataFrame) -> set:
+    """Ids of the team events among the games: type "Team" in the source, or a team name."""
+    if "tournament_id" not in matches:
+        return set()
+    columns = [c for c in ("tournament_id", "tournament_name", "TournamentType") if c in matches]
+    events = matches[columns].drop_duplicates()
+    events = events.loc[pd.to_numeric(events["tournament_id"], errors="coerce").notna()]
+    names = events.get("tournament_name", pd.Series(None, index=events.index))
+    types = events.get("TournamentType", pd.Series(None, index=events.index))
+    return {
+        int(tid)
+        for tid, name, kind in zip(events["tournament_id"], names, types)
+        if tournament_pages.is_team_event(name, kind)
+    }
+
+
+def apply_team_levels(matches: pd.DataFrame, team_ids: set) -> int:
+    """Set the games of team events to tournaments.TEAM_LEVEL. Returns games changed."""
+    if not team_ids or "tournament_id" not in matches:
+        return 0
+    if "tournament_level" not in matches:
+        matches["tournament_level"] = None
+    rows = pd.to_numeric(matches["tournament_id"], errors="coerce").isin(team_ids)
+    rows = rows.fillna(False).astype(bool)
+    matches.loc[rows, "tournament_level"] = tournament_pages.TEAM_LEVEL
+    return int(rows.sum())
+
+
 def apply_score_overrides(matches: pd.DataFrame) -> int:
     """Correct game scores listed in tournaments.SCORE_OVERRIDES. Returns games changed."""
     needed = {"tournament_id", "source_match_id", "goals_player1", "goals_player2"}

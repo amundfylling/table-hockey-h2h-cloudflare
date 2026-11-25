@@ -697,6 +697,22 @@ LEVEL_OVERRIDES: Dict[int, str] = {
     )
 }
 
+# Team events (national, club, pair and family teams) are level 10 whatever level their source
+# gives, and the tournaments browse page leaves them out. Sportscorpion marks them with type
+# "Team"; the other sources have no type, so their names are checked too: "Team(s)" in English,
+# "Lag" in Swedish and Norwegian (a whole word, so "Lagos League" is no team) and the Swedish
+# "Nationscupen".
+TEAM_LEVEL = "10"
+_TEAM_EVENT_NAME_RE = re.compile(r"\bteams?\b|\blag\b|\bnationscup")
+
+
+def is_team_event(name: object, tournament_type: object = None) -> bool:
+    """Whether a tournament is a team event, by its source type or its name."""
+    if _plain(tournament_type) == "team":
+        return True
+    return bool(_TEAM_EVENT_NAME_RE.search(_plain(name)))
+
+
 def load_tournament_details(metadata_path) -> Dict[int, dict]:
     """Date, place and source link per tournament from the scraper's metadata CSV."""
     try:
@@ -936,7 +952,9 @@ def build_tournament_files(
     return index
 
 
-def build_tournament_list(index: List[dict], names: Dict[int, str], linked_ids: set) -> dict:
+def build_tournament_list(
+    index: List[dict], names: Dict[int, str], linked_ids: set, hidden_ids: Iterable[int] = (),
+) -> dict:
     """data/tournament-list.json: every tournament page for the tournaments browse page, newest
     first, with its winner and runner-up.
 
@@ -944,8 +962,9 @@ def build_tournament_list(index: List[dict], names: Dict[int, str], linked_ids: 
     null) looked up in `players` ({id: [name, has a player page]}), and end_date left empty for
     one-day events, which keeps the file small with thousands of events. Pages that hold only
     the games one source has of an event another page shows in full are left out, so no event
-    is listed twice.
+    is listed twice. Tournaments in `hidden_ids` (team events) are left out too.
     """
+    hidden = {int(tid) for tid in hidden_ids}
     players: Dict[str, list] = {}
 
     def finalist(pid) -> Optional[int]:
@@ -957,7 +976,7 @@ def build_tournament_list(index: List[dict], names: Dict[int, str], linked_ids: 
 
     rows = []
     for entry in index:
-        if entry.get("part_of"):
+        if entry.get("part_of") or int(entry["id"]) in hidden:
             continue
         date = entry["date"] or ""
         end_date = entry.get("end_date") or ""
