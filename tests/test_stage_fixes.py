@@ -105,5 +105,32 @@ class LevelOverridesTest(unittest.TestCase):
         self.assertEqual(frame["tournament_level"].tolist(), ["1", "1", "6"])
 
 
+
+class TeamLevelsTest(unittest.TestCase):
+    def test_team_events_become_level_10(self):
+        frame = pd.DataFrame({
+            "tournament_id": [5861, 5861, 1997, 546809300, 40129921, 8070, 7979],
+            "tournament_name": [
+                "World Championship 2023 - OPEN TEAMS", "World Championship 2023 - OPEN TEAMS",
+                "Svenska Mästerskapen - Lag", "Nationscupen 2004/05", "Lagos League #69",
+                "European Championship 2026 - OPEN", "Norwegian Championships 2026 Duo",
+            ],
+            "TournamentType": ["Team", "Team", "Individual", None, None, "Individual", "Team"],
+            "tournament_level": ["6", "6", None, None, "5", "1", None],
+        })
+        team_ids = stage_fixes.team_tournament_ids(frame)
+        self.assertEqual(team_ids, {5861, 1997, 546809300, 7979})
+        self.assertEqual(stage_fixes.apply_team_levels(frame, team_ids), 5)
+        self.assertEqual(
+            frame["tournament_level"].tolist(), ["10", "10", "10", "10", "5", "1", "10"]
+        )
+
+    def test_steampunk_is_no_team(self):
+        frame = pd.DataFrame({
+            "tournament_id": [3072], "tournament_name": ["Steampunk Winter Cup #2 (Open)"],
+        })
+        self.assertEqual(stage_fixes.team_tournament_ids(frame), set())
+
+
 if __name__ == "__main__":
     unittest.main()

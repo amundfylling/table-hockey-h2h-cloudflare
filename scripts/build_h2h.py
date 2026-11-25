@@ -398,14 +398,12 @@ def load_tournaments(
 
     tournaments = []
     for row in tourneys_df.itertuples(index=False):
-        tournaments.append(
-            {
-                "id": int(row.id),
-                "name": row.name if pd.notna(row.name) else "",
-                "type": row.type if pd.notna(row.type) else "",
-                "level": tournament_levels.get(int(row.id)),
-            }
-        )
+        name = row.name if pd.notna(row.name) else ""
+        kind = row.type if pd.notna(row.type) else ""
+        level = tournament_levels.get(int(row.id))
+        if tournament_pages.is_team_event(name, kind):
+            level = tournament_pages.TEAM_LEVEL
+        tournaments.append({"id": int(row.id), "name": name, "type": kind, "level": level})
     return tournaments
 
 
@@ -2988,6 +2986,12 @@ def main() -> int:
     stage_fixes.apply_date_overrides(matches)
     stage_fixes.apply_score_overrides(matches)
     stage_fixes.apply_level_overrides(matches)
+    team_ids = stage_fixes.team_tournament_ids(matches)
+    team_level_games = stage_fixes.apply_team_levels(matches, team_ids)
+    print(
+        f"Set {team_level_games} games of {len(team_ids)} team events to level "
+        f"{tournament_pages.TEAM_LEVEL}."
+    )
 
     sort_cols = ["id1", "id2", *ratings.playing_order_columns(matches)]
     matches = matches.sort_values(sort_cols, kind="mergesort", na_position="last")
@@ -3086,7 +3090,7 @@ def main() -> int:
     )
     print(f"Wrote {len(tournament_index)} tournament files.")
     tournament_list = tournament_pages.build_tournament_list(
-        tournament_index, all_names, {int(player["id"]) for player in players}
+        tournament_index, all_names, {int(player["id"]) for player in players}, team_ids
     )
     write_json(DATA_STAGING_DIR / "tournament-list.json", tournament_list)
     write_json(DATA_STAGING_DIR / "records.json", records)

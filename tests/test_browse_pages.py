@@ -81,6 +81,16 @@ class TournamentListTest(unittest.TestCase):
         self.assertEqual(rows[0]["city"], "Oslo")
         self.assertEqual(rows[0]["end_date"], "2026-10-02")
 
+    def test_leaves_out_hidden_team_events(self):
+        index = [
+            {"id": 10, "name": "Open", "date": "2026-10-01", "end_date": "", "level": "1",
+             "country": "", "games": 9, "players": 5, "champion": None},
+            {"id": 12, "name": "Open teams", "date": "2026-10-02", "end_date": "",
+             "level": "10", "country": "", "games": 9, "players": 9, "champion": None},
+        ]
+        rows = build_tournament_list(index, {}, set(), {12})["tournaments"]
+        self.assertEqual([row[0] for row in rows], [10])
+
     def test_one_day_event_has_no_end_date(self):
         index = [{"id": 1, "name": "Cup", "date": "2026-01-01", "end_date": "2026-01-01",
                   "level": None, "country": "", "games": 3, "players": 3, "champion": None}]
