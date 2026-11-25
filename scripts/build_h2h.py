@@ -2927,6 +2927,7 @@ def main() -> int:
             f"Tournament metadata has {len(tournament_levels)} levels; at least "
             f"{min_tournament_levels} are required."
         )
+    tournament_levels.update(tournament_pages.LEVEL_OVERRIDES)
     tournaments = load_tournaments(tournaments_path, tournament_levels)
     prepare_data_staging()
     write_json(DATA_STAGING_DIR / "tournaments.json", tournaments)
@@ -2986,6 +2987,7 @@ def main() -> int:
         print(f"Marked {team_games} team-event games as round-robin.")
     stage_fixes.apply_date_overrides(matches)
     stage_fixes.apply_score_overrides(matches)
+    stage_fixes.apply_level_overrides(matches)
 
     sort_cols = ["id1", "id2", *ratings.playing_order_columns(matches)]
     matches = matches.sort_values(sort_cols, kind="mergesort", na_position="last")
