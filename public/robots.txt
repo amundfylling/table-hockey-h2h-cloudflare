@@ -1,3 +1,4 @@
+# Matchup pages (/?p1=&p2=) each run a Pages Function; see PR #74.
 # AI crawlers may read player pages, but not every pair of players: the matchup
 # space is millions of URLs and each one runs a Pages Function.
 User-agent: GPTBot
